@@ -1,9 +1,9 @@
 import { Component } from '@angular/core';
 
 @Component({
-  selector: 'lib-ui-kit',
+  selector: 'ui-kit',
   imports: [],
-  template: ` <p>ui-kit works!</p> `,
+  template: ` <p>ui-kit works</p> `,
   styles: ``,
 })
 export class UiKit {}
