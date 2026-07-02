@@ -1,0 +1,8 @@
+@use 'sizes' as sizes;
+
+@mixin p-l {
+  font-size: #{sizes.$size-180};
+  font-style: normal;
+  font-weight: 400;
+  line-height: #{sizes.$size-260};
+}

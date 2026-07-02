@@ -1,0 +1,24 @@
+@use 'foundations/colors' as colors;
+@use 'foundations/typography' as typography;
+
+:host {
+  display: inline-flex;
+}
+
+ion-button {
+  @include typography.p-l;
+
+  --background: #{colors.$color-brand-primary};
+  --color: #{colors.$color-foreground-on-brand};
+  --background-hover: #{colors.$color-brand-primary};
+  --background-focused: #{colors.$color-brand-primary};
+  --background-activated: #{colors.$color-brand-primary-pressed};
+}
+
+ion-button::part(native) {
+  outline: 2px solid transparent;
+}
+
+ion-button.ion-focused::part(native) {
+  outline-color: #{colors.$color-stroke-focus};
+}

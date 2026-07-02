@@ -12,5 +12,12 @@
   "dependencies": {
     "tslib": "^2.3.0"
   },
-  "sideEffects": false
+  "sideEffects": false,
+  "exports": {
+    "./base": {
+      "sass": "./foundations/base.scss",
+      "style": "./foundations/base.scss",
+      "default": "./foundations/base.scss"
+    }
+  }
 }
