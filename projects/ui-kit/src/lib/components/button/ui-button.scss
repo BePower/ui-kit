@@ -1,24 +1,28 @@
+@use '@ionic/angular/css/core.css';
+
 @use 'foundations/colors' as colors;
+@use 'foundations/sizes' as sizes;
 @use 'foundations/typography' as typography;
+@use 'foundations/root' as root;
 
 :host {
-  display: inline-flex;
+  @include root.shadow-root;
+  display: contents;
+  ion-button {
+    margin: 0;
+    min-height: 48px;
+  }
 }
 
-ion-button {
-  @include typography.p-l;
-
-  --background: #{colors.$color-brand-primary};
-  --color: #{colors.$color-foreground-on-brand};
-  --background-hover: #{colors.$color-brand-primary};
-  --background-focused: #{colors.$color-brand-primary};
-  --background-activated: #{colors.$color-brand-primary-pressed};
+:host(.primary) ion-button {
+  @include typography.button-cta;
+  --border-radius: #{sizes.$size-80};
+  --padding-start: #{sizes.$size-880};
+  --padding-end: #{sizes.$size-880};
+  --padding-top: #{sizes.$size-80};
+  --padding-bottom: #{sizes.$size-80};
 }
 
-ion-button::part(native) {
-  outline: 2px solid transparent;
-}
-
-ion-button.ion-focused::part(native) {
-  outline-color: #{colors.$color-stroke-focus};
+:host(.expand) ion-button {
+  width: 100%;
 }

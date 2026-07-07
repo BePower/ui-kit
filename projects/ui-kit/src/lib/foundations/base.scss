@@ -1,8 +1,11 @@
 @use 'source-sans/source-sans-3.css';
+
+:root {
+  --ion-font-family: 'Source Sans 3', sans-serif;
+}
+
 html {
   font-size: 16px;
-  font-family: 'Source Sans 3';
-  --ion-font-family: 'Source Sans 3', sans-serif;
 }
 
 body {

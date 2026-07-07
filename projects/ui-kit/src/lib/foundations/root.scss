@@ -1,0 +1,13 @@
+@use 'colors' as colors;
+
+@mixin shadow-root {
+  --ion-color-primary: #{colors.$color-primary-yellow-eni};
+  --ion-color-primary-shade: #{colors.$color-primary-yellow-eni-shade};
+  --ion-color-primary-tint: #{colors.$color-primary-yellow-eni-tint};
+  --ion-color-primary-contrast: #{colors.$color-grey-default-grey};
+
+  --ion-color-secondary: #{colors.$color-primary-e-mobility-green};
+  --ion-color-secondary-shade: #{colors.$color-primary-e-mobility-green-shade};
+  --ion-color-secondary-tint: #{colors.$color-primary-e-mobility-green-tint};
+  --ion-color-secondary-contrast: #{colors.$color-grey-white};
+}

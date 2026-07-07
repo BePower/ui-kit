@@ -1,4 +1,33 @@
-$color-brand-primary: purple;
-$color-brand-primary-pressed: #a30000;
-$color-foreground-on-brand: #ffffff;
-$color-stroke-focus: #1f6feb;
+
+$color-primary-e-mobility-green: #045738;
+$color-primary-e-mobility-green-shade: #045135; // TODO: da verificare
+$color-primary-e-mobility-green-tint: #055f3e; // TODO: da verificare
+
+$color-primary-accessible-green: #008051;
+$color-primary-light-green: #95B849;
+
+$color-primary-yellow-eni: #ffcd00;
+$color-primary-yellow-eni-shade: #ecc102; // TODO: da verificare
+$color-primary-yellow-eni-tint: #ffcd00; // TODO: da verificare
+
+$color-grey-default-grey: #333;
+$color-grey-dark-grey: #444;
+$color-grey-default-grey-72: rgba(51, 51, 51, 0.72);
+$color-grey-default-grey-56: #8D8D8D;
+$color-grey-default-grey-32: #BEBEBE;
+$color-grey-light-grey: #EAEAEA;
+$color-grey-white: #FFF;
+
+$color-background-e-mobility-green-16: #D7E4DF;
+$color-background-grey: #F4F4F4;
+$color-background-yellow-eni-8: #FFFBEB;
+$color-background-light-green-24: #E6EED3;
+
+$color-error-allert-red: #D0021B;
+$color-error-ruby-red: #9D151C;
+
+$color-gradient-accessible-green: linear-gradient(90deg, #116D4B 0%, #116D4B 44%, #368B4B 100%);
+$color-gradient-green-horizontal-left: linear-gradient(90deg, #008354 0.52%, #008354 51.04%, #95B849 100%);
+$color-gradient-green-horizontal-right: linear-gradient(90deg, #95B849 0%, #008354 51.03%, #008354 99.97%);
+$color-gradient-green-yellow-horizontal: linear-gradient(90deg, #009E62 0%, #009E62 23.46%, #95B849 67.63%, #A7BC3C 74.77%, #D7C51B 89.08%, #FFCD00 100%);
+$color-gradient-green-yellow-oblique: linear-gradient(45deg, #009E62 0%, #009E62 23.46%, #95B849 67.63%, #A7BC3C 74.77%, #D7C51B 89.08%, #FFCD00 100%);
