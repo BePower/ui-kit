@@ -1,64 +1,102 @@
-# UiKit
+# `@bepower/ui-kit`
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.0.0.
+Angular UI library for BePower design system components.
 
-## Code scaffolding
+## Requirements
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+- Angular `21.x`
+- `@angular/common` and `@angular/core` as peer dependencies
 
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+## Installation
 
 ```bash
-ng generate --help
+npm install @bepower/ui-kit
 ```
 
-## Building
+## Using the library in Angular components
 
-To build the library, run:
+The library exposes standalone components. At the moment, the first available component is `UIButton`.
+
+Example:
+
+```ts
+import { Component } from '@angular/core';
+import { UIButton } from '@bepower/ui-kit';
+
+@Component({
+  selector: 'app-example',
+  standalone: true,
+  imports: [UIButton],
+  template: `<ui-button></ui-button>`,
+})
+export class ExampleComponent {}
+```
+
+## Required global import in the consumer
+
+The library exposes a global `base.scss` file that must be explicitly imported by the consumer application to apply document-level rules such as:
+
+- `html { font-size: 16px; }`
+- `body { font-size: 1rem; }`
+
+In the consumer app global SCSS file, for example `src/global.scss` or `src/styles.scss`, add:
+
+```scss
+@use '@ionic/angular/css/core.css';
+@use '@ionic/angular/css/normalize.css';
+@use '@bepower/ui-kit/base';
+```
+
+Important:
+
+- `@use` statements must be declared before any CSS rules in the file
+- Place `@use '@bepower/ui-kit/base';` after the Ionic `@use` statements so its global rules can override Ionic defaults when needed
+
+Valid example:
+
+```scss
+@use '@ionic/angular/css/core.css';
+@use '@ionic/angular/css/normalize.css';
+@use '@bepower/ui-kit/base';
+
+body {
+  margin: 0;
+}
+```
+
+## Why the global import is required
+
+The library components use `ViewEncapsulation.ShadowDom`, so their internal styles are shipped with the component itself. Global rules targeting `html` and `body`, on the other hand, cannot be applied automatically by the library and must be imported by the consumer application.
+
+## Development
+
+Build the library:
 
 ```bash
 ng build ui-kit
 ```
 
-This command will compile your project, and the build artifacts will be placed in the `dist/` directory.
-
-### Publishing the Library
-
-Once the project is built, you can publish your library by following these steps:
-
-1. Navigate to the `dist` directory:
-
-   ```bash
-   cd dist/ui-kit
-   ```
-
-2. Run the `npm publish` command to publish your library to the npm registry:
-   ```bash
-   npm publish
-   ```
-
-## Running unit tests
-
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
+Watch mode:
 
 ```bash
-ng test
+npm run watch
 ```
 
-## Running end-to-end tests
+## Publishing
 
-For end-to-end (e2e) testing, run:
+Build the package:
 
 ```bash
-ng e2e
+npm run build
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+Publish the contents of `dist/ui-kit`:
 
-## Additional Resources
+```bash
+npm publish ./dist/ui-kit
+```
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+Important:
+
+- use `./dist/ui-kit` and not `dist/ui-kit`
+- without `./`, npm may interpret the path as a remote repository reference
