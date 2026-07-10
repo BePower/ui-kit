@@ -2,6 +2,11 @@
 
 Angular UI library for BePower design system components.
 
+## Documentation
+
+- [UI Elements Guide](./docs/ui-elements.md)
+- [UIButton](./docs/components/ui-button.md)
+
 ## Requirements
 
 - Angular `21.x`

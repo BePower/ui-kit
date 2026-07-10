@@ -11,18 +11,37 @@
   ion-button {
     margin: 0;
     min-height: 48px;
+    --padding-start: #{sizes.$size-880};
+    --padding-end: #{sizes.$size-880};
+    --padding-top: #{sizes.$size-80};
+    --padding-bottom: #{sizes.$size-80};
+    &.button-disabled {
+      opacity: 0.52;
+    }
+  }
+  ion-button > ion-icon[slot='start'] { // TODO: change with UI ICON
+    margin-inline-start: #{sizes.$size-80};
+    margin-inline-end: #{sizes.$size-80};
   }
 }
 
-:host(.primary) ion-button {
+:host(.primary) ion-button,
+:host(.outlined) ion-button {
   @include typography.button-cta;
   --border-radius: #{sizes.$size-80};
-  --padding-start: #{sizes.$size-880};
-  --padding-end: #{sizes.$size-880};
-  --padding-top: #{sizes.$size-80};
-  --padding-bottom: #{sizes.$size-80};
 }
 
-:host(.expand) ion-button {
+:host(.secondary) ion-button {
+  @include typography.button-text-link;
+}
+
+:host(:not(.icon).expand) ion-button {
   width: 100%;
+}
+
+:host(.icon) ion-button {
+  --padding-start: #{sizes.$size-80};
+  --padding-end: #{sizes.$size-80};
+  --border-radius: #{sizes.$size-120};
+  min-width: 48px;
 }

@@ -7,26 +7,56 @@ import {
   input,
   ViewEncapsulation,
 } from '@angular/core';
-import { IonButton } from '@ionic/angular/standalone';
+import { IonButton, IonSpinner } from '@ionic/angular/standalone';
 
 @Component({
   selector: 'ui-button',
   standalone: true,
-  imports: [IonButton],
-  template: `<ion-button [color]="ionicColor()"><ng-content></ng-content></ion-button>`,
+  imports: [IonButton, IonSpinner],
+  template: `<ion-button
+    mode="ios"
+    [disabled]="disabled() || _isLoading()"
+    [color]="ionicColor()"
+    [fill]="ionicFill()"
+  >
+    @if (_isLoading()) {
+      <ion-spinner color="default-grey" name="lines-sharp"></ion-spinner>
+    } @else {
+      <ng-content></ng-content>
+    }
+  </ion-button>`,
   styleUrl: 'ui-button.scss',
   encapsulation: ViewEncapsulation.ShadowDom,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class UIButton {
-  variant = input<'primary'>('primary');
+  variant = input<'primary' | 'secondary' | 'outlined'>('primary');
+  size = input<'default' | 'icon'>('icon');
   expand = input(false, { transform: booleanAttribute });
+  disabled = input(false, { transform: booleanAttribute });
+  isLoading = input(false, { transform: booleanAttribute });
+
+  _isLoading = computed(() => this.variant() !== 'secondary' && this.isLoading());
 
   ionicColor = computed(() => {
     switch (this.variant()) {
+      case 'secondary':
+      case 'outlined':
+        return 'default-grey';
       case 'primary':
       default:
         return 'primary';
+    }
+  });
+  ionicFill = computed(() => {
+    switch (this.variant()) {
+      case 'outlined':
+        return 'outline';
+      case 'secondary':
+        return 'clear';
+      case 'primary':
+      default:
+        return 'solid';
     }
   });
 
@@ -35,8 +65,23 @@ export class UIButton {
     return this.variant() === 'primary';
   }
 
+  @HostBinding('class.secondary')
+  get isSecondary() {
+    return this.variant() === 'secondary';
+  }
+
+  @HostBinding('class.outlined')
+  get isOutlined() {
+    return this.variant() === 'outlined';
+  }
+
   @HostBinding('class.expand')
   get hasExpand() {
     return this.expand();
+  }
+
+  @HostBinding('class.icon')
+  get isIcon() {
+    return this.size() === 'icon';
   }
 }
