@@ -7,6 +7,7 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
+    "icons:import": "node ./scripts/import-icons.mjs",
     "publish": "npm publish ./dist/ui-kit"
   },
   "repository": {

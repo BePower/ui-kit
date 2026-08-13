@@ -19,7 +19,7 @@
       opacity: 0.52;
     }
   }
-  ion-button > ion-icon[slot='start'] { // TODO: change with UI ICON
+  ion-button > ui-icon[slot='start'] {
     margin-inline-start: #{sizes.$size-80};
     margin-inline-end: #{sizes.$size-80};
   }

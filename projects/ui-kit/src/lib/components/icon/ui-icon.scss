@@ -1,0 +1,25 @@
+@use '@ionic/angular/css/core.css';
+
+@use 'foundations/colors' as colors;
+@use 'foundations/sizes' as sizes;
+@use 'foundations/typography' as typography;
+@use 'foundations/root' as root;
+
+:host {
+  @include root.shadow-root;
+  display: flex;
+  ion-icon {
+    &.size-48 {
+      font-size: #{sizes.$size-480};
+    }
+    &.size-36 {
+      font-size: #{sizes.$size-360};
+    }
+    &.size-24 {
+      font-size: #{sizes.$size-240};
+    }
+    &.size-16 {
+      font-size: #{sizes.$size-160};
+    }
+  }
+}
