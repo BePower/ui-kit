@@ -39,21 +39,40 @@ export class UIIcon {
   fill = input<'no-fill' | 'fill'>('fill');
 
   constructor() {
-    effect(() => {
+    effect(onCleanup => {
       const fill = this.fill();
       const name = this.name();
+      let isCurrentRequest = true;
+
+      onCleanup(() => {
+        isCurrentRequest = false;
+      });
 
       this.showIcon.set(false);
       this.iconSrc.set(null);
 
-      const icon = iconMap[name][fill];
-      if (!icon) {
+      const loadIcon = iconMap[name][fill];
+      if (!loadIcon) {
         console.error(`[UI ICON] - icon not found, ${name} ${fill}`);
         return;
       }
 
-      this.iconSrc.set(icon);
-      this.showIcon.set(true);
+      void loadIcon()
+        .then(icon => {
+          if (!isCurrentRequest) {
+            return;
+          }
+
+          this.iconSrc.set(icon);
+          this.showIcon.set(true);
+        })
+        .catch(error => {
+          if (!isCurrentRequest) {
+            return;
+          }
+
+          console.error(`[UI ICON] - failed to load icon, ${name} ${fill}`, error);
+        });
     });
   }
 }

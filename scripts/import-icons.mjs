@@ -11,8 +11,9 @@ const iconDirectory = resolve(
   projectRoot,
   'projects/ui-kit/src/lib/components/icon',
 );
+const generatedIconDirectory = resolve(iconDirectory, 'icons');
 const assetDirectory = resolve(iconDirectory, 'assets');
-const stagingDirectory = resolve(iconDirectory, '.assets-importing');
+const stagingDirectory = resolve(iconDirectory, '.icons-importing');
 const iconMapPath = resolve(iconDirectory, 'icon-map.ts');
 const iconMapInterfacePath = resolve(iconDirectory, 'icon-map.interface.ts');
 const iconFileName = /^([a-z0-9]+(?:-[a-z0-9]+)*)_(fill|no-fill)\.svg$/;
@@ -36,6 +37,25 @@ function normalizeFills(svg) {
   });
 }
 
+function toCamelCase(name) {
+  return name.replace(/-([a-z0-9])/g, (_, character) => character.toUpperCase());
+}
+
+function iconExportName(name, variant) {
+  return `${toCamelCase(name)}${variant === 'fill' ? 'Fill' : 'NoFill'}`;
+}
+
+function generateIconModule({ name, variants }) {
+  return ['fill', 'no-fill']
+    .filter(variant => variants.has(variant))
+    .map(
+      variant =>
+        `export const ${iconExportName(name, variant)} = '${variants.get(variant)}';`,
+    )
+    .join('\n')
+    .concat('\n');
+}
+
 function generateIconMap(icons) {
   const entries = icons
     .map(({ name, variants }) => {
@@ -43,7 +63,10 @@ function generateIconMap(icons) {
         .filter(variant => variants.has(variant))
         .map(
           variant =>
-            `    '${variant}': iconUrl('${name}-${variant}.svg'),`,
+            `    '${variant}': () =>
+      import('./icons/${name}').then(
+        ({ ${iconExportName(name, variant)} }) => ${iconExportName(name, variant)},
+      ),`,
         )
         .join('\n');
 
@@ -52,8 +75,6 @@ function generateIconMap(icons) {
     .join('\n');
 
   return `import { IconMap } from './icon-map.interface';
-
-const iconUrl = (fileName: string) => \`icons/\${fileName}\`;
 
 export const iconMap: IconMap = {
 ${entries}
@@ -69,8 +90,10 @@ ${iconNames};
 
 export type IconVariant = 'fill' | 'no-fill';
 
+export type IconLoader = () => Promise<string>;
+
 export type IconMap = {
-  [key in IconName]: Partial<Record<IconVariant, string>>;
+  [key in IconName]: Partial<Record<IconVariant, IconLoader>>;
 };
 `;
 }
@@ -144,40 +167,49 @@ async function main() {
     .map(([name, variants]) => ({ name, variants }))
     .sort((first, second) => first.name.localeCompare(second.name));
 
-  const assets = [];
+  const generatedIcons = [];
   for (const { name, variants } of icons) {
+    const encodedVariants = new Map();
     for (const variant of ['fill', 'no-fill']) {
       const sourcePath = variants.get(variant);
       if (!sourcePath) {
         continue;
       }
 
-      assets.push({
-        fileName: `${name}-${variant}.svg`,
-        content: normalizeFills(await readFile(sourcePath, 'utf8')),
-      });
+      const svg = normalizeFills(await readFile(sourcePath, 'utf8'));
+      encodedVariants.set(
+        variant,
+        `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`,
+      );
     }
+
+    generatedIcons.push({ name, variants: encodedVariants });
   }
 
   if (dryRun) {
-    console.log(`Validated ${assets.length} SVG variants for ${icons.length} icons.`);
+    console.log(
+      `Validated ${[...generatedIcons].reduce((total, icon) => total + icon.variants.size, 0)} SVG variants for ${icons.length} icons.`,
+    );
     return;
   }
 
   await rm(stagingDirectory, { recursive: true, force: true });
   await mkdir(stagingDirectory, { recursive: true });
   await Promise.all(
-    assets.map(({ fileName, content }) =>
-      writeFile(resolve(stagingDirectory, fileName), content),
+    generatedIcons.map(icon =>
+      writeFile(resolve(stagingDirectory, `${icon.name}.ts`), generateIconModule(icon)),
     ),
   );
 
+  await rm(generatedIconDirectory, { recursive: true, force: true });
+  await rename(stagingDirectory, generatedIconDirectory);
   await rm(assetDirectory, { recursive: true, force: true });
-  await rename(stagingDirectory, assetDirectory);
   await writeFile(iconMapPath, generateIconMap(icons));
   await writeFile(iconMapInterfacePath, generateIconMapInterface(icons));
 
-  console.log(`Imported ${assets.length} SVG variants for ${icons.length} icons.`);
+  console.log(
+    `Imported ${[...generatedIcons].reduce((total, icon) => total + icon.variants.size, 0)} SVG variants for ${icons.length} icons.`,
+  );
 }
 
 await main();

@@ -187,6 +187,28 @@ Example:
 </ui-button>
 ```
 
+### Icon-only slot
+
+Use Ionic's `icon-only` slot with `size="icon"` when the button has no text content. Import both standalone components in the consumer Angular component.
+
+```ts
+import { UIButton, UIIcon } from '@bepower/ui-kit';
+
+@Component({
+  // ...
+  imports: [UIButton, UIIcon],
+})
+export class ExampleComponent {}
+```
+
+```html
+<ui-button size="icon" aria-label="Add item">
+  <ui-icon slot="icon-only" name="plus" fill="no-fill" />
+</ui-button>
+```
+
+Provide an accessible name, such as `aria-label`, whenever the button contains only an icon.
+
 ## Notes
 
 - The component uses `ViewEncapsulation.ShadowDom`
@@ -215,4 +237,12 @@ Loading button:
 
 ```html
 <ui-button [isLoading]="true">Saving</ui-button>
+```
+
+Icon-only button:
+
+```html
+<ui-button size="icon" aria-label="Open notifications">
+  <ui-icon slot="icon-only" name="notification" />
+</ui-button>
 ```

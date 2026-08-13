@@ -218,6 +218,12 @@ These global rules must be imported explicitly by the consumer app.
 Consumers should:
 
 - import the standalone component they need
+- install `source-sans` so the design system font can be imported correctly:
+
+  ```bash
+  npm install source-sans
+  ```
+
 - import `@bepower/ui-kit/base` in their global SCSS
 - place `@use '@bepower/ui-kit/base';` after Ionic global `@use` statements when they want UI kit global rules to win over Ionic defaults
 

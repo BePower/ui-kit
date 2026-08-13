@@ -10,9 +10,9 @@ The command uses only `icons/` as its source; it does not accept another directo
 
 ## Synchronization
 
-Every import is a full synchronization, not an incremental update. Add, modify, or remove SVGs only in `icons/`, then run the command. It replaces all generated `icon/assets` files and regenerates both `icon-map.ts` and `icon-map.interface.ts` from the current contents of `icons/`.
+Every import is a full synchronization, not an incremental update. Add, modify, or remove SVGs only in `icons/`, then run the command. It replaces all generated `icon/icons/*.ts` modules and regenerates both `icon-map.ts` and `icon-map.interface.ts` from the current contents of `icons/`.
 
-An icon removed from `icons/` is therefore removed from the generated assets, `iconMap`, and `IconName` at the next import. If any input filename is invalid, the import stops before replacing generated files.
+An icon removed from `icons/` is therefore removed from the generated TypeScript modules, `iconMap`, and `IconName` at the next import. If any input filename is invalid, the import stops before replacing generated files.
 
 ## File Names
 
@@ -43,7 +43,9 @@ An icon may provide only one variant. Do not use spaces, uppercase letters, unde
 
 ## Color Handling
 
-During import, every SVG `fill` except `fill="none"` is rewritten to `fill="currentColor"`. This lets `ui-icon` control the color while preserving outline paths that must remain unfilled. Strokes and all other SVG attributes are left unchanged.
+During import, every SVG `fill` except `fill="none"` is rewritten to `fill="currentColor"`, then encoded as a TypeScript data URI. This lets `ui-icon` control the color while preserving outline paths that must remain unfilled. Strokes and all other SVG attributes are left unchanged.
+
+Each icon module is loaded dynamically by `ui-icon`, so consumers do not need to copy SVG files in `angular.json`.
 
 ## Review And Build
 

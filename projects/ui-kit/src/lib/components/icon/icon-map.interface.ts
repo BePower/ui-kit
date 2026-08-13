@@ -52,6 +52,8 @@ export type IconName =
 
 export type IconVariant = 'fill' | 'no-fill';
 
+export type IconLoader = () => Promise<string>;
+
 export type IconMap = {
-  [key in IconName]: Partial<Record<IconVariant, string>>;
+  [key in IconName]: Partial<Record<IconVariant, IconLoader>>;
 };
