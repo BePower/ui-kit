@@ -32,14 +32,14 @@ import { iconMap } from './icon-map';
 })
 export class UIIcon {
   name = input.required<IconName>();
-  color = input<'default-grey' | 'primary'>();
+  color = input<'default-grey' | 'primary' | 'secondary' | 'white' | 'green'>();
   iconSrc = signal<string | null>(null);
   showIcon = signal(false);
-  size = input<'16' | '24' | '36' | '48'>('24');
+  size = input<'16' | '24' | '36' | '40' | '48'>('24');
   fill = input<'no-fill' | 'fill'>('fill');
 
   constructor() {
-    effect(onCleanup => {
+    effect((onCleanup) => {
       const fill = this.fill();
       const name = this.name();
       let isCurrentRequest = true;
@@ -58,7 +58,7 @@ export class UIIcon {
       }
 
       void loadIcon()
-        .then(icon => {
+        .then((icon) => {
           if (!isCurrentRequest) {
             return;
           }
@@ -66,7 +66,7 @@ export class UIIcon {
           this.iconSrc.set(icon);
           this.showIcon.set(true);
         })
-        .catch(error => {
+        .catch((error) => {
           if (!isCurrentRequest) {
             return;
           }

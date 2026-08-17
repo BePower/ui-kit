@@ -45,3 +45,12 @@
   --border-radius: #{sizes.$size-120};
   min-width: 48px;
 }
+
+:host(.min-icon) ion-button {
+  --padding-start: #{sizes.$size-none};
+  --padding-end: #{sizes.$size-none};
+  --padding-top: #{sizes.$size-none};
+  --padding-bottom: #{sizes.$size-none};
+  min-width: unset;
+  min-height: unset;
+}

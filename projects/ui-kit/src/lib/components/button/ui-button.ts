@@ -31,7 +31,7 @@ import { IonButton, IonSpinner } from '@ionic/angular/standalone';
 })
 export class UIButton {
   variant = input<'primary' | 'secondary' | 'outlined'>('primary');
-  size = input<'default' | 'icon'>('icon');
+  size = input<'default' | 'icon' | 'min-icon'>('icon');
   expand = input(false, { transform: booleanAttribute });
   disabled = input(false, { transform: booleanAttribute });
   isLoading = input(false, { transform: booleanAttribute });
@@ -83,5 +83,10 @@ export class UIButton {
   @HostBinding('class.icon')
   get isIcon() {
     return this.size() === 'icon';
+  }
+
+  @HostBinding('class.min-icon')
+  get isMinIcon() {
+    return this.size() === 'min-icon';
   }
 }

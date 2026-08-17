@@ -1,0 +1,55 @@
+@use '@ionic/angular/css/core.css';
+@use 'foundations/typography' as typography;
+@use 'foundations/colors' as colors;
+@use 'foundations/root' as root;
+@use 'foundations/sizes' as sizes;
+
+:host {
+  @include root.shadow-root;
+  display: contents;
+
+  ion-content,
+  ion-toolbar {
+    &.background-white {
+      --background: #{colors.$color-background-white};
+    }
+    &.background-grey {
+      --background: #{colors.$color-background-grey};
+    }
+    &.background-yellow {
+      --background: #{colors.$color-background-yellow-eni-8};
+    }
+    &.background-light-green {
+      --background: #{colors.$color-background-light-green-24};
+    }
+    &.background-green {
+      --background: #{colors.$color-background-e-mobility-green-16};
+    }
+    &.header-background-green {
+      --background: #{colors.$color-primary-e-mobility-green};
+    }
+  }
+  ion-header {
+    ion-toolbar {
+      --padding-start: #{sizes.$size-160};
+      --padding-end: #{sizes.$size-160};
+      --padding-top:  #{sizes.$size-80};
+      --padding-bottom: #{sizes.$size-160};
+      ion-title {
+        @include typography.title-s;
+      }
+      ion-buttons {
+        gap: #{sizes.$size-80};
+      }
+    }
+  }
+}
+
+// IonContent does not add safe-area padding when it is used without a header/footer.
+:host(.no-footer:not(.fullscreen)) ion-content {
+  --padding-bottom: var(--ion-safe-area-bottom, 0px);
+}
+
+:host(.no-header:not(.fullscreen)) ion-content {
+  --padding-top: var(--ion-safe-area-top, 0px);
+}
