@@ -34,13 +34,13 @@ Controls the visual style of the button.
 Type:
 
 ```ts
-'primary' | 'secondary' | 'outlined'
+'primary' | 'secondary' | 'outlined';
 ```
 
 Default:
 
 ```ts
-'primary'
+'primary';
 ```
 
 Example:
@@ -64,13 +64,13 @@ Controls the internal spacing model.
 Type:
 
 ```ts
-'default' | 'icon'
+'default' | 'icon' | 'min-icon';
 ```
 
 Default:
 
 ```ts
-'icon'
+'default';
 ```
 
 Example:
@@ -86,6 +86,7 @@ Behavior:
 
 - `default` uses standard horizontal padding
 - `icon` uses a more compact layout and rounded icon-button shape
+- `min-icon` removes the button padding and minimum dimensions
 
 ### `expand`
 
@@ -94,13 +95,13 @@ Makes the button take the available width.
 Type:
 
 ```ts
-boolean
+boolean;
 ```
 
 Default:
 
 ```ts
-false
+false;
 ```
 
 Example:
@@ -116,19 +117,35 @@ Disables the button.
 Type:
 
 ```ts
-boolean
+boolean;
 ```
 
 Default:
 
 ```ts
-false
+false;
 ```
 
 Example:
 
 ```html
 <ui-button [disabled]="true">Disabled</ui-button>
+```
+
+### `aria-label`
+
+Sets an accessible name on the wrapped Ionic button.
+
+Type: `string`.
+
+Default: no explicit label.
+
+Use it whenever the button contains only an icon. The value is forwarded through the component Shadow DOM to the native interactive button.
+
+```html
+<ui-button size="icon" aria-label="Add item">
+  <ui-icon slot="icon-only" name="plus" fill="no-fill" />
+</ui-button>
 ```
 
 ### `isLoading`
@@ -138,13 +155,13 @@ Replaces the projected content with a spinner when loading.
 Type:
 
 ```ts
-boolean
+boolean;
 ```
 
 Default:
 
 ```ts
-false
+false;
 ```
 
 Example:

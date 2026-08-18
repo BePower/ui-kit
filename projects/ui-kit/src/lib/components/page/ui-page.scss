@@ -3,10 +3,10 @@
 @use 'foundations/colors' as colors;
 @use 'foundations/root' as root;
 @use 'foundations/sizes' as sizes;
+@use 'foundations/shadows' as shadows;
 
 :host {
   @include root.shadow-root;
-  display: contents;
 
   ion-content,
   ion-toolbar {
@@ -29,20 +29,109 @@
       --background: #{colors.$color-primary-e-mobility-green};
     }
   }
+
   ion-header {
     ion-toolbar {
       --padding-start: #{sizes.$size-160};
       --padding-end: #{sizes.$size-160};
-      --padding-top:  #{sizes.$size-80};
+      --padding-top: #{sizes.$size-80};
       --padding-bottom: #{sizes.$size-160};
+
       ion-title {
+        padding: 0;
         @include typography.title-s;
+
+        &[size='large'] {
+          @include typography.title-xl;
+        }
       }
+
       ion-buttons {
         gap: #{sizes.$size-80};
+
+        ion-back-button {
+          --icon-font-size: #{sizes.$size-400};
+        }
       }
     }
   }
+
+  ion-footer {
+    ion-toolbar {
+      --padding-start: #{sizes.$size-240};
+      --padding-end: #{sizes.$size-240};
+      --padding-top: #{sizes.$size-160};
+      --padding-bottom: #{sizes.$size-none};
+      &::part(content) {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+    }
+  }
+}
+
+// Standalone pages need a sized ancestor; routed pages already receive .ion-page from Ionic.
+:host(:not(.ion-page)) {
+  display: block;
+  block-size: 100%;
+  min-block-size: 0;
+}
+
+// This page root lets Ionic resolve headers and content within this Shadow DOM.
+.ion-page {
+  display: flex;
+  position: relative;
+  inset: auto;
+  flex: 1 1 auto;
+  flex-direction: column;
+  inline-size: 100%;
+  block-size: 100%;
+  min-block-size: 0;
+  justify-content: space-between;
+  contain: layout size style;
+  z-index: auto;
+}
+
+// Ionic gives a condensed toolbar the content background. For the green header
+// variant, it must instead provide the green backdrop behind the transparent main header.
+ion-header.header-collapse-condense ion-toolbar.header-background-green {
+  --background: #{colors.$color-primary-e-mobility-green} !important;
+}
+
+// Use elevation in place of the standard iOS bottom border after content has scrolled.
+ion-header.header-elevation-1 {
+  box-shadow: shadows.$shadow-elevation-1;
+}
+
+ion-footer.footer-elevation-1 {
+  box-shadow: shadows.$shadow-elevation-1;
+}
+
+// Keep the content backdrop neutral so the lower iOS rubber-band always uses
+// the page background. The scroll viewport gets a bounded green strip only at
+// its top, which sits behind the transparent main header during pull-down.
+ion-content:has(> ion-header.header-collapse-condense > ion-toolbar.header-background-green)::part(
+    scroll
+  ) {
+  --ui-page-top-overscroll-bleed: 16rem;
+
+  background-color: var(--background);
+  background-image: linear-gradient(
+    #{colors.$color-primary-e-mobility-green},
+    #{colors.$color-primary-e-mobility-green}
+  );
+  background-position: top;
+  background-repeat: no-repeat;
+  background-size: 100% calc(var(--offset-top, 0px) + var(--ui-page-top-overscroll-bleed));
+}
+
+// The scrolling surface covers the permanent backdrop at rest and moves away
+// during rubber-band overscroll, revealing the green background only then.
+.page-content-surface {
+  display: flow-root;
+  min-block-size: 100%;
+  background: var(--background);
 }
 
 // IonContent does not add safe-area padding when it is used without a header/footer.

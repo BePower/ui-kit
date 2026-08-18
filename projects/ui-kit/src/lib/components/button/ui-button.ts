@@ -18,6 +18,7 @@ import { IonButton, IonSpinner } from '@ionic/angular/standalone';
     [disabled]="disabled() || _isLoading()"
     [color]="ionicColor()"
     [fill]="ionicFill()"
+    [attr.aria-label]="ariaLabel()"
   >
     @if (_isLoading()) {
       <ion-spinner color="default-grey" name="lines-sharp"></ion-spinner>
@@ -31,10 +32,11 @@ import { IonButton, IonSpinner } from '@ionic/angular/standalone';
 })
 export class UIButton {
   variant = input<'primary' | 'secondary' | 'outlined'>('primary');
-  size = input<'default' | 'icon' | 'min-icon'>('icon');
+  size = input<'default' | 'icon' | 'min-icon'>('default');
   expand = input(false, { transform: booleanAttribute });
   disabled = input(false, { transform: booleanAttribute });
   isLoading = input(false, { transform: booleanAttribute });
+  ariaLabel = input<string | undefined>(undefined, { alias: 'aria-label' });
 
   _isLoading = computed(() => this.variant() !== 'secondary' && this.isLoading());
 

@@ -1,0 +1,7 @@
+@use 'colors' as colors;
+
+$shadow-elevation-1: 0 0 15px 0 rgba(colors.$color-grey-default-grey, 0.15);
+$shadow-elevation-2: 0 0 15px 0 rgba(colors.$color-grey-default-grey, 0.30);
+$shadow-elevation-3:
+  0 15px 30px -10px rgba(colors.$color-grey-default-grey, 0.30),
+  0 0 15px 0 rgba(colors.$color-grey-default-grey, 0.15);

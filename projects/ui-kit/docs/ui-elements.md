@@ -42,6 +42,7 @@ src/lib/foundations/
   base.scss
   colors.scss
   root.scss
+  shadows.scss
   sizes.scss
   typography.scss
 ```
@@ -121,9 +122,18 @@ Always import design tokens from the shared foundations:
 @use 'foundations/colors' as colors;
 @use 'foundations/sizes' as sizes;
 @use 'foundations/typography' as typography;
+@use 'foundations/shadows' as shadows;
 ```
 
 Avoid hardcoded visual values when an equivalent token exists.
+Use `shadows.$shadow-elevation-1`, `shadows.$shadow-elevation-2`, or
+`shadows.$shadow-elevation-3` for the three design-system elevation levels.
+
+| Elevation | Token | Value |
+| --- | --- | --- |
+| 1 | `shadows.$shadow-elevation-1` | `0 0 15px 0 rgba(51, 51, 51, 0.15)` |
+| 2 | `shadows.$shadow-elevation-2` | `0 0 15px 0 rgba(51, 51, 51, 0.30)` |
+| 3 | `shadows.$shadow-elevation-3` | `0 15px 30px -10px rgba(51, 51, 51, 0.30), 0 0 15px 0 rgba(51, 51, 51, 0.15)` |
 
 ### 2. Use `root.shadow-root` for Ionic color mapping
 
