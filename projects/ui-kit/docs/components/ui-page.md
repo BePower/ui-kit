@@ -29,9 +29,12 @@ Use `ui-page` as the root container for a screen. Header and footer are optional
 </ui-page>
 ```
 
-When no header is rendered, `ui-page` applies the top device safe area to `ion-content`. When no footer is rendered, it applies the bottom safe area.
+`ui-page` always renders `ion-content` in Ionic fullscreen mode. When no header is rendered, it
+applies the top device safe area to `ion-content`; when no footer is rendered, it applies the bottom
+safe area.
 
-Every page must provide either `title` or `screenReaderTitle`.
+When `hasHeader` is `false`, `screenReaderTitle` is required. When `hasHeader` is `true`, provide
+either `title` or `screenReaderTitle`.
 
 ## Ionic lifecycle
 
@@ -40,18 +43,20 @@ callbacks are forwarded to it: `ionViewWillEnter`, `ionViewDidEnter`, `ionViewWi
 `ionViewDidLeave`. This lets `ui-page` manage its own entry and exit behavior, such as focusing an
 accessible page reference after the enter transition.
 
-When the native screen reader is active, `ui-page` focuses the visible level-one page title after
-entering. If no visible title is rendered, it focuses a visually hidden level-one heading whose text
-comes from `title` or, when that is empty, `screenReaderTitle`.
+When the native screen reader is active, `ui-page` focuses the level-one page title after entering.
+When `screenReaderTitle` is provided, it is announced instead of the visual `title`. If no visual
+title is rendered, `ui-page` focuses a visually hidden level-one heading whose text comes from
+`screenReaderTitle`.
 
 For screen-specific behavior, implement the same hooks on the routed component.
 
 ## Header and footer
 
 `ui-page` renders the header internally. Configure it with `title`, `headerButtons`, and the optional
-`backButtonDefaultHref` input. Provide `screenReaderTitle` when `title` is empty. Do not project
-content with the `header` attribute. Content marked with `header` is not a supported slot and is
-rendered in the page content instead.
+`backButtonDefaultHref` input. When no header is rendered, provide `screenReaderTitle`; with a
+header, provide it when `title` is empty or to override the title announced to screen readers. Do not
+project content with the `header` attribute. Content marked with `header` is not a supported slot and
+is rendered in the page content instead.
 
 The footer still projects content marked with the `footer` attribute. `ui-page` renders the enclosing `ion-toolbar`, so consumers must not project another toolbar.
 
@@ -64,15 +69,12 @@ Set `condensedHeader` together with `hasHeader` and `title` to render Ionic's co
 inside `ion-content`. Both headers use Ionic's iOS mode, which lets the large title collapse into
 the normal header title while the content scrolls.
 
-`condensedHeader` also enables `fullscreen` automatically, so the content can scroll behind the
-header.
-
 The condensed title and page content share the same scrolling surface. Pages with short content do
 not receive an artificial scroll range just to accommodate the large title.
 
 On native platforms, `ui-page` waits for the screen reader status before enabling the condensed
 header. When the screen reader is active, or its status is unavailable, it renders only the regular
-header. In that case, set `fullscreen` explicitly if it is still required.
+header.
 
 > The in-page scroll collapse works inside `ui-page`'s Shadow DOM. Ionic's built-in iOS route
 > transition cannot query that large title across the Shadow DOM boundary; configure a custom route
@@ -140,19 +142,21 @@ Type: `string`.
 
 Default: `''`.
 
-When no visual header title is rendered, `title` is used as the accessible level-one page heading.
+It is rendered as the visible page title when `hasHeader` is `true`. When no header is rendered,
+use `screenReaderTitle` for the accessible level-one page heading.
 
 ### `screenReaderTitle`
 
-Sets a localized accessible name for a page without a `title`.
+Sets the localized accessible page title. When both `title` and `screenReaderTitle` are provided,
+`title` remains visual while `screenReaderTitle` is announced by screen readers.
 
 Type: `string | undefined`.
 
 Default: `undefined`.
 
-It is required at runtime when `title` is empty. In that case, `ui-page` renders and focuses
-`screenReaderTitle` as a visually hidden level-one heading after entering. Use a meaningful,
-non-empty page name.
+It is required at runtime when `hasHeader` is `false`, or when `hasHeader` is `true` and `title` is
+empty. In that case, `ui-page` renders and focuses `screenReaderTitle` as a visually hidden
+level-one heading after entering. Use a meaningful, non-empty page name.
 
 ### `headerButtons`
 
@@ -197,29 +201,15 @@ Default: `false`.
 When the content overflows, the footer applies elevation 1 while content remains below it and
 removes it at the bottom of the scroll range.
 
-### `fullscreen`
-
-Makes `ion-content` scroll behind the header and footer, following Ionic's `fullscreen` behavior.
-
-Type: `boolean`.
-
-Default: `false`.
-
-When enabled, `ui-page` does not add safe-area padding automatically. Use it only for intentional edge-to-edge layouts and manage any content padding required by the overlaying UI.
-It is also enabled implicitly when `condensedHeader` is active. A native screen reader, or an
-unavailable native screen reader status, disables the condensed behavior, so it does not enable
-`fullscreen` implicitly.
-
 ### `condensedHeader`
 
 `condensedHeader` is opt-in. When enabled, it renders Ionic's iOS condensed large title if
-`hasHeader` is `true` and `title` is not empty. It also enables `fullscreen` automatically.
+`hasHeader` is `true` and `title` is not empty.
 
 The condensed behavior is disabled while the native screen reader is active or its status is
 unavailable.
 
-If either the header or title is missing, no condensed title is rendered, but `fullscreen` remains
-enabled unless the native screen reader state has disabled the condensed behavior.
+If either the header or title is missing, no condensed title is rendered.
 
 Type: `boolean`.
 
@@ -233,8 +223,7 @@ Type: `boolean`.
 
 Default: `false`.
 
-It has an effect only when `hasHeader` is `true`. It does not enable `fullscreen`; set
-`fullscreen` explicitly or use `condensedHeader`.
+It has an effect only when `hasHeader` is `true`.
 
 ### `background`
 
@@ -248,6 +237,9 @@ Default: `'white'`.
 ### `headerType`
 
 Controls the header background and the matching title and icon colors.
+
+When the page finishes entering, it also sets the native status bar style to match the header. Pages
+without an internal header use the light status bar style.
 
 Type: `'white' | 'green' | 'tab'`.
 

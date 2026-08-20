@@ -149,11 +149,12 @@ ion-content:has(
   white-space: nowrap;
 }
 
-// IonContent does not add safe-area padding when it is used without a header/footer.
-:host(.no-footer:not(.fullscreen)) ion-content {
+// UIPage keeps IonContent fullscreen, so it supplies the device safe area on every edge
+// where it does not render structural chrome.
+:host(.no-footer) ion-content {
   --padding-bottom: var(--ion-safe-area-bottom, 0px);
 }
 
-:host(.no-header:not(.fullscreen)) ion-content {
+:host(.no-header) ion-content {
   --padding-top: var(--ion-safe-area-top, 0px);
 }

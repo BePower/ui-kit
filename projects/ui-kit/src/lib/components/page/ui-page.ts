@@ -83,7 +83,14 @@ export interface HeaderButton {
             </ion-buttons>
             @if (hasVisibleTitle()) {
               <ion-title [color]="ionicHeaderColor()">
-                <span #pageTitle tabindex="-1" role="heading" aria-level="1">{{ title() }}</span>
+                <span
+                  #pageTitle
+                  tabindex="-1"
+                  role="heading"
+                  aria-level="1"
+                  [attr.aria-label]="screenReaderTitle()?.trim() || null"
+                  >{{ title() }}</span
+                >
               </ion-title>
             }
             <ion-buttons [collapse]="isCondensedHeaderEnabled()" slot="end">
@@ -112,7 +119,7 @@ export interface HeaderButton {
         #content
         [class]="'background-' + background()"
         [forceOverscroll]="forceOverscroll()"
-        [fullscreen]="isFullscreen()"
+        [fullscreen]="true"
         [scrollEvents]="shouldObserveScroll()"
         (ionScroll)="onContentScroll()"
       >
@@ -168,7 +175,6 @@ export interface HeaderButton {
   host: {
     '[class.no-header]': '!hasHeader()',
     '[class.no-footer]': '!hasFooter()',
-    '[class.fullscreen]': 'isFullscreen()',
   },
   encapsulation: ViewEncapsulation.ShadowDom,
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -183,7 +189,6 @@ export class UIPage
   forceOverscroll = input(false, { transform: booleanAttribute });
   hasHeader = input(false, { transform: booleanAttribute });
   hasFooter = input(false, { transform: booleanAttribute });
-  fullscreen = input(false, { transform: booleanAttribute });
   condensedHeader = input(false, { transform: booleanAttribute });
   translucent = input(false, { transform: booleanAttribute });
   headerButtons = input<HeaderButton[]>([]);
@@ -192,33 +197,28 @@ export class UIPage
   readonly backButtonIcon = arrowLeftIcon;
   readonly isHeaderElevated = signal(false);
   readonly isFooterElevated = signal(false);
+  readonly hasVisibleTitle = computed(() => this.hasHeader() && Boolean(this.title().trim()));
   readonly isCondensedHeaderEnabled = computed(
     () =>
       this.condensedHeader() &&
+      this.hasVisibleTitle() &&
       this.screenReader.screenStateKnown() &&
       !this.screenReader.screenState(),
   );
-  readonly isFullscreen = computed(() => this.fullscreen() || this.isCondensedHeaderEnabled());
-  readonly hasVisibleTitle = computed(() => this.hasHeader() && Boolean(this.title().trim()));
   readonly accessibleTitle = computed(
-    () => this.title().trim() || this.screenReaderTitle()?.trim() || '',
+    () => this.screenReaderTitle()?.trim() || this.title().trim() || '',
   );
-  readonly hasCondensedHeader = computed(
-    () => this.isCondensedHeaderEnabled() && this.hasVisibleTitle(),
-  );
+  readonly hasCondensedHeader = computed(() => this.isCondensedHeaderEnabled());
   readonly shouldObserveScroll = computed(() => this.hasFooter() || this.hasHeader());
 
   ionicHeaderColor = computed(() => {
     switch (this.headerType()) {
       case 'white':
-        this.statusBar.setStatusBarStyleLight();
         return 'default-grey';
       case 'tab':
-        this.statusBar.setStatusBarStyleLight();
         return 'green';
       case 'green':
       default:
-        this.statusBar.setStatusBarStyleDark();
         return 'white';
     }
   });
@@ -234,7 +234,11 @@ export class UIPage
   });
 
   ngOnInit(): void {
-    if (!this.accessibleTitle()) {
+    if (!this.hasHeader() && !this.screenReaderTitle()?.trim()) {
+      throw new Error('[UIPage] screenReaderTitle is required when hasHeader is false.');
+    }
+
+    if (this.hasHeader() && !this.accessibleTitle()) {
       throw new Error('[UIPage] A title or screenReaderTitle is required.');
     }
   }
@@ -254,6 +258,7 @@ export class UIPage
    * Runs after the routed view has finished entering.
    */
   ionViewDidEnter(): void {
+    this.updateStatusBarStyle();
     this.cancelPageTitleFocus();
 
     const pageTitle = this.pageTitle()?.nativeElement;
@@ -319,6 +324,23 @@ export class UIPage
   private cancelPageTitleFocus(): void {
     this.cancelPageTitleFocusRequest?.();
     this.cancelPageTitleFocusRequest = undefined;
+  }
+
+  private updateStatusBarStyle(): void {
+    if (!this.hasHeader()) {
+      void this.statusBar.setStatusBarStyleLight();
+      return;
+    }
+
+    switch (this.headerType()) {
+      case 'white':
+      case 'tab':
+        void this.statusBar.setStatusBarStyleLight();
+        return;
+      case 'green':
+      default:
+        void this.statusBar.setStatusBarStyleDark();
+    }
   }
 
   private bindIonicLifecycleEvents(): void {
