@@ -111,9 +111,11 @@ ion-footer.footer-elevation-1 {
 // Keep the content backdrop neutral so the lower iOS rubber-band always uses
 // the page background. The scroll viewport gets a bounded green strip only at
 // its top, which sits behind the transparent main header during pull-down.
-ion-content:has(> ion-header.header-collapse-condense > ion-toolbar.header-background-green)::part(
-    scroll
-  ) {
+ion-content:has(
+    > .page-content-surface
+      > ion-header.header-collapse-condense
+      > ion-toolbar.header-background-green
+  )::part(scroll) {
   --ui-page-top-overscroll-bleed: 16rem;
 
   background-color: var(--background);
@@ -126,12 +128,25 @@ ion-content:has(> ion-header.header-collapse-condense > ion-toolbar.header-backg
   background-size: 100% calc(var(--offset-top, 0px) + var(--ui-page-top-overscroll-bleed));
 }
 
-// The scrolling surface covers the permanent backdrop at rest and moves away
-// during rubber-band overscroll, revealing the green background only then.
+// The surface contains both the condensed title and projected content, so it
+// covers the backdrop at rest without adding the title height to the scroll range.
 .page-content-surface {
   display: flow-root;
   min-block-size: 100%;
   background: var(--background);
+}
+
+.screen-reader-only {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  white-space: nowrap;
 }
 
 // IonContent does not add safe-area padding when it is used without a header/footer.

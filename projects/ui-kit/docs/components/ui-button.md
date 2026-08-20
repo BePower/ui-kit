@@ -14,7 +14,7 @@ import { UIButton } from '@bepower/ui-kit';
   selector: 'app-example',
   standalone: true,
   imports: [UIButton],
-  template: `<ui-button>Continue</ui-button>`,
+  template: `<ui-button ariaLabel="Continue">Continue</ui-button>`,
 })
 export class ExampleComponent {}
 ```
@@ -22,7 +22,7 @@ export class ExampleComponent {}
 ## Basic usage
 
 ```html
-<ui-button>Continue</ui-button>
+<ui-button ariaLabel="Continue">Continue</ui-button>
 ```
 
 ## Inputs
@@ -46,9 +46,9 @@ Default:
 Example:
 
 ```html
-<ui-button variant="primary">Primary</ui-button>
-<ui-button variant="secondary">Secondary</ui-button>
-<ui-button variant="outlined">Outlined</ui-button>
+<ui-button ariaLabel="Primary" variant="primary">Primary</ui-button>
+<ui-button ariaLabel="Secondary" variant="secondary">Secondary</ui-button>
+<ui-button ariaLabel="Outlined" variant="outlined">Outlined</ui-button>
 ```
 
 Behavior:
@@ -76,8 +76,8 @@ Default:
 Example:
 
 ```html
-<ui-button size="default">Default</ui-button>
-<ui-button size="icon">
+<ui-button ariaLabel="Default" size="default">Default</ui-button>
+<ui-button ariaLabel="Add item" size="icon">
   <ion-icon name="add"></ion-icon>
 </ui-button>
 ```
@@ -107,7 +107,7 @@ false;
 Example:
 
 ```html
-<ui-button [expand]="true">Full width</ui-button>
+<ui-button ariaLabel="Full width" [expand]="true">Full width</ui-button>
 ```
 
 ### `disabled`
@@ -129,24 +129,36 @@ false;
 Example:
 
 ```html
-<ui-button [disabled]="true">Disabled</ui-button>
+<ui-button ariaLabel="Disabled" [disabled]="true">Disabled</ui-button>
 ```
 
-### `aria-label`
+### `ariaLabel`
 
 Sets an accessible name on the wrapped Ionic button.
 
-Type: `string`.
+Type: `string | undefined`.
 
 Default: no explicit label.
 
-Use it whenever the button contains only an icon. The value is forwarded through the component Shadow DOM to the native interactive button.
+It is required when `ariaHidden` is `false`. The value is forwarded through the component Shadow DOM
+to the native interactive button.
 
 ```html
-<ui-button size="icon" aria-label="Add item">
+<ui-button ariaLabel="Add item" size="icon">
   <ui-icon slot="icon-only" name="plus" fill="no-fill" />
 </ui-button>
 ```
+
+### `ariaHidden`
+
+Removes the wrapped Ionic button from the accessibility tree.
+
+Type: `boolean`.
+
+Default: `false`.
+
+When `true`, `ariaLabel` is optional. Use it only when another accessible control represents the
+same action.
 
 ### `isLoading`
 
@@ -167,7 +179,7 @@ false;
 Example:
 
 ```html
-<ui-button [isLoading]="true">Saving</ui-button>
+<ui-button ariaLabel="Saving" [isLoading]="true">Saving</ui-button>
 ```
 
 Behavior:
@@ -183,7 +195,7 @@ Behavior:
 Example:
 
 ```html
-<ui-button>Save changes</ui-button>
+<ui-button ariaLabel="Save changes">Save changes</ui-button>
 ```
 
 You can also project slotted content that Ionic supports, such as `start` and `end`.
@@ -191,14 +203,14 @@ You can also project slotted content that Ionic supports, such as `start` and `e
 Example:
 
 ```html
-<ui-button>
+<ui-button ariaLabel="Add item">
   <ion-icon slot="start" name="add"></ion-icon>
   Add item
 </ui-button>
 ```
 
 ```html
-<ui-button variant="outlined">
+<ui-button ariaLabel="Details" variant="outlined">
   Details
   <ion-icon slot="end" name="chevron-forward"></ion-icon>
 </ui-button>
@@ -219,12 +231,12 @@ export class ExampleComponent {}
 ```
 
 ```html
-<ui-button size="icon" aria-label="Add item">
+<ui-button ariaLabel="Add item" size="icon">
   <ui-icon slot="icon-only" name="plus" fill="no-fill" />
 </ui-button>
 ```
 
-Provide an accessible name, such as `aria-label`, whenever the button contains only an icon.
+Provide an accessible name with `ariaLabel` whenever `ariaHidden` is `false`.
 
 ## Notes
 
@@ -238,13 +250,13 @@ Provide an accessible name, such as `aria-label`, whenever the button contains o
 Primary full width button:
 
 ```html
-<ui-button variant="primary" [expand]="true">Continue</ui-button>
+<ui-button ariaLabel="Continue" variant="primary" [expand]="true">Continue</ui-button>
 ```
 
 Outlined button with trailing icon:
 
 ```html
-<ui-button variant="outlined">
+<ui-button ariaLabel="Learn more" variant="outlined">
   Learn more
   <ion-icon slot="end" name="arrow-forward"></ion-icon>
 </ui-button>
@@ -253,13 +265,13 @@ Outlined button with trailing icon:
 Loading button:
 
 ```html
-<ui-button [isLoading]="true">Saving</ui-button>
+<ui-button ariaLabel="Saving" [isLoading]="true">Saving</ui-button>
 ```
 
 Icon-only button:
 
 ```html
-<ui-button size="icon" aria-label="Open notifications">
+<ui-button ariaLabel="Open notifications" size="icon">
   <ui-icon slot="icon-only" name="notification" />
 </ui-button>
 ```

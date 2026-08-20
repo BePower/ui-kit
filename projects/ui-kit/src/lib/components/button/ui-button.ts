@@ -1,3 +1,4 @@
+import type { OnInit } from '@angular/core';
 import {
   booleanAttribute,
   ChangeDetectionStrategy,
@@ -19,6 +20,7 @@ import { IonButton, IonSpinner } from '@ionic/angular/standalone';
     [color]="ionicColor()"
     [fill]="ionicFill()"
     [attr.aria-label]="ariaLabel()"
+    [attr.aria-hidden]="ariaHidden()"
   >
     @if (_isLoading()) {
       <ion-spinner color="default-grey" name="lines-sharp"></ion-spinner>
@@ -30,13 +32,20 @@ import { IonButton, IonSpinner } from '@ionic/angular/standalone';
   encapsulation: ViewEncapsulation.ShadowDom,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class UIButton {
+export class UIButton implements OnInit {
   variant = input<'primary' | 'secondary' | 'outlined'>('primary');
   size = input<'default' | 'icon' | 'min-icon'>('default');
   expand = input(false, { transform: booleanAttribute });
   disabled = input(false, { transform: booleanAttribute });
   isLoading = input(false, { transform: booleanAttribute });
-  ariaLabel = input<string | undefined>(undefined, { alias: 'aria-label' });
+  ariaLabel = input<string>();
+  ariaHidden = input(false, { transform: booleanAttribute });
+
+  ngOnInit(): void {
+    if (!this.ariaHidden() && !this.ariaLabel()?.trim()) {
+      throw new Error('[UIButton] ariaLabel is required when ariaHidden is false.');
+    }
+  }
 
   _isLoading = computed(() => this.variant() !== 'secondary' && this.isLoading());
 

@@ -6,7 +6,8 @@
     "@angular/core": "^21.0.0",
     "source-sans": "^3.52.0",
     "@capacitor/core": "^8.5.0",
-    "@capacitor/status-bar": "^8.0.3"
+    "@capacitor/status-bar": "^8.0.3",
+    "@capacitor/screen-reader": "^8.0.1"
   },
   "repository": {
     "type": "git",
