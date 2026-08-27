@@ -1,0 +1,40 @@
+name: 'Generate and deploy Storybook'
+run-name: Generate and deploy Storybook
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build_and_deploy:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: checkout repository
+        uses: actions/checkout@v7
+
+      - name: Extract branch name
+        shell: bash
+        run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+        id: extract_branch
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.x
+
+      - name: Install dependencies
+        run: npm ci
+        env:
+          GITHUB_TOKEN: ${{ secrets.BEP_GITHUB_TOKEN }}
+
+      - name: build Storybook
+        run: npm run storybook:build
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./storybook-static/ui-kit

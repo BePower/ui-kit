@@ -1,0 +1,177 @@
+@use '@ionic/angular/css/core.css';
+@use 'foundations/typography' as typography;
+@use 'foundations/colors' as colors;
+@use 'foundations/root' as root;
+@use 'foundations/sizes' as sizes;
+@use 'foundations/shadows' as shadows;
+
+:host {
+  @include root.shadow-root;
+
+  ion-content,
+  ion-toolbar {
+    &.background-white {
+      --background: #{colors.$color-background-white};
+    }
+    &.background-grey {
+      --background: #{colors.$color-background-grey};
+    }
+    &.background-yellow {
+      --background: #{colors.$color-background-yellow-eni-8};
+    }
+    &.background-light-green {
+      --background: #{colors.$color-background-light-green-24};
+    }
+    &.background-green {
+      --background: #{colors.$color-background-e-mobility-green-16};
+    }
+    &.header-background-green {
+      --background: #{colors.$color-primary-e-mobility-green};
+    }
+  }
+
+  ion-header {
+    ion-toolbar {
+      --padding-start: #{sizes.$size-160};
+      --padding-end: #{sizes.$size-160};
+      --padding-top: #{sizes.$size-80};
+      --padding-bottom: #{sizes.$size-160};
+
+      ion-title {
+        padding: 0;
+        @include typography.title-s;
+
+        &[size='large'] {
+          @include typography.title-xl;
+        }
+      }
+
+      ion-buttons {
+        gap: #{sizes.$size-80};
+
+        ion-back-button {
+          --icon-font-size: #{sizes.$size-400};
+        }
+      }
+    }
+  }
+
+  ion-footer {
+    ion-toolbar {
+      --padding-start: #{sizes.$size-240};
+      --padding-end: #{sizes.$size-240};
+      --padding-top: #{sizes.$size-160};
+      --padding-bottom: #{sizes.$size-none};
+      &::part(content) {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+    }
+  }
+}
+
+ion-header ion-toolbar.header-step-toolbar {
+  --padding-start: #{sizes.$size-240};
+  --padding-end: #{sizes.$size-240};
+  --padding-top: #{sizes.$size-none};
+  --padding-bottom: #{sizes.$size-160};
+
+  &::part(content) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: #{sizes.$size-80};
+  }
+
+  ui-p {
+    justify-self: end;
+  }
+}
+
+// Standalone pages need a sized ancestor; routed pages already receive .ion-page from Ionic.
+:host(:not(.ion-page)) {
+  display: block;
+  block-size: 100%;
+  min-block-size: 0;
+}
+
+// This page root lets Ionic resolve headers and content within this Shadow DOM.
+.ion-page {
+  display: flex;
+  position: relative;
+  inset: auto;
+  flex: 1 1 auto;
+  flex-direction: column;
+  inline-size: 100%;
+  block-size: 100%;
+  min-block-size: 0;
+  justify-content: space-between;
+  contain: layout size style;
+  z-index: auto;
+}
+
+// Ionic gives a condensed toolbar the content background. For the green header
+// variant, it must instead provide the green backdrop behind the transparent main header.
+ion-header.header-collapse-condense ion-toolbar.header-background-green {
+  --background: #{colors.$color-primary-e-mobility-green} !important;
+}
+
+// Use elevation in place of the standard iOS bottom border after content has scrolled.
+ion-header.header-elevation-1 {
+  box-shadow: shadows.$shadow-elevation-1;
+}
+
+ion-footer.footer-elevation-1 {
+  box-shadow: shadows.$shadow-elevation-1;
+}
+
+// Keep the content backdrop neutral so the lower iOS rubber-band always uses
+// the page background. The scroll viewport gets a bounded green strip only at
+// its top, which sits behind the transparent main header during pull-down.
+ion-content:has(
+    > .page-content-surface
+      > ion-header.header-collapse-condense
+      > ion-toolbar.header-background-green
+  )::part(scroll) {
+  --ui-page-top-overscroll-bleed: 16rem;
+
+  background-color: var(--background);
+  background-image: linear-gradient(
+    #{colors.$color-primary-e-mobility-green},
+    #{colors.$color-primary-e-mobility-green}
+  );
+  background-position: top;
+  background-repeat: no-repeat;
+  background-size: 100% calc(var(--offset-top, 0px) + var(--ui-page-top-overscroll-bleed));
+}
+
+// The surface contains both the condensed title and projected content, so it
+// covers the backdrop at rest without adding the title height to the scroll range.
+.page-content-surface {
+  display: flow-root;
+  min-block-size: 100%;
+  background: var(--background);
+}
+
+.screen-reader-only {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  white-space: nowrap;
+}
+
+// UIPage keeps IonContent fullscreen, so it supplies the device safe area on every edge
+// where it does not render structural chrome.
+:host(.no-footer) ion-content {
+  --padding-bottom: var(--ion-safe-area-bottom, 0px);
+}
+
+:host(.no-header) ion-content {
+  --padding-top: var(--ion-safe-area-top, 0px);
+}

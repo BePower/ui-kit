@@ -1,0 +1,76 @@
+@use 'sizes' as sizes;
+
+$font-weight-regular: 400;
+$font-weight-medium: 500;
+$font-weight-semibold: 600;
+$font-weight-bold: 700;
+
+@mixin type-style($font-size, $line-height, $font-weight: $font-weight-regular) {
+  font-size: $font-size;
+  font-style: normal;
+  font-weight: $font-weight;
+  line-height: $line-height;
+}
+
+/* Paragraph */
+@mixin p-l {
+  @include type-style(sizes.$size-180, sizes.$size-260);
+}
+
+@mixin p-m {
+  @include type-style(sizes.$size-160, sizes.$size-240);
+}
+
+@mixin p-s {
+  @include type-style(sizes.$size-140, sizes.$size-180);
+}
+
+/* Titles */
+@mixin title-xl {
+  @include type-style(sizes.$size-320, sizes.$size-400, $font-weight-semibold);
+}
+
+@mixin title-l {
+  @include type-style(sizes.$size-240, sizes.$size-320, $font-weight-semibold);
+}
+
+@mixin title-m {
+  @include type-style(sizes.$size-200, sizes.$size-280, $font-weight-semibold);
+}
+
+@mixin title-s {
+  @include type-style(sizes.$size-180, sizes.$size-260, $font-weight-semibold);
+}
+
+/* Labels */
+@mixin label-l {
+  @include type-style(sizes.$size-160, sizes.$size-240, $font-weight-semibold);
+}
+
+@mixin label-m {
+  @include type-style(sizes.$size-140, sizes.$size-180, $font-weight-semibold);
+}
+
+@mixin label-s {
+  @include type-style(sizes.$size-120, sizes.$size-160, $font-weight-semibold);
+}
+
+/* Buttons */
+@mixin button-cta {
+  @include type-style(sizes.$size-180, sizes.$size-260, $font-weight-semibold);
+}
+
+@mixin button-cta-link {
+  @include type-style(sizes.$size-180, sizes.$size-260, $font-weight-semibold);
+  text-transform: uppercase;
+}
+
+@mixin button-text-link {
+  @include type-style(sizes.$size-160, sizes.$size-240, $font-weight-semibold);
+  text-decoration-line: underline;
+  text-decoration-style: solid;
+  text-decoration-skip-ink: none;
+  text-decoration-thickness: auto;
+  text-underline-offset: auto;
+  text-underline-position: from-font;
+}

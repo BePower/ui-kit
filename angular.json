@@ -29,6 +29,30 @@
           "options": {
             "tsConfig": "projects/ui-kit/tsconfig.spec.json"
           }
+        },
+        "storybook": {
+          "builder": "@storybook/angular-vite:start-storybook",
+          "options": {
+            "configDir": "projects/ui-kit/.storybook",
+            "port": 6006,
+            "tsConfig": "projects/ui-kit/.storybook/tsconfig.json",
+            "zoneless": false,
+            "stylePreprocessorOptions": {
+              "includePaths": ["projects/ui-kit/src/lib"]
+            }
+          }
+        },
+        "build-storybook": {
+          "builder": "@storybook/angular-vite:build-storybook",
+          "options": {
+            "configDir": "projects/ui-kit/.storybook",
+            "outputDir": "storybook-static/ui-kit",
+            "tsConfig": "projects/ui-kit/.storybook/tsconfig.json",
+            "zoneless": false,
+            "stylePreprocessorOptions": {
+              "includePaths": ["projects/ui-kit/src/lib"]
+            }
+          }
         }
       }
     }

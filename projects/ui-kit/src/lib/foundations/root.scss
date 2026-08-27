@@ -1,0 +1,65 @@
+@use 'colors' as colors;
+
+@mixin shadow-root {
+  --ion-color-primary: #{colors.$color-primary-yellow-eni};
+  --ion-color-primary-shade: #{colors.$color-primary-yellow-eni-shade};
+  --ion-color-primary-tint: #{colors.$color-primary-yellow-eni-tint};
+  --ion-color-primary-contrast: #{colors.$color-grey-default-grey};
+
+  --ion-color-secondary: #{colors.$color-primary-e-mobility-green};
+  --ion-color-secondary-shade: #{colors.$color-primary-e-mobility-green-shade};
+  --ion-color-secondary-tint: #{colors.$color-primary-e-mobility-green-tint};
+  --ion-color-secondary-contrast: #{colors.$color-grey-white};
+
+  --ion-color-tertiary: #{colors.$color-primary-accessible-green};
+  --ion-color-tertiary-shade: #{colors.$color-primary-accessible-green-shade};
+  --ion-color-tertiary-tint: #{colors.$color-primary-accessible-green-tint};
+  --ion-color-tertiary-contrast: #{colors.$color-grey-white};
+
+  --ion-color-default-grey: #{colors.$color-grey-default-grey};
+  --ion-color-default-grey-contrast: #{colors.$color-grey-white};
+  --ion-color-default-grey-contrast-rgb: #{colors.$color-grey-default-grey-rgb};
+  --ion-color-default-grey-shade: #{colors.$color-grey-default-grey};
+  --ion-color-default-grey-tint: #{colors.$color-grey-default-grey};
+
+  --ion-color-white: #{colors.$color-grey-white};
+  --ion-color-white-rgb: #{colors.$color-grey-white-rgb};
+  --ion-color-white-contrast: #{colors.$color-grey-default-grey};
+  --ion-color-white-contrast-rgb: #{colors.$color-grey-default-grey-rgb};
+  --ion-color-white-shade: #{colors.$color-grey-white};
+  --ion-color-white-tint: #{colors.$color-grey-white};
+
+  --ion-color-green: #{colors.$color-primary-e-mobility-green};
+  --ion-color-green-rgb: #{colors.$color-primary-e-mobility-green-rgb};
+  --ion-color-green-contrast: #{colors.$color-grey-default-grey};
+  --ion-color-green-contrast-rgb: #{colors.$color-grey-default-grey-rgb};
+  --ion-color-green-shade: #{colors.$color-primary-e-mobility-green-shade};
+  --ion-color-green-tint: #{colors.$color-primary-e-mobility-green-tint};
+
+  .ion-color-default-grey {
+    --ion-color-base: var(--ion-color-default-grey);
+    --ion-color-base-rgb: var(--ion-color-default-grey-rgb);
+    --ion-color-contrast: var(--ion-color-default-grey-contrast);
+    --ion-color-contrast-rgb: var(--ion-color-default-grey-contrast-rgb);
+    --ion-color-shade: var(--ion-color-default-grey-shade);
+    --ion-color-tint: var(--ion-color-default-grey-tint);
+  }
+
+  .ion-color-white {
+    --ion-color-base: var(--ion-color-white);
+    --ion-color-base-rgb: var(--ion-color-white-rgb);
+    --ion-color-contrast: var(--ion-color-white-contrast);
+    --ion-color-contrast-rgb: var(--ion-color-white-contrast-rgb);
+    --ion-color-shade: var(--ion-color-white-shade);
+    --ion-color-tint: var(--ion-color-white-tint);
+  }
+
+  .ion-color-green {
+    --ion-color-base: var(--ion-color-green);
+    --ion-color-base-rgb: var(--ion-color-green-rgb);
+    --ion-color-contrast: var(--ion-color-green-contrast);
+    --ion-color-contrast-rgb: var(--ion-color-green-contrast-rgb);
+    --ion-color-shade: var(--ion-color-green-shade);
+    --ion-color-tint: var(--ion-color-green-tint);
+  }
+}
