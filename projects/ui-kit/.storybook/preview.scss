@@ -1,0 +1,12 @@
+@use '@ionic/angular/css/core.css';
+@use '@bepower/ui-kit/base';
+
+html,
+body,
+#storybook-root {
+  min-block-size: 100%;
+}
+
+body {
+  margin: 0;
+}

@@ -12,6 +12,24 @@ Angular UI library for BePower design system components.
 - [UIText](./docs/components/ui-text.md)
 - [UITitle](./docs/components/ui-title.md)
 
+## Interactive documentation
+
+Run Storybook locally to browse and exercise the components in isolation:
+
+```bash
+npm run storybook
+```
+
+The local server does not build or consume `dist/ui-kit`: stories import the library sources directly.
+
+To create a static Storybook site, use:
+
+```bash
+npm run storybook:build
+```
+
+Its output is written to `storybook-static/ui-kit`, separately from the publishable library package.
+
 ## Requirements
 
 - Angular `21.x`
@@ -58,6 +76,7 @@ In the consumer app global SCSS file, for example `src/global.scss` or `src/styl
 ```scss
 @use '@ionic/angular/css/core.css';
 @use '@ionic/angular/css/normalize.css';
+@use '@ionic/angular/css/typography.css';
 @use '@bepower/ui-kit/base';
 ```
 
