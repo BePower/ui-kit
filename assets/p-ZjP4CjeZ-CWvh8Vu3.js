@@ -1,0 +1,1 @@
+import{n as e}from"./rolldown-runtime-D_-wTCJc.js";var t,n;function init_p_ZjP4CjeZ(){return(init_p_ZjP4CjeZ=e((()=>{t=typeof window<`u`?window:void 0,n=typeof document<`u`?document:void 0})))()}export{init_p_ZjP4CjeZ as n,n as r,t};

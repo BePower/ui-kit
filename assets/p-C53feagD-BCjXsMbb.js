@@ -1,0 +1,1 @@
+import{n as e}from"./rolldown-runtime-D_-wTCJc.js";var o;function init_p_C53feagD(){return(init_p_C53feagD=e((()=>{o=e=>e&&e.dir!==``?e.dir.toLowerCase()===`rtl`:(document==null?void 0:document.dir.toLowerCase())===`rtl`})))()}export{o as n,init_p_C53feagD as t};
