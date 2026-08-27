@@ -209,7 +209,8 @@ removes it at the bottom of the scroll range.
 The condensed behavior is disabled while the native screen reader is active or its status is
 unavailable.
 
-If either the header or title is missing, no condensed title is rendered.
+If either the header or title is missing, or if `headerType` is `step`, no condensed title
+is rendered.
 
 Type: `boolean`.
 
@@ -236,14 +237,57 @@ Default: `'white'`.
 
 ### `headerType`
 
-Controls the header background and the matching title and icon colors.
+Controls the header variant, background, and matching title and icon colors. The `step`
+variant adds a second toolbar with a progress bar and step label.
 
 When the page finishes entering, it also sets the native status bar style to match the header. Pages
 without an internal header use the light status bar style.
 
-Type: `'white' | 'green' | 'tab'`.
+Type: `'white' | 'green' | 'tab' | 'step'`.
 
 Default: `'white'`.
+
+### `headerStep`
+
+Configures the step block shown when `headerType` is `step`.
+
+Type:
+
+```ts
+HeaderStep;
+
+interface HeaderStep {
+  currentStep: number;
+  totalSteps: number;
+  label: string;
+  ariaLabel: string;
+}
+```
+
+Default: `undefined`.
+
+It is required at runtime when `hasHeader` is `true` and `headerType` is `step`.
+`currentStep` and `totalSteps` must be positive integers, with `currentStep` between `1` and
+`totalSteps`. `label` is the localized connector rendered between the two values, for example `di`.
+`ariaLabel` is the localized accessible name of the progress bar. The complete step text, for
+example `2 di 4`, is displayed below the bar and exposed as its value text, replacing the numeric
+percentage announcement.
+
+```html
+<ui-page
+  [hasHeader]="true"
+  headerType="step"
+  title="Section title"
+  [headerStep]="{
+    currentStep: 2,
+    totalSteps: 4,
+    label: 'di',
+    ariaLabel: 'Avanzamento procedura'
+  }"
+>
+  <main>Page content</main>
+</ui-page>
+```
 
 ### `forceOverscroll`
 

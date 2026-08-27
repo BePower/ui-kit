@@ -8,7 +8,8 @@ import {
   ViewEncapsulation,
 } from '@angular/core';
 import { IonIcon } from '@ionic/angular/standalone';
-import { IconName } from './icon-map.interface';
+import type { IconName, IconVariant } from '../../interfaces/icon.interface';
+import type { TextColor } from '../../interfaces/text-color.type';
 import { iconMap } from './icon-map';
 
 @Component({
@@ -32,11 +33,11 @@ import { iconMap } from './icon-map';
 })
 export class UIIcon {
   name = input.required<IconName>();
-  color = input<'default-grey' | 'primary' | 'secondary' | 'white' | 'green'>();
+  color = input<TextColor>();
   iconSrc = signal<string | null>(null);
   showIcon = signal(false);
   size = input<'16' | '24' | '36' | '40' | '48'>('24');
-  fill = input<'no-fill' | 'fill'>('fill');
+  fill = input<IconVariant>('fill');
 
   constructor() {
     effect((onCleanup) => {

@@ -71,6 +71,23 @@
   }
 }
 
+ion-header ion-toolbar.header-step-toolbar {
+  --padding-start: #{sizes.$size-240};
+  --padding-end: #{sizes.$size-240};
+  --padding-top: #{sizes.$size-none};
+  --padding-bottom: #{sizes.$size-160};
+
+  &::part(content) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: #{sizes.$size-80};
+  }
+
+  ui-p {
+    justify-self: end;
+  }
+}
+
 // Standalone pages need a sized ancestor; routed pages already receive .ion-page from Ionic.
 :host(:not(.ion-page)) {
   display: block;

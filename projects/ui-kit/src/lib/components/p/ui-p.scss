@@ -1,0 +1,10 @@
+@use 'foundations/typography' as typography;
+
+:host {
+  display: block;
+}
+
+p {
+  margin: 0;
+  @include typography.p-m;
+}

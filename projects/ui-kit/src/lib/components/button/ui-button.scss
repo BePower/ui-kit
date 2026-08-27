@@ -1,6 +1,5 @@
 @use '@ionic/angular/css/core.css';
 
-@use 'foundations/colors' as colors;
 @use 'foundations/sizes' as sizes;
 @use 'foundations/typography' as typography;
 @use 'foundations/root' as root;
@@ -25,6 +24,10 @@
   }
 }
 
+:host(.inline) {
+  display: inline;
+}
+
 :host(.primary) ion-button,
 :host(.outlined) ion-button {
   @include typography.button-cta;
@@ -35,7 +38,7 @@
   @include typography.button-text-link;
 }
 
-:host(:not(.icon).expand) ion-button {
+:host(:not(.icon):not(.inline).expand) ion-button {
   width: 100%;
 }
 
@@ -53,4 +56,22 @@
   --padding-bottom: #{sizes.$size-none};
   min-width: unset;
   min-height: unset;
+}
+
+:host(.inline) .inline-action {
+  font: inherit;
+  @include typography.button-text-link;
+  cursor: pointer;
+  display: inline;
+  white-space: normal;
+}
+
+:host(.inline) .inline-action[aria-disabled='true'] {
+  cursor: default;
+  opacity: 0.52;
+}
+
+:host(.inline) .inline-action:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: #{sizes.$size-40};
 }

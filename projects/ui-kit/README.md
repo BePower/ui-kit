@@ -8,6 +8,9 @@ Angular UI library for BePower design system components.
 - [UIButton](./docs/components/ui-button.md)
 - [UIIcon](./docs/components/ui-icon.md)
 - [UIPage](./docs/components/ui-page.md)
+- [UIP](./docs/components/ui-p.md)
+- [UIText](./docs/components/ui-text.md)
+- [UITitle](./docs/components/ui-title.md)
 
 ## Requirements
 
@@ -22,19 +25,23 @@ npm install @bepower/ui-kit
 
 ## Using the library in Angular components
 
-The library exposes standalone components, including `UIButton`, `UIIcon`, and `UIPage`.
+The library exposes standalone components, including `UIButton`, `UIIcon`, `UIPage`, `UIP`,
+`UIText`, and `UITitle`.
 
 Example:
 
 ```ts
 import { Component } from '@angular/core';
-import { UIButton } from '@bepower/ui-kit';
+import { UIP, UIText, UITitle } from '@bepower/ui-kit';
 
 @Component({
   selector: 'app-example',
   standalone: true,
-  imports: [UIButton],
-  template: `<ui-button></ui-button>`,
+  imports: [UIP, UIText, UITitle],
+  template: `
+    <ui-title size="xl">Page title</ui-title>
+    <ui-p>Paragraph <ui-text variant="body-s">detail</ui-text>.</ui-p>
+  `,
 })
 export class ExampleComponent {}
 ```

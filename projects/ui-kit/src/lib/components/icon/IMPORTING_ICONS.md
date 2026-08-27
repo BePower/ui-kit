@@ -10,7 +10,7 @@ The command uses only `icons/` as its source; it does not accept another directo
 
 ## Synchronization
 
-Every import is a full synchronization, not an incremental update. Add, modify, or remove SVGs only in `icons/`, then run the command. It replaces all generated `icon/icons/*.ts` modules and regenerates both `icon-map.ts` and `icon-map.interface.ts` from the current contents of `icons/`.
+Every import is a full synchronization, not an incremental update. Add, modify, or remove SVGs only in `icons/`, then run the command. It replaces all generated `icon/icons/*.ts` modules and regenerates `icon-map.ts`, `icon-map.interface.ts`, and `src/lib/interfaces/icon.interface.ts` from the current contents of `icons/`.
 
 An icon removed from `icons/` is therefore removed from the generated TypeScript modules, `iconMap`, and `IconName` at the next import. If any input filename is invalid, the import stops before replacing generated files.
 
@@ -35,8 +35,7 @@ payment-card_fill.svg
 The suffix determines the variant exposed by `ui-icon`. When both files are provided, they are grouped under one name:
 
 ```html
-<ui-icon name="arrow" fill="fill" />
-<ui-icon name="arrow" fill="no-fill" />
+<ui-icon name="arrow" fill="fill" /> <ui-icon name="arrow" fill="no-fill" />
 ```
 
 An icon may provide only one variant. Do not use spaces, uppercase letters, underscores in the icon name, or additional suffixes: invalid SVG names stop the import before any generated file is changed.

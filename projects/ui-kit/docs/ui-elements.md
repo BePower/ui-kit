@@ -47,6 +47,15 @@ src/lib/foundations/
   typography.scss
 ```
 
+Types and interfaces shared by multiple components live in:
+
+```text
+src/lib/interfaces/
+```
+
+Keep a type next to its component while it remains local. Move it to `interfaces/` once more than
+one component depends on it.
+
 ## Component API
 
 Expose a small and intentional public API.
@@ -60,6 +69,23 @@ Prefer inputs that describe the design system intent:
 - `isLoading`
 
 Avoid exposing low-level styling hooks unless they are part of the intended contract.
+
+## Semantic typography
+
+Use `ui-title` and `ui-p` for design-system headings and paragraphs instead of asking consumers to
+apply typography mixins or local CSS. The components render native semantic elements internally and
+own their typography rules through Shadow DOM.
+
+- `ui-title` maps `xl`, `l`, `m`, and `s` to native `h1`, `h2`, `h3`, and `h4` respectively,
+  and accepts an optional Ionic color.
+- `ui-p` always renders a native `p` element with the `p-m` token.
+- `ui-text` is an inline primitive. Its default `inherit` variant preserves the surrounding
+  typography; `body-l`, `body-m`, and `body-s` apply the corresponding paragraph tokens. Its
+  `label-l`, `label-m`, and `label-s` variants apply the corresponding label tokens. Its Ionic
+  color defaults to `default-grey` and is independent from the typography variant.
+- Use native `strong`, `em`, and `a` elements for semantic emphasis and links.
+- Do not use `display: contents` for semantic primitives. It removes only the host layout box and
+  makes accessibility behavior less predictable across platforms.
 
 ## Signals
 
@@ -129,11 +155,11 @@ Avoid hardcoded visual values when an equivalent token exists.
 Use `shadows.$shadow-elevation-1`, `shadows.$shadow-elevation-2`, or
 `shadows.$shadow-elevation-3` for the three design-system elevation levels.
 
-| Elevation | Token | Value |
-| --- | --- | --- |
-| 1 | `shadows.$shadow-elevation-1` | `0 0 15px 0 rgba(51, 51, 51, 0.15)` |
-| 2 | `shadows.$shadow-elevation-2` | `0 0 15px 0 rgba(51, 51, 51, 0.30)` |
-| 3 | `shadows.$shadow-elevation-3` | `0 15px 30px -10px rgba(51, 51, 51, 0.30), 0 0 15px 0 rgba(51, 51, 51, 0.15)` |
+| Elevation | Token                         | Value                                                                         |
+| --------- | ----------------------------- | ----------------------------------------------------------------------------- |
+| 1         | `shadows.$shadow-elevation-1` | `0 0 15px 0 rgba(51, 51, 51, 0.15)`                                           |
+| 2         | `shadows.$shadow-elevation-2` | `0 0 15px 0 rgba(51, 51, 51, 0.30)`                                           |
+| 3         | `shadows.$shadow-elevation-3` | `0 15px 30px -10px rgba(51, 51, 51, 0.30), 0 0 15px 0 rgba(51, 51, 51, 0.15)` |
 
 ### 2. Use `root.shadow-root` for Ionic color mapping
 

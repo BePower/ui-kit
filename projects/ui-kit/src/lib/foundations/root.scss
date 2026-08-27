@@ -11,6 +11,11 @@
   --ion-color-secondary-tint: #{colors.$color-primary-e-mobility-green-tint};
   --ion-color-secondary-contrast: #{colors.$color-grey-white};
 
+  --ion-color-tertiary: #{colors.$color-primary-accessible-green};
+  --ion-color-tertiary-shade: #{colors.$color-primary-accessible-green-shade};
+  --ion-color-tertiary-tint: #{colors.$color-primary-accessible-green-tint};
+  --ion-color-tertiary-contrast: #{colors.$color-grey-white};
+
   --ion-color-default-grey: #{colors.$color-grey-default-grey};
   --ion-color-default-grey-contrast: #{colors.$color-grey-white};
   --ion-color-default-grey-contrast-rgb: #{colors.$color-grey-default-grey-rgb};

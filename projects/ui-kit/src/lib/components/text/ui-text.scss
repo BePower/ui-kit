@@ -1,0 +1,37 @@
+@use '@ionic/angular/css/core.css';
+
+@use 'foundations/root' as root;
+@use 'foundations/typography' as typography;
+
+:host {
+  @include root.shadow-root;
+  display: inline;
+}
+
+ion-text {
+  font: inherit;
+}
+
+:host([data-variant='body-l']) ion-text {
+  @include typography.p-l;
+}
+
+:host([data-variant='body-m']) ion-text {
+  @include typography.p-m;
+}
+
+:host([data-variant='body-s']) ion-text {
+  @include typography.p-s;
+}
+
+:host([data-variant='label-l']) ion-text {
+  @include typography.label-l;
+}
+
+:host([data-variant='label-m']) ion-text {
+  @include typography.label-m;
+}
+
+:host([data-variant='label-s']) ion-text {
+  @include typography.label-s;
+}

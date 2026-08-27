@@ -46,9 +46,9 @@ Default:
 Example:
 
 ```html
-<ui-button ariaLabel="Primary" variant="primary">Primary</ui-button>
-<ui-button ariaLabel="Secondary" variant="secondary">Secondary</ui-button>
-<ui-button ariaLabel="Outlined" variant="outlined">Outlined</ui-button>
+<ui-button ariaLabel="Primary action" variant="primary">Primary</ui-button>
+<ui-button ariaLabel="Secondary action" variant="secondary">Secondary</ui-button>
+<ui-button ariaLabel="Outlined action" variant="outlined">Outlined</ui-button>
 ```
 
 Behavior:
@@ -64,7 +64,7 @@ Controls the internal spacing model.
 Type:
 
 ```ts
-'default' | 'icon' | 'min-icon';
+'default' | 'icon' | 'min-icon' | 'inline';
 ```
 
 Default:
@@ -76,10 +76,11 @@ Default:
 Example:
 
 ```html
-<ui-button ariaLabel="Default" size="default">Default</ui-button>
+<ui-button ariaLabel="Default action" size="default">Default</ui-button>
 <ui-button ariaLabel="Add item" size="icon">
   <ion-icon name="add"></ion-icon>
 </ui-button>
+<ui-button size="inline" variant="secondary">Learn more</ui-button>
 ```
 
 Behavior:
@@ -87,6 +88,26 @@ Behavior:
 - `default` uses standard horizontal padding
 - `icon` uses a more compact layout and rounded icon-button shape
 - `min-icon` removes the button padding and minimum dimensions
+- `inline` is a text CTA for use within prose; it removes standard padding and minimum dimensions
+
+`inline` is valid only with `variant="secondary"` and cannot be combined with `expand`.
+
+### Inline CTA
+
+Use `size="inline"` for an action that acts on the current screen, such as opening a modal. It
+renders as an inline action with button semantics, including keyboard activation with Enter and
+Space. Its text can wrap naturally within a paragraph.
+
+```html
+<ui-p>
+  Discover more benefits.
+  <ui-button size="inline" variant="secondary" (click)="openBenefitsModal()">
+    Read the details
+  </ui-button>
+</ui-p>
+```
+
+Keep primary calls to action as standalone buttons so they retain their larger touch target.
 
 ### `expand`
 
@@ -107,7 +128,7 @@ false;
 Example:
 
 ```html
-<ui-button ariaLabel="Full width" [expand]="true">Full width</ui-button>
+<ui-button ariaLabel="Full width action" [expand]="true">Full width</ui-button>
 ```
 
 ### `disabled`
@@ -129,19 +150,18 @@ false;
 Example:
 
 ```html
-<ui-button ariaLabel="Disabled" [disabled]="true">Disabled</ui-button>
+<ui-button ariaLabel="Disabled action" [disabled]="true">Disabled</ui-button>
 ```
 
 ### `ariaLabel`
 
-Sets an accessible name on the wrapped Ionic button.
+Sets the accessible name on the interactive button.
 
 Type: `string | undefined`.
 
-Default: no explicit label.
-
-It is required when `ariaHidden` is `false`. The value is forwarded through the component Shadow DOM
-to the native interactive button.
+`ariaLabel` is required unless `ariaHidden` is `true`. The only exception is `size="inline"`, whose
+projected text supplies its accessible name; `ariaLabel` remains available there as an override.
+The value is forwarded through the component Shadow DOM to the native interactive button.
 
 ```html
 <ui-button ariaLabel="Add item" size="icon">
@@ -157,8 +177,8 @@ Type: `boolean`.
 
 Default: `false`.
 
-When `true`, `ariaLabel` is optional. Use it only when another accessible control represents the
-same action.
+When `true`, the component also makes the control inert and removes it from keyboard navigation.
+Use it only when another accessible control represents the same action.
 
 ### `isLoading`
 
@@ -210,7 +230,7 @@ Example:
 ```
 
 ```html
-<ui-button ariaLabel="Details" variant="outlined">
+<ui-button ariaLabel="View details" variant="outlined">
   Details
   <ion-icon slot="end" name="chevron-forward"></ion-icon>
 </ui-button>
@@ -236,7 +256,8 @@ export class ExampleComponent {}
 </ui-button>
 ```
 
-Provide an accessible name with `ariaLabel` whenever `ariaHidden` is `false`.
+Provide `ariaLabel` for every visible button except `size="inline"`. An inline CTA is named by its
+projected text unless `ariaLabel` overrides it.
 
 ## Notes
 

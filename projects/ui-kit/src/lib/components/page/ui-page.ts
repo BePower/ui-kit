@@ -36,14 +36,24 @@ import { StatusBarService } from '../../services/status-bar.service';
 import { UIButton } from '../button/ui-button';
 import { UIIcon } from '../icon/ui-icon';
 import { arrowLeftNoFill as arrowLeftIcon } from '../icon/icons/arrow-left';
-import type { IconName } from '../icon/icon-map.interface';
+import type { IconName, IconVariant } from '../../interfaces/icon.interface';
+import { UIProgressBar } from '../progress-bar/ui-progress-bar';
+import { UIP } from '../p/ui-p';
+import { UIText } from '../text/ui-text';
 
 export interface HeaderButton {
   name: IconName;
-  fill: 'no-fill' | 'fill';
+  fill: IconVariant;
   ariaLabel: string;
   disabled?: boolean;
   callback: () => void;
+}
+
+export interface HeaderStep {
+  currentStep: number;
+  totalSteps: number;
+  label: string;
+  ariaLabel: string;
 }
 
 @Component({
@@ -59,6 +69,9 @@ export interface HeaderButton {
     IonButtons,
     UIIcon,
     IonBackButton,
+    UIProgressBar,
+    UIP,
+    UIText,
   ],
   template: `
     <div class="ion-page">
@@ -112,6 +125,24 @@ export interface HeaderButton {
               }
             </ion-buttons>
           </ion-toolbar>
+          @let step = headerStep();
+          @if (isStepHeader() && step) {
+            <ion-toolbar [class]="['header-step-toolbar', 'background-' + background()]">
+              <ui-progress-bar
+                [ariaLabel]="step.ariaLabel"
+                [ariaValueText]="headerStepAriaLabel()"
+                [value]="headerStepValue()"
+              ></ui-progress-bar>
+              <ui-p ariaHidden>
+                <ui-text color="default-grey" variant="label-l">
+                  {{ step.currentStep }}
+                </ui-text>
+                <ui-text color="default-grey" variant="body-m">
+                  {{ step.label }} {{ step.totalSteps }}
+                </ui-text>
+              </ui-p>
+            </ion-toolbar>
+          }
         </ion-header>
       }
 
@@ -183,7 +214,7 @@ export class UIPage
   implements AfterViewInit, OnInit, ViewWillEnter, ViewDidEnter, ViewWillLeave, ViewDidLeave
 {
   background = input<'white' | 'grey' | 'light-green' | 'green' | 'yellow'>('white');
-  headerType = input<'white' | 'green' | 'tab'>('white');
+  headerType = input<'white' | 'green' | 'tab' | 'step'>('white');
   title = input<string>('');
   screenReaderTitle = input<string>();
   forceOverscroll = input(false, { transform: booleanAttribute });
@@ -192,14 +223,17 @@ export class UIPage
   condensedHeader = input(false, { transform: booleanAttribute });
   translucent = input(false, { transform: booleanAttribute });
   headerButtons = input<HeaderButton[]>([]);
+  headerStep = input<HeaderStep>();
   backButtonDefaultHref = input<string>();
   private readonly screenReader = inject(ScreenReaderService);
   readonly backButtonIcon = arrowLeftIcon;
   readonly isHeaderElevated = signal(false);
   readonly isFooterElevated = signal(false);
   readonly hasVisibleTitle = computed(() => this.hasHeader() && Boolean(this.title().trim()));
+  readonly isStepHeader = computed(() => this.headerType() === 'step');
   readonly isCondensedHeaderEnabled = computed(
     () =>
+      this.headerType() !== 'step' &&
       this.condensedHeader() &&
       this.hasVisibleTitle() &&
       this.screenReader.screenStateKnown() &&
@@ -208,12 +242,27 @@ export class UIPage
   readonly accessibleTitle = computed(
     () => this.screenReaderTitle()?.trim() || this.title().trim() || '',
   );
+  readonly headerStepValue = computed(() => {
+    const step = this.headerStep();
+
+    if (!step || step.totalSteps <= 0) {
+      return 0;
+    }
+
+    return step.currentStep / step.totalSteps;
+  });
+  readonly headerStepAriaLabel = computed(() => {
+    const step = this.headerStep();
+
+    return step ? `${step.currentStep} ${step.label} ${step.totalSteps}` : '';
+  });
   readonly hasCondensedHeader = computed(() => this.isCondensedHeaderEnabled());
   readonly shouldObserveScroll = computed(() => this.hasFooter() || this.hasHeader());
 
   ionicHeaderColor = computed(() => {
     switch (this.headerType()) {
       case 'white':
+      case 'step':
         return 'default-grey';
       case 'tab':
         return 'green';
@@ -226,6 +275,7 @@ export class UIPage
     switch (this.headerType()) {
       case 'white':
       case 'tab':
+      case 'step':
         return 'green';
       case 'green':
       default:
@@ -240,6 +290,10 @@ export class UIPage
 
     if (this.hasHeader() && !this.accessibleTitle()) {
       throw new Error('[UIPage] A title or screenReaderTitle is required.');
+    }
+
+    if (this.hasHeader() && this.isStepHeader()) {
+      this.validateHeaderStep();
     }
   }
 
@@ -335,11 +389,42 @@ export class UIPage
     switch (this.headerType()) {
       case 'white':
       case 'tab':
+      case 'step':
         void this.statusBar.setStatusBarStyleLight();
         return;
       case 'green':
       default:
         void this.statusBar.setStatusBarStyleDark();
+    }
+  }
+
+  private validateHeaderStep(): void {
+    const step = this.headerStep();
+
+    if (!step) {
+      throw new Error('[UIPage] headerStep is required when headerType is step.');
+    }
+
+    if (!step.label?.trim()) {
+      throw new Error('[UIPage] headerStep.label is required when headerType is step.');
+    }
+
+    if (!step.ariaLabel?.trim()) {
+      throw new Error('[UIPage] headerStep.ariaLabel is required when headerType is step.');
+    }
+
+    if (!Number.isInteger(step.totalSteps) || step.totalSteps <= 0) {
+      throw new Error('[UIPage] headerStep.totalSteps must be a positive integer.');
+    }
+
+    if (
+      !Number.isInteger(step.currentStep) ||
+      step.currentStep < 1 ||
+      step.currentStep > step.totalSteps
+    ) {
+      throw new Error(
+        '[UIPage] headerStep.currentStep must be an integer between 1 and totalSteps.',
+      );
     }
   }
 

@@ -1,0 +1,30 @@
+@use 'foundations/typography' as typography;
+@use 'foundations/root' as root;
+
+:host {
+  @include root.shadow-root;
+  display: block;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0;
+}
+
+h1 {
+  @include typography.title-xl;
+}
+
+h2 {
+  @include typography.title-l;
+}
+
+h3 {
+  @include typography.title-m;
+}
+
+h4 {
+  @include typography.title-s;
+}

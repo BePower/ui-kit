@@ -1,4 +1,4 @@
-import { IconMap } from './icon-map.interface';
+import type { IconMap } from './icon-map.interface';
 
 export const iconMap: IconMap = {
   'apple-logo': {

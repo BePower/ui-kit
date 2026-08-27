@@ -9,7 +9,6 @@ import { ScreenReader } from '@capacitor/screen-reader';
 export class ScreenReaderService {
   public screenState = signal(false);
   public screenStateKnown = signal(Capacitor.getPlatform() === 'web');
-  private readonly pendingFocusRequests = new Set<() => void>();
   private screenStateRevision = 0;
 
   constructor() {
@@ -22,35 +21,45 @@ export class ScreenReaderService {
   }
 
   /**
-   * Requests focus for an element once the native screen reader state is known.
+   * Requests focus for an element when the native screen reader is enabled.
    *
    * @returns A function that cancels an unresolved focus request.
    */
   focus(element: HTMLElement): () => void {
     let isActive = true;
 
-    const focus = () => {
-      if (!isActive) {
+    const focusWhenEnabled = async () => {
+      const isEnabled = await this.isScreenReaderEnabled();
+
+      if (!isActive || !isEnabled) {
         return;
       }
 
       isActive = false;
 
-      if (this.screenState() && element.isConnected) {
+      if (element.isConnected) {
         element.focus({ preventScroll: true });
       }
     };
 
-    if (this.screenStateKnown()) {
-      focus();
-    } else {
-      this.pendingFocusRequests.add(focus);
-    }
+    void focusWhenEnabled();
 
     return () => {
       isActive = false;
-      this.pendingFocusRequests.delete(focus);
     };
+  }
+
+  private async isScreenReaderEnabled(): Promise<boolean> {
+    if (Capacitor.getPlatform() === 'web') {
+      return false;
+    }
+
+    try {
+      const { value } = await ScreenReader.isEnabled();
+      return value;
+    } catch {
+      return false;
+    }
   }
 
   private async setInitialValue(): Promise<void> {
@@ -85,9 +94,5 @@ export class ScreenReaderService {
   private setScreenReaderState(value: boolean): void {
     this.screenState.set(value);
     this.screenStateKnown.set(true);
-
-    const pendingFocusRequests = [...this.pendingFocusRequests];
-    this.pendingFocusRequests.clear();
-    pendingFocusRequests.forEach((focus) => focus());
   }
 }

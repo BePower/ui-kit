@@ -1,0 +1,14 @@
+@use '@ionic/angular/css/core.css';
+
+@use 'foundations/sizes' as sizes;
+@use 'foundations/root' as root;
+
+:host {
+  @include root.shadow-root;
+  display: block;
+  inline-size: 100%;
+  ion-progress-bar {
+    height: #{sizes.$size-80};
+    border-radius: #{sizes.$size-160};
+  }
+}
