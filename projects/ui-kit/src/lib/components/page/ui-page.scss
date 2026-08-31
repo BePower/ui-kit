@@ -88,13 +88,6 @@ ion-header ion-toolbar.header-step-toolbar {
   }
 }
 
-// Standalone pages need a sized ancestor; routed pages already receive .ion-page from Ionic.
-:host(:not(.ion-page)) {
-  display: block;
-  block-size: 100%;
-  min-block-size: 0;
-}
-
 // This page root lets Ionic resolve headers and content within this Shadow DOM.
 .ion-page {
   display: flex;
@@ -119,6 +112,12 @@ ion-header.header-collapse-condense ion-toolbar.header-background-green {
 // Use elevation in place of the standard iOS bottom border after content has scrolled.
 ion-header.header-elevation-1 {
   box-shadow: shadows.$shadow-elevation-1;
+}
+
+// The router outlet state is mirrored onto this host because WebKit does not
+// reliably resolve an ancestor context through this component's Shadow DOM.
+:host(.can-go-back) ion-back-button {
+  display: block;
 }
 
 ion-footer.footer-elevation-1 {

@@ -28,6 +28,7 @@ import {
   IonContent,
   IonFooter,
   IonHeader,
+  IonRouterOutlet,
   IonTitle,
   IonToolbar,
 } from '@ionic/angular/standalone';
@@ -204,6 +205,8 @@ export interface HeaderStep {
   `,
   styleUrl: 'ui-page.scss',
   host: {
+    class: 'ion-page',
+    '[class.can-go-back]': 'canGoBack()',
     '[class.no-header]': '!hasHeader()',
     '[class.no-footer]': '!hasFooter()',
   },
@@ -229,6 +232,7 @@ export class UIPage
   readonly backButtonIcon = arrowLeftIcon;
   readonly isHeaderElevated = signal(false);
   readonly isFooterElevated = signal(false);
+  readonly canGoBack = signal(false);
   readonly hasVisibleTitle = computed(() => this.hasHeader() && Boolean(this.title().trim()));
   readonly isStepHeader = computed(() => this.headerType() === 'step');
   readonly isCondensedHeaderEnabled = computed(
@@ -306,12 +310,15 @@ export class UIPage
   /**
    * Runs immediately before the routed view enters.
    */
-  ionViewWillEnter(): void {}
+  ionViewWillEnter(): void {
+    this.updateCanGoBack();
+  }
 
   /**
    * Runs after the routed view has finished entering.
    */
   ionViewDidEnter(): void {
+    this.updateCanGoBack();
     this.updateStatusBarStyle();
     this.cancelPageTitleFocus();
 
@@ -378,6 +385,10 @@ export class UIPage
   private cancelPageTitleFocus(): void {
     this.cancelPageTitleFocusRequest?.();
     this.cancelPageTitleFocusRequest = undefined;
+  }
+
+  private updateCanGoBack(): void {
+    this.canGoBack.set(this.routerOutlet?.canGoBack() ?? false);
   }
 
   private updateStatusBarStyle(): void {
@@ -474,6 +485,7 @@ export class UIPage
   private readonly destroyRef = inject(DestroyRef);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly routerOutlet = inject(IonRouterOutlet, { optional: true });
   private readonly zone = inject(NgZone);
   private statusBar = inject(StatusBarService);
   private scrollElement?: HTMLElement;
