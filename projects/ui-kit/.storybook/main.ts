@@ -8,6 +8,7 @@ const sourceSansRoot = fileURLToPath(new URL('../../../node_modules/source-sans'
 
 const config: StorybookConfig = {
   stories: ['../stories/**/*.stories.ts'],
+  staticDirs: ['../public'],
   addons: ['@storybook/addon-a11y', '@storybook/addon-docs'],
   framework: {
     name: '@storybook/angular-vite',
