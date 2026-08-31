@@ -50,6 +50,25 @@ title is rendered, `ui-page` focuses a visually hidden level-one heading whose t
 
 For screen-specific behavior, implement the same hooks on the routed component.
 
+## Router stack and transitions
+
+For Ionic's standard page transition, render `ui-page` as the direct light-DOM child of the
+component activated by `ion-router-outlet`. `ui-page` marks its host as an Ionic page, giving the
+transition a target outside its Shadow DOM.
+
+When the outlet has a previous page in its stack, Ionic adds its `can-go-back` state to the routed
+view. `ui-page` mirrors that state inside its Shadow DOM, so the internal `ion-back-button` becomes
+visible automatically and continues to use Ionic's normal `pop()` behavior.
+
+Navigate with `NavController.navigateForward()` and `NavController.navigateBack()`, or set an
+explicit `routerDirection`, so Ionic knows which transition to run. A direct Angular
+`Router.navigate()` call does not set a direction by itself and Ionic therefore runs without a page
+animation.
+
+The basic page slide works with Shadow DOM. Ionic's more detailed iOS toolbar and large-title
+transition still cannot inspect the internal header across that boundary; provide a custom route
+animation if that effect is required.
+
 ## Header and footer
 
 `ui-page` renders the header internally. Configure it with `title`, `headerButtons`, and the optional
@@ -76,9 +95,9 @@ On native platforms, `ui-page` waits for the screen reader status before enablin
 header. When the screen reader is active, or its status is unavailable, it renders only the regular
 header.
 
-> The in-page scroll collapse works inside `ui-page`'s Shadow DOM. Ionic's built-in iOS route
-> transition cannot query that large title across the Shadow DOM boundary; configure a custom route
-> transition if that animation is required.
+> The in-page scroll collapse works inside `ui-page`'s Shadow DOM. The standard route slide still
+> works, but Ionic cannot query the large title for its detailed iOS transition; configure a custom
+> route animation if that animation is required.
 
 ```ts
 import { Component } from '@angular/core';
@@ -188,7 +207,9 @@ Type: `string | undefined`.
 
 Default: no fallback route.
 
-The button is shown only when the Ionic router outlet can navigate back or when this input has a value. With router history, it navigates back in that history; otherwise it navigates to `backButtonDefaultHref`.
+The button is shown only when the Ionic router outlet can navigate back or when this input has a
+value. With router history, it navigates back in that history; otherwise it navigates to
+`backButtonDefaultHref`.
 
 ### `hasFooter`
 

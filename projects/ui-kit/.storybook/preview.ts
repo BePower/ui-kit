@@ -7,7 +7,7 @@ import './preview.scss';
 const preview: Preview = {
   decorators: [
     applicationConfig({
-      providers: [provideIonicAngular({ animated: false, mode: 'ios' })],
+      providers: [provideIonicAngular({ animated: true, mode: 'ios' })],
     }),
   ],
   parameters: {
