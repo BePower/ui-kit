@@ -1,0 +1,30 @@
+@use 'sass:map';
+
+@use 'sizes' as sizes;
+
+$spacing-none: 0px;
+$spacing-xxxs: sizes.$size-80;
+$spacing-xxs: sizes.$size-160;
+$spacing-xs: sizes.$size-240;
+$spacing-s: sizes.$size-320;
+$spacing-m: sizes.$size-400;
+$spacing-l: sizes.$size-480;
+$spacing-xl: sizes.$size-560;
+$spacing-xxl: sizes.$size-720;
+$spacing-xxxl: sizes.$size-800;
+
+$spacing: (
+  none: $spacing-none,
+  xxxs: $spacing-xxxs,
+  xxs: $spacing-xxs,
+  xs: $spacing-xs,
+  s: $spacing-s,
+  m: $spacing-m,
+  l: $spacing-l,
+  xl: $spacing-xl,
+  xxl: $spacing-xxl,
+  xxxl: $spacing-xxxl,
+);
+
+$horizontal: map.remove($spacing, l, xl, xxl, xxxl);
+$vertical: map.remove($spacing, xl, xxl, xxxl);

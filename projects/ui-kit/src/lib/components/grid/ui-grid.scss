@@ -1,0 +1,23 @@
+@use '@ionic/angular/css/core.css';
+
+@use 'foundations/spacing' as spacing;
+
+:host {
+  display: contents;
+}
+
+ion-grid {
+  --ion-grid-padding: 0;
+
+  --ui-grid-horizontal: #{spacing.$spacing-none};
+
+  box-sizing: border-box;
+  padding-block: 0 !important;
+  padding-inline: var(--ui-grid-horizontal) !important;
+}
+
+@each $name, $value in spacing.$horizontal {
+  ion-grid[data-horizontal='#{$name}'] {
+    --ui-grid-horizontal: #{$value};
+  }
+}

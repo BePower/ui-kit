@@ -5,3 +5,6 @@ export * from './p/ui-p';
 export * from './progress-bar/ui-progress-bar';
 export * from './text/ui-text';
 export * from './title/ui-title';
+export * from './col/ui-col';
+export * from './row/ui-row';
+export * from './grid/ui-grid';
