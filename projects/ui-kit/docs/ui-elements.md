@@ -44,6 +44,7 @@ src/lib/foundations/
   root.scss
   shadows.scss
   sizes.scss
+  spacing.scss
   typography.scss
 ```
 

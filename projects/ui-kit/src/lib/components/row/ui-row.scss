@@ -1,0 +1,36 @@
+@use '@ionic/angular/css/core.css';
+@use 'sass:math';
+
+@use 'foundations/root' as root;
+@use 'foundations/spacing' as spacing;
+
+:host {
+  @include root.shadow-root;
+  display: contents;
+}
+
+ion-row {
+  --ui-row-half-gap: #{spacing.$spacing-none};
+  --ui-row-top-inset: #{spacing.$spacing-none};
+  --ui-row-bottom-inset: #{spacing.$spacing-none};
+
+  margin-inline: calc(0px - var(--ui-row-half-gap));
+  padding-block-end: var(--ui-row-bottom-inset);
+  padding-block-start: var(--ui-row-top-inset);
+}
+
+@each $name, $value in spacing.$spacing {
+  ion-row[data-gap='#{$name}'] {
+    --ui-row-half-gap: #{math.div($value, 2)};
+  }
+}
+
+@each $name, $value in spacing.$vertical {
+  ion-row[data-top='#{$name}'] {
+    --ui-row-top-inset: #{$value};
+  }
+
+  ion-row[data-bottom='#{$name}'] {
+    --ui-row-bottom-inset: #{$value};
+  }
+}

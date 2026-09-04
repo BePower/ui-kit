@@ -178,9 +178,4 @@ export class UIButton implements OnInit {
   get hasInlineSize() {
     return this.isInline();
   }
-
-  @HostBinding('attr.inert')
-  get isInert() {
-    return this.ariaHidden() ? '' : null;
-  }
 }

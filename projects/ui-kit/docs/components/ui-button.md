@@ -177,8 +177,8 @@ Type: `boolean`.
 
 Default: `false`.
 
-When `true`, the component also makes the control inert and removes it from keyboard navigation.
-Use it only when another accessible control represents the same action.
+When `true`, the control is also removed from keyboard navigation, but remains pointer-interactive
+unless it is disabled. Use it only when another accessible control represents the same action.
 
 ### `isLoading`
 

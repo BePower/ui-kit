@@ -1,0 +1,28 @@
+@use '@ionic/angular/css/core.css';
+@use '@ionic/angular/css/display.css';
+@use '@ionic/angular/css/flex-utils.css';
+
+@use 'foundations/root' as root;
+@use 'foundations/spacing' as spacing;
+
+:host {
+  @include root.shadow-root;
+
+  --ui-col-horizontal-inset: #{spacing.$spacing-none};
+
+  display: contents;
+}
+
+ion-col {
+  --ion-grid-column-padding: 0;
+
+  box-sizing: border-box;
+  padding-block: 0 !important;
+  padding-inline: calc(var(--ui-row-half-gap, 0px) + var(--ui-col-horizontal-inset)) !important;
+}
+
+@each $name, $value in spacing.$horizontal {
+  ion-col[data-horizontal='#{$name}'] {
+    --ui-col-horizontal-inset: #{$value};
+  }
+}
