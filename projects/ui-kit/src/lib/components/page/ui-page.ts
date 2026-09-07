@@ -1,4 +1,4 @@
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, NgTemplateOutlet } from '@angular/common';
 import type { AfterViewInit, OnInit } from '@angular/core';
 import {
   booleanAttribute,
@@ -61,6 +61,7 @@ export interface HeaderStep {
   selector: 'ui-page',
   standalone: true,
   imports: [
+    NgTemplateOutlet,
     IonContent,
     IonHeader,
     IonFooter,
@@ -190,7 +191,13 @@ export interface HeaderStep {
             </ion-header>
           }
 
-          <ng-content></ng-content>
+          <ng-template #projectedContent><ng-content></ng-content></ng-template>
+          @if (useLegacyContent) {
+            <!-- Temporary migration path: keep consumer content in the light DOM. -->
+            <slot></slot>
+          } @else {
+            <ng-container [ngTemplateOutlet]="projectedContent"></ng-container>
+          }
         </div>
       </ion-content>
 
@@ -216,6 +223,8 @@ export interface HeaderStep {
 export class UIPage
   implements AfterViewInit, OnInit, ViewWillEnter, ViewDidEnter, ViewWillLeave, ViewDidLeave
 {
+  /** Temporary native-slot compatibility for the body, read once on initialization. */
+  legacyContent = input(false, { transform: booleanAttribute });
   background = input<'white' | 'grey' | 'light-green' | 'green' | 'yellow'>('white');
   headerType = input<'white' | 'green' | 'tab' | 'step'>('white');
   title = input<string>('');
@@ -287,7 +296,11 @@ export class UIPage
     }
   });
 
+  protected useLegacyContent = false;
+
   ngOnInit(): void {
+    this.useLegacyContent = this.legacyContent();
+
     if (!this.hasHeader() && !this.screenReaderTitle()?.trim()) {
       throw new Error('[UIPage] screenReaderTitle is required when hasHeader is false.');
     }

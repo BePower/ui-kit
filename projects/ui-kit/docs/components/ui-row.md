@@ -19,6 +19,19 @@ import { UICol, UIRow } from '@bepower/ui-kit';
 
 ## Inputs
 
+### `legacyContent`
+
+Enables temporary native-slot content distribution for consumer styles during migration.
+
+Type: `boolean`. Default: `false` (Angular content projection inside the component's Shadow DOM).
+
+Set `legacyContent` to keep the row's children in its light DOM. The value is read once during
+initialization; later input changes are ignored. Recreate the component to change modes.
+This option is independent of the parent grid and any nested columns.
+Remove it once the content has been migrated to the UI kit.
+
+See [legacy content migration](../legacy-content.md) for a complete example and limitations.
+
 ### `top`
 
 Applies block-start padding to the row.
@@ -31,15 +44,15 @@ Type:
 
 Default: `'none'`.
 
-| Token | Value |
-| ----- | ----- |
-| `none` | `0px` |
-| `xxxs` | `8px` |
-| `xxs` | `16px` |
-| `xs` | `24px` |
-| `s` | `32px` |
-| `m` | `40px` |
-| `l` | `48px` |
+| Token  | Value  |
+| ------ | ------ |
+| `none` | `0px`  |
+| `xxxs` | `8px`  |
+| `xxs`  | `16px` |
+| `xs`   | `24px` |
+| `s`    | `32px` |
+| `m`    | `40px` |
+| `l`    | `48px` |
 
 ### `bottom`
 

@@ -36,6 +36,18 @@ safe area.
 When `hasHeader` is `false`, `screenReaderTitle` is required. When `hasHeader` is `true`, provide
 either `title` or `screenReaderTitle`.
 
+## Main content styling
+
+By default, the main page content uses Angular `ng-content` inside the component's Shadow DOM.
+Consumer global styles cannot select content across this boundary.
+
+During migration, opt into `legacyContent` to distribute the body through a native slot. The nodes
+remain in the page host's light DOM, where consumer global styles and Ionic utility classes can
+reach them. See [legacy content migration](../legacy-content.md) for nested containers and limits.
+
+This option applies to the main page content only. Footer content marked with the `footer`
+attribute still uses Angular content projection and requires `hasFooter`.
+
 ## Ionic lifecycle
 
 When `ui-page` is inside a view managed by `ion-router-outlet` or `ion-nav`, Ionic lifecycle
@@ -140,6 +152,30 @@ export class ExampleComponent {
 ```
 
 ## Inputs
+
+### `legacyContent`
+
+Enables temporary native-slot distribution for the main content during migration.
+
+Type: `boolean`.
+
+Default: `false`.
+
+The value is read once during initialization; later input changes are ignored. Recreate the
+component to change modes. The header and footer keep their existing rendering behavior.
+Remove this input from a page once its content has been migrated to the UI kit.
+
+```html
+<ui-page legacyContent hasHeader title="FAQ">
+  <ion-list class="filled gradient">
+    <ion-item>Legacy content styled by the consumer</ion-item>
+  </ion-list>
+</ui-page>
+```
+
+Legacy content is not a DOM descendant of the internal `ion-content`. Ionic features that look up
+that ancestor, such as infinite scroll or input scroll assistance, require separate verification.
+See [legacy content migration](../legacy-content.md#limitations).
 
 ### `hasHeader`
 

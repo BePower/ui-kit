@@ -28,6 +28,19 @@ export class ExampleComponent {}
 
 ## Inputs
 
+### `legacyContent`
+
+Enables temporary native-slot content distribution for consumer styles during migration.
+
+Type: `boolean`. Default: `false` (Angular content projection inside the component's Shadow DOM).
+
+Set `legacyContent` to keep the grid's children in its light DOM. The value is read once during
+initialization; later input changes are ignored. Recreate the component to change modes.
+This option is independent on each container, including nested `ui-row` and `ui-col` components.
+Remove it once the content has been migrated to the UI kit.
+
+See [legacy content migration](../legacy-content.md) for a complete example and limitations.
+
 ### `horizontal`
 
 Sets the outer horizontal inset using a design-system spacing token.
@@ -40,14 +53,14 @@ Type:
 
 Default: `'xs'`.
 
-| Token | Value |
-| ----- | ----- |
-| `none` | `0px` |
-| `xxxs` | `8px` |
-| `xxs` | `16px` |
-| `xs` | `24px` |
-| `s` | `32px` |
-| `m` | `40px` |
+| Token  | Value  |
+| ------ | ------ |
+| `none` | `0px`  |
+| `xxxs` | `8px`  |
+| `xxs`  | `16px` |
+| `xs`   | `24px` |
+| `s`    | `32px` |
+| `m`    | `40px` |
 
 Together with the default `ui-row gap="xxs"`, this produces the standard 24px outer margin and
 16px gutter shown in the grid specification.
