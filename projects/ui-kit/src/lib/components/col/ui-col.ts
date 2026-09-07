@@ -1,4 +1,7 @@
+import { NgTemplateOutlet } from '@angular/common';
+import type { OnInit } from '@angular/core';
 import {
+  booleanAttribute,
   ChangeDetectionStrategy,
   Component,
   computed,
@@ -16,7 +19,7 @@ export type UIColSize = number | `${number}` | 'auto';
 @Component({
   selector: 'ui-col',
   standalone: true,
-  imports: [IonCol],
+  imports: [IonCol, NgTemplateOutlet],
   template: `<ion-col
     class="ion-display-flex"
     [attr.data-horizontal]="horizontal()"
@@ -28,18 +31,31 @@ export type UIColSize = number | `${number}` | 'auto';
     [class.ion-justify-content-start]="justify() === 'start'"
     [size]="ionicSize()"
   >
-    <ng-content></ng-content>
+    <ng-template #projectedContent><ng-content></ng-content></ng-template>
+    @if (useLegacyContent) {
+      <slot></slot>
+    } @else {
+      <ng-container [ngTemplateOutlet]="projectedContent"></ng-container>
+    }
   </ion-col>`,
   styleUrl: 'ui-col.scss',
   host: {},
   encapsulation: ViewEncapsulation.ShadowDom,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class UICol {
+export class UICol implements OnInit {
+  /** Temporary native-slot compatibility, read once on initialization. */
+  legacyContent = input(false, { transform: booleanAttribute });
   justify = input<UIAlignment>('start');
   align = input<UIAlignment>('start');
   horizontal = input<UIHorizontalSpacing>('none');
   size = input<UIColSize>();
+
+  protected useLegacyContent = false;
+
+  ngOnInit(): void {
+    this.useLegacyContent = this.legacyContent();
+  }
 
   ionicSize = computed(() => {
     const size = this.size();

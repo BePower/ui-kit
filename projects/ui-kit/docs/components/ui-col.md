@@ -18,6 +18,19 @@ import { UICol } from '@bepower/ui-kit';
 
 ## Inputs
 
+### `legacyContent`
+
+Enables temporary native-slot content distribution for consumer styles during migration.
+
+Type: `boolean`. Default: `false` (Angular content projection inside the component's Shadow DOM).
+
+Set `legacyContent` to keep the column's children in its light DOM. The value is read once during
+initialization; later input changes are ignored. Recreate the component to change modes.
+This option is independent of the parent grid and row.
+Remove it once the content has been migrated to the UI kit.
+
+See [legacy content migration](../legacy-content.md) for a complete example and limitations.
+
 ### `justify`
 
 Controls horizontal alignment of the column content.
@@ -46,14 +59,14 @@ Type:
 
 Default: `'none'`.
 
-| Token | Value |
-| ----- | ----- |
-| `none` | `0px` |
-| `xxxs` | `8px` |
-| `xxs` | `16px` |
-| `xs` | `24px` |
-| `s` | `32px` |
-| `m` | `40px` |
+| Token  | Value  |
+| ------ | ------ |
+| `none` | `0px`  |
+| `xxxs` | `8px`  |
+| `xxs`  | `16px` |
+| `xs`   | `24px` |
+| `s`    | `32px` |
+| `m`    | `40px` |
 
 This inset is additive to the half-gutter inherited from `ui-row gap`. Use it for local content
 inset, not for the grid gutter or the page margin: those belong to `ui-row` and `ui-grid`.
