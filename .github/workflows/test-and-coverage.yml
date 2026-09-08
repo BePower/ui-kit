@@ -1,0 +1,25 @@
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+name: Test and coverage
+jobs:
+  test_and_coverage:
+    name: Test and coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checking out
+        uses: actions/checkout@master
+        with:
+          # Disabling shallow clone is recommended for improving relevancy of reporting
+          fetch-depth: 0
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - name: Install dependencies
+        run: npm ci
+        env:
+          GITHUB_TOKEN: ${{ secrets.BEP_GITHUB_TOKEN }}
+      - name: Test and coverage
+        run: npm run test:coverage
