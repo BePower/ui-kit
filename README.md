@@ -1,63 +1,126 @@
-# BepowerUiKit
+# BePower UI Kit
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.0.4.
+[![Quality gate status](https://sonarcloud.io/api/project_badges/measure?project=BePower_ui-kit&metric=alert_status&token=affaccf10d2a93c9969767e9c53063e30ef8e5d2)](https://sonarcloud.io/summary/new_code?id=BePower_ui-kit)
 
-## Development server
+Angular and Ionic component library implementing the BePower design system. Components are
+standalone, use native Shadow DOM encapsulation, and expose shared foundations for colors,
+typography, spacing, sizes, and shadows.
 
-To start a local development server, run:
+- [Library and consumer documentation](./projects/ui-kit/README.md)
+- [Component documentation](./projects/ui-kit/docs/ui-elements.md)
+- [Interactive Storybook](https://app-ui-kit.bepower.tech)
 
-```bash
-ng serve
-```
+## Requirements
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+- Node.js `v24.17.0`, defined in [`.nvmrc`](./.nvmrc)
+- npm `11.13.0`, defined by the `packageManager` field in `package.json`
 
-## Code scaffolding
+GitHub Actions also reads `.nvmrc`, so local development and CI use the same Node.js version.
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+## Setup
 
 ```bash
-ng generate --help
+nvm use
+npm ci
 ```
 
-## Building
+## Storybook
 
-To build the project run:
+Run the interactive component documentation locally:
 
 ```bash
-ng build
+npm run storybook
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+Storybook imports the library sources directly and does not require a build of `dist/ui-kit`.
 
-## Running unit tests
+Generate the static Storybook website with:
 
-The unit tests run directly against the library sources in memory and do not build or modify
-`dist/ui-kit`.
+```bash
+npm run storybook:build
+```
+
+The output is written to `storybook-static/ui-kit`.
+
+## Unit tests
+
+Run the complete Vitest suite once:
 
 ```bash
 npm test
 ```
 
-Use `npm run test:watch` during development, `npm run test:coverage` for the HTML and LCOV
-reports in `coverage/`, and `npm run test:typecheck` to validate the test TypeScript sources.
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
+Additional commands:
 
 ```bash
-ng e2e
+npm run test:watch
+npm run test:coverage
+npm run test:typecheck
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+The tests run directly against the library sources in memory and do not build or modify
+`dist/ui-kit`. Coverage reports are generated in `coverage/`; the configured thresholds require
+100% statements, branches, functions, and lines for the measured runtime code.
 
-## Additional Resources
+## Library development
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+Build the publishable package:
+
+```bash
+npm run build
+```
+
+The package is written to `dist/ui-kit`.
+
+Use watch mode when a local consumer is linked to the generated package:
+
+```bash
+npm run watch
+```
+
+Watch mode continuously rebuilds `dist/ui-kit`, so it should not be run at the same time as tasks
+that expect the linked output to remain unchanged.
+
+## Icons
+
+Source SVG files are stored in `icons/`. Import or update the generated TypeScript icon registry
+with:
+
+```bash
+npm run icons:import
+```
+
+See the [icon importing guide](./projects/ui-kit/src/lib/components/icon/IMPORTING_ICONS.md) for
+file naming and variant conventions.
+
+## Quality analysis
+
+Pull requests run unit tests, generate the LCOV report, and execute the SonarQube Cloud scanner
+through [the test and coverage workflow](./.github/workflows/test-and-coverage.yml).
+
+The two Sonar configuration files belong to different analysis modes:
+
+- `sonar-project.properties` is read by the CI-based Sonar scanner and configures the project key
+  and LCOV report.
+- `.sonarcloud.properties` is read only by SonarQube Cloud Automatic Analysis.
+
+Only one Sonar analysis mode should be active for the project. When using the scanner configured in
+the GitHub workflow, CI analysis settings and exclusions must be defined in
+`sonar-project.properties`.
+
+## Publishing
+
+Build the library, then publish the generated package:
+
+```bash
+npm run build
+npm publish ./dist/ui-kit
+```
+
+Keep the leading `./` in the package path; otherwise npm may interpret `dist/ui-kit` as a remote
+package reference.
+
+## Continuous integration
+
+- Pull requests run tests, coverage, and SonarQube Cloud checks.
+- Pushes to `main` build and deploy Storybook to GitHub Pages.

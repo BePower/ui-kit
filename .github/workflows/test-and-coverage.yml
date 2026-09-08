@@ -23,3 +23,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.BEP_GITHUB_TOKEN }}
       - name: Test and coverage
         run: npm run test:coverage
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v7
+        env:
+          SONAR_TOKEN: ${{ secrets.SONARCLOUD_TOKEN }}
