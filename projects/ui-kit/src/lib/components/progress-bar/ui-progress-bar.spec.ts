@@ -14,7 +14,11 @@ describe('UIProgressBar', () => {
   });
 
   it('forwards changing values and readable step descriptions', () => {
-    const fixture = render(UIProgressBar, { ariaLabel: 'Registration', value: 0.5, ariaValueText: '2 of 4' });
+    const fixture = render(UIProgressBar, {
+      ariaLabel: 'Registration',
+      value: 0.5,
+      ariaValueText: '2 of 4',
+    });
     const progress = shadow(fixture).querySelector('ion-progress-bar')!;
     expect(progress.value).toBe(0.5);
     expect(progress.getAttribute('aria-valuetext')).toBe('2 of 4');

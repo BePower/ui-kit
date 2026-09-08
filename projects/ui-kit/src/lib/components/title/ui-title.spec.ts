@@ -16,19 +16,21 @@ describe('UITitle', () => {
     expect(root.querySelector('em')?.textContent).toBe('title');
   });
 
-  it.each([['xl', 'h1'], ['l', 'h2'], ['m', 'h3'], ['s', 'h4']])(
-    'maps size %s to %s and forwards color and a trimmed accessible name',
-    (size, tag) => {
-      const fixture = render(UITitle, { size, color: 'green', ariaLabel: '  Accessible title  ' });
-      const heading = shadow(fixture).querySelector(tag)!;
-      expect(heading.getAttribute('aria-label')).toBe('Accessible title');
-      expect(heading.hasAttribute('aria-hidden')).toBe(false);
-      expect(shadow(fixture).querySelector('ion-text')!.color).toBe('green');
-      setInputs(fixture, { size: 's', ariaLabel: ' ' });
-      fixture.detectChanges();
-      expect(shadow(fixture).querySelector('h4')!.hasAttribute('aria-label')).toBe(false);
-    },
-  );
+  it.each([
+    ['xl', 'h1'],
+    ['l', 'h2'],
+    ['m', 'h3'],
+    ['s', 'h4'],
+  ])('maps size %s to %s and forwards color and a trimmed accessible name', (size, tag) => {
+    const fixture = render(UITitle, { size, color: 'green', ariaLabel: '  Accessible title  ' });
+    const heading = shadow(fixture).querySelector(tag)!;
+    expect(heading.getAttribute('aria-label')).toBe('Accessible title');
+    expect(heading.hasAttribute('aria-hidden')).toBe(false);
+    expect(shadow(fixture).querySelector('ion-text')!.color).toBe('green');
+    setInputs(fixture, { size: 's', ariaLabel: ' ' });
+    fixture.detectChanges();
+    expect(shadow(fixture).querySelector('h4')!.hasAttribute('aria-label')).toBe(false);
+  });
 
   it.each([undefined, '', '   '])('does not impose a redundant label (%j)', (ariaLabel) => {
     const fixture = render(UITitle, { ariaLabel });

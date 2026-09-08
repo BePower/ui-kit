@@ -20,7 +20,10 @@ export function setInputs<T>(fixture: ComponentFixture<T>, inputs: Record<string
   }
 }
 
-export function render<T>(component: Type<T>, inputs: Record<string, unknown> = {}): ComponentFixture<T> {
+export function render<T>(
+  component: Type<T>,
+  inputs: Record<string, unknown> = {},
+): ComponentFixture<T> {
   configureComponent(component);
   const fixture = TestBed.createComponent(component);
   setInputs(fixture, inputs);

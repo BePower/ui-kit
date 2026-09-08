@@ -5,8 +5,14 @@ import { UIButton } from './ui-button';
 
 @Component({
   imports: [UIButton],
-  template: `<ui-button size="inline" variant="secondary" [disabled]="disabled"
-    [ariaHidden]="hidden" (click)="clicked()">Read <strong>more</strong></ui-button>`,
+  template: `<ui-button
+    size="inline"
+    variant="secondary"
+    [disabled]="disabled"
+    [ariaHidden]="hidden"
+    (click)="clicked()"
+    >Read <strong>more</strong></ui-button
+  >`,
 })
 class InlineHost {
   disabled = false;
@@ -82,7 +88,11 @@ describe('UIButton', () => {
   });
 
   it('ignores loading on secondary buttons but still respects disabled', () => {
-    const fixture = render(UIButton, { ariaLabel: 'Action', variant: 'secondary', isLoading: true });
+    const fixture = render(UIButton, {
+      ariaLabel: 'Action',
+      variant: 'secondary',
+      isLoading: true,
+    });
     const button = shadow(fixture).querySelector('ion-button')!;
     expect(shadow(fixture).querySelector('ion-spinner')).toBeNull();
     expect(button.disabled).toBe(false);

@@ -38,11 +38,15 @@ This will compile your project and store the build artifacts in the `dist/` dire
 
 ## Running unit tests
 
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+The unit tests run directly against the library sources in memory and do not build or modify
+`dist/ui-kit`.
 
 ```bash
-ng test
+npm test
 ```
+
+Use `npm run test:watch` during development, `npm run test:coverage` for the HTML and LCOV
+reports in `coverage/`, and `npm run test:typecheck` to validate the test TypeScript sources.
 
 ## Running end-to-end tests
 
