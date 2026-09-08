@@ -1,4 +1,7 @@
 on:
+  push:
+    branches:
+      - main
   pull_request:
     types: [opened, synchronize, reopened]
 
@@ -23,6 +26,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.BEP_GITHUB_TOKEN }}
       - name: Test and coverage
         run: npm run test:coverage
+      - name: Verify coverage report
+        run: test -s coverage/lcov.info
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v7
         env:

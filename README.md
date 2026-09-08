@@ -98,15 +98,9 @@ file naming and variant conventions.
 Pull requests run unit tests, generate the LCOV report, and execute the SonarQube Cloud scanner
 through [the test and coverage workflow](./.github/workflows/test-and-coverage.yml).
 
-The two Sonar configuration files belong to different analysis modes:
-
-- `sonar-project.properties` is read by the CI-based Sonar scanner and configures the project key
-  and LCOV report.
-- `.sonarcloud.properties` is read only by SonarQube Cloud Automatic Analysis.
-
-Only one Sonar analysis mode should be active for the project. When using the scanner configured in
-the GitHub workflow, CI analysis settings and exclusions must be defined in
-`sonar-project.properties`.
+The CI scanner reads `sonar-project.properties`, which defines the source scope, analysis
+exclusions, and the LCOV report generated in `coverage/lcov.info`. Automatic Analysis must remain
+disabled in SonarQube Cloud while this workflow is active.
 
 ## Publishing
 
@@ -122,5 +116,5 @@ package reference.
 
 ## Continuous integration
 
-- Pull requests run tests, coverage, and SonarQube Cloud checks.
+- Pull requests and pushes to `main` run tests, coverage, and SonarQube Cloud checks.
 - Pushes to `main` build and deploy Storybook to GitHub Pages.
