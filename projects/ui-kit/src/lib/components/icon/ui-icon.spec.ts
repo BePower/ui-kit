@@ -39,7 +39,7 @@ describe('UIIcon', () => {
     loaders.noFill.mockReturnValueOnce(pending.promise);
     configureComponent(UIIcon);
     const fixture = TestBed.createComponent(UIIcon);
-    setInputs(fixture, { name: 'arrow', fill: 'no-fill', size: '40', color: 'green' });
+    setInputs(fixture, { name: 'arrow', fill: 'no-fill', size: '32', color: 'green' });
     fixture.detectChanges();
     expect(shadow(fixture).querySelector('ion-icon')).toBeNull();
     pending.resolve('data:image/svg+xml,arrow');
@@ -48,7 +48,7 @@ describe('UIIcon', () => {
     const icon = shadow(fixture).querySelector('ion-icon')!;
     expect(icon.src).toBe('data:image/svg+xml,arrow');
     expect(icon.color).toBe('green');
-    expect(icon.classList).toContain('size-40');
+    expect(icon.classList).toContain('size-32');
     expect(icon.getAttribute('aria-hidden')).toBe('true');
   });
 

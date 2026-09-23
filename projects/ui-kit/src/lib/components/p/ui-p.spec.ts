@@ -31,4 +31,10 @@ describe('UIP', () => {
       expect(paragraph.hasAttribute('aria-hidden')).toBe(false);
     },
   );
+
+  it.each(['start', 'center', 'end'] as const)('applies the %s text alignment', (align) => {
+    const fixture = render(UIP, { align });
+    const paragraph = shadow(fixture).querySelector('p')!;
+    expect(paragraph.classList.contains(`align-${align}`)).toBe(true);
+  });
 });

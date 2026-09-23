@@ -55,6 +55,7 @@ function createServices() {
     screenState: signal(false),
     screenStateKnown: signal(true),
     focus: vi.fn(() => vi.fn()),
+    registerPageFocusTarget: vi.fn((_target: () => HTMLElement | undefined) => vi.fn()),
   };
   const statusBar = {
     setStatusBarStyleLight: vi.fn(async () => undefined),
@@ -356,6 +357,23 @@ describe('UIPage', () => {
     expect(() => fixture.componentInstance.ionViewDidEnter()).not.toThrow();
     expect(services.screenReader.focus).not.toHaveBeenCalled();
     expect(services.statusBar.setStatusBarStyleLight).toHaveBeenCalledOnce();
+  });
+
+  it('registers the current page landmark and releases ownership on re-entry, leave and destroy', () => {
+    const services = createServices();
+    const unregister = vi.fn();
+    const register = vi.fn((_target: () => HTMLElement | undefined) => unregister);
+    services.screenReader.registerPageFocusTarget = register;
+    const { fixture, root } = createPage({ hasHeader: true, title: 'Title' }, services);
+    fixture.componentInstance.ionViewDidEnter();
+    expect(register.mock.calls[0][0]()).toBe(root.querySelector('ion-title span'));
+    fixture.componentInstance.ionViewDidEnter();
+    expect(unregister).toHaveBeenCalledTimes(1);
+    fixture.componentInstance.ionViewWillLeave();
+    expect(unregister).toHaveBeenCalledTimes(2);
+    fixture.componentInstance.ionViewDidEnter();
+    fixture.destroy();
+    expect(unregister).toHaveBeenCalledTimes(3);
   });
 
   it('executes configured header actions and forwards disabled state', () => {

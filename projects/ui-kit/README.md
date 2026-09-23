@@ -5,6 +5,7 @@ Angular UI library for BePower design system components.
 ## Documentation
 
 - [UI Elements Guide](./docs/ui-elements.md)
+- [Bottom sheet (programmatic)](./docs/components/ui-bottom-sheet.md)
 - [Legacy content migration](./docs/legacy-content.md)
 - [UIButton](./docs/components/ui-button.md)
 - [UICol](./docs/components/ui-col.md)

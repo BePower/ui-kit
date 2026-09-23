@@ -1,0 +1,34 @@
+@use 'colors' as colors;
+@use 'sizes' as sizes;
+
+// ModalController mounts overlays at app root, outside the consumer component styles.
+ion-modal.ui-kit-bottom-sheet {
+  --height: auto;
+  --max-height: calc(
+    100% - var(--ion-modal-offset-top, var(--ion-safe-area-top, env(safe-area-inset-top, 0px)))
+  );
+  --border-radius: #{sizes.$size-240} #{sizes.$size-240} 0 0;
+  --background: #{colors.$color-background-white};
+
+  &::part(content) {
+    display: flex;
+    flex-direction: column;
+    border-radius: #{sizes.$size-240} #{sizes.$size-240} 0 0;
+    overflow: hidden;
+  }
+
+  // ModalController marks the consumer component as `.ion-page`. With an auto-height modal,
+  // Ionic's absolute page positioning breaks the flex chain used by ion-content and ion-footer.
+  > .ion-page {
+    position: relative;
+    display: flex;
+    flex: 1 1 auto;
+    inline-size: 100%;
+    min-block-size: 0;
+    max-block-size: calc(
+      100dvh - var(--ion-modal-offset-top, var(--ion-safe-area-top, env(safe-area-inset-top, 0px)))
+    );
+    contain: none;
+    overflow: hidden;
+  }
+}

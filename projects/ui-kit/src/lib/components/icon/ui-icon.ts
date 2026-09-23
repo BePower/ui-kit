@@ -36,7 +36,7 @@ export class UIIcon {
   color = input<TextColor>();
   iconSrc = signal<string | null>(null);
   showIcon = signal(false);
-  size = input<'16' | '24' | '36' | '40' | '48'>('24');
+  size = input<'16' | '24' | '32' | '36' | '40' | '48'>('24');
   fill = input<IconVariant>('fill');
 
   constructor() {
