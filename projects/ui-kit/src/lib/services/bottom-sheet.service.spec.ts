@@ -46,8 +46,8 @@ describe('UIBottomSheetService', () => {
 
   it('presents an accessible sheet and resolves its dismissal result', async () => {
     const { service, create, modal, dismissal } = setup();
-    const result = service.open<string>(options);
-    await vi.waitFor(() => expect(modal.present).toHaveBeenCalledOnce());
+    const handle = await service.present<string>(options);
+    expect(modal.present).toHaveBeenCalledOnce();
     const config = create.mock.calls[0][0];
     expect(config.component).toBe(ConsumerContent);
     expect(config.htmlAttributes).toBeUndefined();
@@ -68,27 +68,54 @@ describe('UIBottomSheetService', () => {
     await ref.cancel();
     expect(modal.dismiss).toHaveBeenCalledWith(undefined, 'cancel');
     dismissal.resolve({ data: 'done', role: 'confirm' });
-    expect(await result).toEqual({ data: 'done', role: 'confirm' });
+    await expect(handle.onDidDismiss()).resolves.toEqual({ data: 'done', role: 'confirm' });
     expect(modal.remove).toHaveBeenCalledOnce();
     expect(() => injector.get(UIBottomSheetRef)).toThrow();
+  });
+
+  it('returns an external handle as soon as the sheet is presented', async () => {
+    const { service, modal, dismissal } = setup();
+    const handle = await service.present<string>(options);
+    expect(modal.present).toHaveBeenCalledOnce();
+
+    await handle.close('external');
+    await handle.cancel();
+    expect(modal.dismiss).toHaveBeenNthCalledWith(1, 'external', 'confirm');
+    expect(modal.dismiss).toHaveBeenNthCalledWith(2, undefined, 'cancel');
+
+    dismissal.resolve({ data: 'external', role: 'confirm' });
+    await expect(handle.onDidDismiss()).resolves.toEqual({
+      data: 'external',
+      role: 'confirm',
+    });
+    expect(modal.remove).toHaveBeenCalledOnce();
+  });
+
+  it('propagates dismissal failures through the external handle', async () => {
+    const { service, modal, dismissal } = setup();
+    const handle = await service.present(options);
+    const failure = new Error('dismissal failed');
+    dismissal.reject(failure);
+    await expect(handle.onDidDismiss()).rejects.toBe(failure);
+    expect(modal.remove).toHaveBeenCalledOnce();
   });
 
   it('forwards inputs, backdrop preference and consumer-scoped providers', async () => {
     const { service, create, modal, dismissal } = setup();
     const parent = Injector.create({ providers: [{ provide: 'context', useValue: 'consumer' }] });
-    const result = service.open({
+    const handle = await service.present({
       ...options,
       injector: parent,
       componentProps: { message: 'Hello' },
       backdropDismiss: true,
     });
-    await vi.waitFor(() => expect(modal.present).toHaveBeenCalledOnce());
+    expect(modal.present).toHaveBeenCalledOnce();
     const config = create.mock.calls[0][0];
     expect(config.componentProps).toEqual({ message: 'Hello' });
     expect(config.injector.get('context')).toBe('consumer');
     expect(config.backdropDismiss).toBe(true);
     dismissal.resolve({ role: 'backdrop' });
-    await result;
+    await handle.onDidDismiss();
     expect(parent.get('context')).toBe('consumer');
     parent.destroy();
   });
@@ -101,17 +128,17 @@ describe('UIBottomSheetService', () => {
         expect(modal.remove).toHaveBeenCalledOnce();
         return vi.fn();
       });
-    const result = service.open(options);
-    await vi.waitFor(() => expect(modal.present).toHaveBeenCalledOnce());
+    const handle = await service.present(options);
+    expect(modal.present).toHaveBeenCalledOnce();
     expect(restore).not.toHaveBeenCalled();
     dismissal.resolve({ role: 'cancel' });
-    await result;
+    await handle.onDidDismiss();
     expect(restore).toHaveBeenCalledOnce();
   });
 
   it.each(['', '  '])('rejects an empty close label %j', async (closeLabel) => {
     const { service, create } = setup();
-    await expect(service.open({ ...options, closeLabel })).rejects.toThrow(
+    await expect(service.present({ ...options, closeLabel })).rejects.toThrow(
       'closeLabel is required',
     );
     expect(create).not.toHaveBeenCalled();
@@ -120,7 +147,7 @@ describe('UIBottomSheetService', () => {
   it('cleans up the overlay and injector when presentation fails', async () => {
     const { service, create, modal } = setup();
     modal.present.mockRejectedValue(new Error('presentation failed'));
-    await expect(service.open(options)).rejects.toThrow('presentation failed');
+    await expect(service.present(options)).rejects.toThrow('presentation failed');
     expect(modal.remove).toHaveBeenCalledOnce();
     expect(() => create.mock.calls[0][0].injector.get(UIBottomSheetRef)).toThrow();
   });
@@ -136,7 +163,8 @@ describe('UIBottomSheetService', () => {
       listener();
       dismissal.resolve({ role: 'cancel' });
     });
-    await expect(service.open(options)).resolves.toEqual({ role: 'cancel' });
+    const handle = await service.present(options);
+    await expect(handle.onDidDismiss()).resolves.toEqual({ role: 'cancel' });
     expect(focus).not.toHaveBeenCalled();
     expect(modal.removeEventListener).toHaveBeenCalledWith(
       'ionModalWillDismiss',
@@ -150,19 +178,53 @@ describe('UIBottomSheetService', () => {
     vi.spyOn(TestBed.inject(ScreenReaderService), 'focusCurrentPage').mockReturnValue(
       cancelRestore,
     );
-    const first = service.open(options);
-    await vi.waitFor(() => expect(modal.present).toHaveBeenCalledOnce());
+    const first = await service.present(options);
+    expect(modal.present).toHaveBeenCalledOnce();
     dismissal.resolve({ role: 'cancel' });
-    await first;
-    await service.open(options);
+    await first.onDidDismiss();
+    await (await service.present(options)).onDidDismiss();
     expect(cancelRestore).toHaveBeenCalledOnce();
   });
 
   it('cleans up the injector when overlay creation fails', async () => {
     const { service, create } = setup();
     create.mockRejectedValue(new Error('creation failed'));
-    await expect(service.open(options)).rejects.toThrow('creation failed');
+    await expect(service.present(options)).rejects.toThrow('creation failed');
     expect(() => create.mock.calls[0][0].injector.get(UIBottomSheetRef)).toThrow();
+  });
+
+  it('queues a dismissal requested before modal creation completes', async () => {
+    const { service, create, modal, dismissal } = setup();
+    const creation = deferred<typeof modal>();
+    create.mockReturnValue(creation.promise);
+    const presentation = service.present<string>(options);
+    await vi.waitFor(() => expect(create).toHaveBeenCalledOnce());
+    const ref = create.mock.calls[0][0].injector.get(UIBottomSheetRef<string>);
+    const earlyDismissal = ref.close('early');
+    expect(modal.dismiss).not.toHaveBeenCalled();
+
+    creation.resolve(modal);
+    const handle = await presentation;
+    await expect(earlyDismissal).resolves.toBe(true);
+    expect(modal.dismiss).toHaveBeenCalledWith('early', 'confirm');
+    dismissal.resolve({ data: 'early', role: 'confirm' });
+    await expect(handle.onDidDismiss()).resolves.toEqual({ data: 'early', role: 'confirm' });
+  });
+
+  it('rejects queued and subsequent dismissals when modal creation fails', async () => {
+    const { service, create } = setup();
+    const creation = deferred<never>();
+    create.mockReturnValue(creation.promise);
+    const presentation = service.present(options);
+    await vi.waitFor(() => expect(create).toHaveBeenCalledOnce());
+    const ref = create.mock.calls[0][0].injector.get(UIBottomSheetRef);
+    const queuedDismissal = ref.cancel();
+    const failure = new Error('creation failed');
+    creation.reject(failure);
+
+    await expect(queuedDismissal).rejects.toBe(failure);
+    await expect(presentation).rejects.toBe(failure);
+    await expect(ref.cancel()).rejects.toBe(failure);
   });
 });
 

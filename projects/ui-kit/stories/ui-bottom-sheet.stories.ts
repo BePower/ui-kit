@@ -5,6 +5,7 @@ import { UIBottomSheet } from '../src/lib/components/bottom-sheet/ui-bottom-shee
 import { UIButton } from '../src/lib/components/button/ui-button';
 import { UIP } from '../src/lib/components/p/ui-p';
 import { UITitle } from '../src/lib/components/title/ui-title';
+import { UIBottomSheetHandle } from '../src/lib/services/bottom-sheet-handle';
 import { UIBottomSheetService } from '../src/lib/services/bottom-sheet.service';
 import { UIBottomSheetRef } from '../src/lib/services/bottom-sheet-ref';
 
@@ -14,7 +15,7 @@ class BottomSheetPlaygroundState {
   readonly paragraphCount = signal(1);
   readonly hasFooter = signal(true);
   readonly showCloseButton = signal(true);
-  activeSheet?: UIBottomSheetRef<string>;
+  activeSheet?: UIBottomSheetHandle<string>;
 }
 
 @Component({
@@ -47,10 +48,6 @@ class ExampleSheetContent {
 
   get paragraphs(): string[] {
     return Array.from({ length: this.state.paragraphCount() }, () => this.state.body());
-  }
-
-  ngOnInit(): void {
-    this.state.activeSheet = this.sheet;
   }
 }
 
@@ -124,12 +121,17 @@ class BottomSheetExample {
     if (this.opened()) return;
     this.opened.set(true);
     try {
-      const result = await this.sheets.open<string>({
+      const sheet = await this.sheets.present<string>({
         component: ExampleSheetContent,
         injector: this.injector,
         closeLabel: this.closeLabel,
         backdropDismiss: this.backdropDismiss,
       });
+      this.state.activeSheet = sheet;
+      if (this.destroyRef.destroyed) {
+        await sheet.cancel();
+      }
+      const result = await sheet.onDidDismiss();
       this.result.set(`Dismissed: ${result.role}; result: ${result.data ?? 'none'}`);
     } catch (error) {
       this.result.set(error instanceof Error ? error.message : String(error));

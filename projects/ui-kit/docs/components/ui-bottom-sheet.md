@@ -12,7 +12,7 @@ import { UIBottomSheet, UIBottomSheetRef, UIBottomSheetService } from '@bepower/
 @Component({
   imports: [UIBottomSheet],
   template: `<ui-bottom-sheet hasFooter>
-    <h2>{{ title() }}</h2>
+    <h2>{{ title }}</h2>
     <button footer (click)="sheet.close(true)">Confirm</button>
   </ui-bottom-sheet>`,
 })
@@ -23,18 +23,39 @@ export class NoticeContent {
 
 // In the consumer component:
 // private readonly sheets = inject(UIBottomSheetService);
-// const result = await this.sheets.open<boolean>({
+// const sheet = await this.sheets.present<boolean>({
 //   component: NoticeContent,
 //   componentProps: { title: 'Important information' },
 //   closeLabel: 'Close notice',
 // });
+// const result = await sheet.onDidDismiss();
 // if (result.role === 'confirm' && result.data) { ... }
 ```
 
-`open()` resolves after dismissal with `{ data, role }`. Content calls `sheet.close(data)`
-to confirm or `sheet.cancel()` to cancel. Each reference dismisses its own overlay, including
-when multiple sheets are open. The close button returns the `cancel` role. Ionic supplies
-the role for native back/Escape or backdrop dismissal.
+`present()` resolves as soon as presentation completes and returns an instance-scoped handle.
+Content can use its injected `UIBottomSheetRef`, while the caller can use the returned handle to
+dismiss that specific bottom sheet:
+
+```ts
+const sheet = await this.sheets.present<boolean>({
+  component: NoticeContent,
+  componentProps: { title: 'Important information' },
+  closeLabel: 'Close notice',
+});
+
+if (flowCancelled) {
+  await sheet.cancel();
+} else {
+  await sheet.close(true);
+}
+
+const result = await sheet.onDidDismiss();
+```
+
+`close(data)` uses the `confirm` role and `cancel()` uses the `cancel` role. The handle controls
+only its own bottom sheet. `onDidDismiss()` always returns the same dismissal promise. The close
+button returns the `cancel` role; Ionic supplies the role for native back/Escape or backdrop
+dismissal. Overlay, injector, and focus cleanup remain automatic.
 
 Ionic assigns `componentProps` directly to properties of the content component instance. Use
 decorator-based `@Input` properties for values supplied this way: assigning a primitive directly
@@ -55,7 +76,7 @@ hide the close action from its template:
 ```
 
 This hides only the button; header spacing is preserved. `closeLabel` is still required by
-`open()`, including when the button is initially hidden. Back/Escape and the configured backdrop
+`present()`, including when the button is initially hidden. Back/Escape and the configured backdrop
 dismissal behavior are unchanged.
 
 The UI Kit shell uses Shadow DOM encapsulation; consumer components retain their own
@@ -69,7 +90,7 @@ heading or configured `ariaLabel` is injected. The consumer supplies meaningful 
 directly in the body. The close button remains accessible in the header, and the footer remains
 outside the initial focus target. Pending focus is cancelled when dismissal starts.
 
-Migration: remove `ariaLabel` from `UIBottomSheetService.open()` options. The former label no
+Migration: remove `ariaLabel` from `UIBottomSheetService.present()` options. The former label no
 longer names the Ionic dialog; focusing its content does not itself provide a dialog name.
 
 After dismissal, focus returns to the title registered by the currently entered `UIPage`.
