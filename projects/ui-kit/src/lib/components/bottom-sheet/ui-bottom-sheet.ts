@@ -170,11 +170,13 @@ export class UIBottomSheet {
     const safeAreaTop = Number.parseFloat(
       getComputedStyle(document.documentElement).getPropertyValue('--ion-safe-area-top'),
     );
-    const topInset = Number.isFinite(modalOffsetTop)
-      ? modalOffsetTop
-      : Number.isFinite(safeAreaTop)
-        ? safeAreaTop
-        : 0;
+    let topInset = 0;
+    if (Number.isFinite(safeAreaTop)) {
+      topInset = safeAreaTop;
+    }
+    if (Number.isFinite(modalOffsetTop)) {
+      topInset = modalOffsetTop;
+    }
     const maximumHeight = window.innerHeight - topInset;
     const height = Math.min(
       maximumHeight,
