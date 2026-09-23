@@ -6,7 +6,7 @@ import { UI_BOTTOM_SHEET_CONFIG } from './bottom-sheet-config';
 import { UIBottomSheet } from './ui-bottom-sheet';
 
 describe('UIBottomSheet layout', () => {
-  function setup() {
+  function setup(options: { mutationObserver?: boolean } = {}) {
     let resize!: () => void;
     let mutate!: () => void;
     const observer = { observe: vi.fn(), disconnect: vi.fn() };
@@ -20,15 +20,19 @@ describe('UIBottomSheet layout', () => {
         }
       },
     );
-    vi.stubGlobal(
-      'MutationObserver',
-      class {
-        constructor(callback: () => void) {
-          mutate = callback;
-          return mutations;
-        }
-      },
-    );
+    if (options.mutationObserver === false) {
+      vi.stubGlobal('MutationObserver', undefined);
+    } else {
+      vi.stubGlobal(
+        'MutationObserver',
+        class {
+          constructor(callback: () => void) {
+            mutate = callback;
+            return mutations;
+          }
+        },
+      );
+    }
     vi.stubGlobal('innerHeight', 800);
     const modal = document.createElement('div');
     modal.className = 'test-bottom-sheet-overlay';
@@ -82,6 +86,13 @@ describe('UIBottomSheet layout', () => {
     fixture.componentRef.setInput('showCloseButton', '');
     fixture.detectChanges();
     expect(root.querySelector('ion-header ui-button')).not.toBeNull();
+  });
+
+  it('keeps rendering when MutationObserver is unavailable', () => {
+    const { root, observer, modal } = setup({ mutationObserver: false });
+    expect(root.querySelector('ion-content')).not.toBeNull();
+    expect(observer.observe).not.toHaveBeenCalled();
+    expect(modal.style.getPropertyValue('--height')).toBe('');
   });
 
   it('grows and shrinks with intrinsic content, not the scroll viewport', () => {

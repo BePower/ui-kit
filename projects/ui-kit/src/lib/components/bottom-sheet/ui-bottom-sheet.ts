@@ -4,10 +4,11 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  effect,
   ElementRef,
   inject,
   input,
-  ViewChild,
+  viewChild,
   ViewEncapsulation,
 } from '@angular/core';
 import { IonModalToken } from '@ionic/angular/common';
@@ -73,27 +74,41 @@ export class UIBottomSheet {
   protected readonly sheetRef = inject(UIBottomSheetRef);
   private readonly modal = inject(IonModalToken, { optional: true });
   private readonly destroyRef = inject(DestroyRef);
-  private resizeObserver?: ResizeObserver;
-  private mutationObserver?: MutationObserver;
+  private readonly resizeObserver =
+    typeof ResizeObserver === 'undefined'
+      ? undefined
+      : new ResizeObserver(() => this.updateHeight());
+  private readonly mutationObserver =
+    typeof MutationObserver === 'undefined'
+      ? undefined
+      : new MutationObserver(() => {
+          this.observeProjectedContent();
+          this.updateHeight();
+        });
+  private readonly header = viewChild.required<unknown, ElementRef<HTMLElement>>('header', {
+    read: ElementRef,
+  });
+  private readonly contentSurface = viewChild.required<unknown, ElementRef<HTMLElement>>(
+    'contentSurface',
+    { read: ElementRef },
+  );
+  private readonly footer = viewChild<unknown, ElementRef<HTMLElement>>('footer', {
+    read: ElementRef,
+  });
   private appliedHeight = 0;
-
-  @ViewChild('header', { read: ElementRef, static: true }) private header!: ElementRef<HTMLElement>;
-  @ViewChild('contentSurface', { read: ElementRef, static: true })
-  private contentSurface!: ElementRef<HTMLElement>;
-  private footer?: ElementRef<HTMLElement>;
-  @ViewChild('footer', { read: ElementRef })
-  private set footerElement(footer: ElementRef<HTMLElement> | undefined) {
-    this.footer = footer;
-    if (this.resizeObserver) {
-      this.observeProjectedContent();
-      this.updateHeight();
-    }
-  }
+  private isHeightTrackingActive = false;
 
   constructor() {
+    effect(() => {
+      this.footer();
+      if (this.isHeightTrackingActive) {
+        this.observeProjectedContent();
+        this.updateHeight();
+      }
+    });
     afterNextRender(() => {
       this.initializeDynamicHeight();
-      this.sheetRef.registerInitialFocusTarget(this.contentSurface.nativeElement);
+      this.sheetRef.registerInitialFocusTarget(this.contentSurface().nativeElement);
     });
     this.destroyRef.onDestroy(() => {
       this.sheetRef.clearInitialFocusTarget();
@@ -103,17 +118,13 @@ export class UIBottomSheet {
   }
 
   private initializeDynamicHeight(): void {
-    if (!this.modal || typeof ResizeObserver === 'undefined') {
+    if (!this.modal || !this.resizeObserver || !this.mutationObserver) {
       return;
     }
 
     // Measure the intrinsic surface, not Ionic's scroll viewport. No asynchronous
     // initialization is needed, so observers cannot outlive a destroyed view.
-    this.resizeObserver = new ResizeObserver(this.updateHeight);
-    this.mutationObserver = new MutationObserver(() => {
-      this.observeProjectedContent();
-      this.updateHeight();
-    });
+    this.isHeightTrackingActive = true;
     this.observeProjectedContent();
 
     window.addEventListener('resize', this.updateHeight);
@@ -122,14 +133,15 @@ export class UIBottomSheet {
   }
 
   private observeProjectedContent(): void {
-    const content = this.contentSurface.nativeElement;
+    const content = this.contentSurface().nativeElement;
 
     // Release removed descendants and rebuild subscriptions after projection changes.
     this.resizeObserver!.disconnect();
     this.mutationObserver!.disconnect();
     this.resizeObserver!.observe(content);
-    this.resizeObserver!.observe(this.header.nativeElement);
-    if (this.footer) this.resizeObserver!.observe(this.footer.nativeElement);
+    this.resizeObserver!.observe(this.header().nativeElement);
+    const footer = this.footer();
+    if (footer) this.resizeObserver!.observe(footer.nativeElement);
     this.observeTree(content);
   }
 
@@ -150,7 +162,7 @@ export class UIBottomSheet {
 
   private readonly updateHeight = (): void => {
     const chromeHeight =
-      this.header.nativeElement.offsetHeight + (this.footer?.nativeElement.offsetHeight ?? 0);
+      this.header().nativeElement.offsetHeight + (this.footer()?.nativeElement.offsetHeight ?? 0);
     const minimumHeight = window.innerHeight * 0.5;
     const modalOffsetTop = Number.parseFloat(
       getComputedStyle(this.modal!).getPropertyValue('--ion-modal-offset-top'),
@@ -166,7 +178,7 @@ export class UIBottomSheet {
     const maximumHeight = window.innerHeight - topInset;
     const height = Math.min(
       maximumHeight,
-      Math.max(minimumHeight, chromeHeight + this.contentSurface.nativeElement.scrollHeight),
+      Math.max(minimumHeight, chromeHeight + this.contentSurface().nativeElement.scrollHeight),
     );
 
     if (height !== this.appliedHeight) {
