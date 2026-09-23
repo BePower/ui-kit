@@ -316,7 +316,10 @@ export class UIPage
 
   ngAfterViewInit(): void {
     this.bindIonicLifecycleEvents();
-    this.destroyRef.onDestroy(() => this.cancelPageTitleFocus());
+    this.destroyRef.onDestroy(() => {
+      this.cancelPageTitleFocus();
+      this.unregisterPageFocusTarget?.();
+    });
     void this.initializeScrollElevations();
   }
 
@@ -335,6 +338,11 @@ export class UIPage
     this.updateStatusBarStyle();
     this.cancelPageTitleFocus();
 
+    this.unregisterPageFocusTarget?.();
+    this.unregisterPageFocusTarget = this.screenReader.registerPageFocusTarget(
+      () => this.pageTitle()?.nativeElement,
+    );
+
     const pageTitle = this.pageTitle()?.nativeElement;
 
     if (pageTitle) {
@@ -347,6 +355,8 @@ export class UIPage
    */
   ionViewWillLeave(): void {
     this.cancelPageTitleFocus();
+    this.unregisterPageFocusTarget?.();
+    this.unregisterPageFocusTarget = undefined;
   }
 
   /**
@@ -503,4 +513,5 @@ export class UIPage
   private statusBar = inject(StatusBarService);
   private scrollElement?: HTMLElement;
   private cancelPageTitleFocusRequest?: () => void;
+  private unregisterPageFocusTarget?: () => void;
 }

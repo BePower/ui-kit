@@ -14,14 +14,22 @@ const meta = {
   },
   render: (args) => ({
     props: args,
-    template: `<ui-p [ariaHidden]="ariaHidden">Questo è un paragrafo con tipografia body-m.</ui-p>`,
+    template: `<ui-p [align]="align" [ariaHidden]="ariaHidden">Questo è un paragrafo con tipografia body-m.</ui-p>`,
   }),
+  argTypes: {
+    align: {
+      control: 'select',
+      options: ['start', 'center', 'end'],
+    },
+  },
 } satisfies Meta<UIP>;
 
 export default meta;
 type Story = StoryObj<UIP>;
 
-export const Default: Story = {};
+export const Default: Story = {
+  args: { align: 'start' },
+};
 
 export const InlineTypography: Story = {
   render: () => ({

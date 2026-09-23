@@ -1,0 +1,177 @@
+import {
+  afterNextRender,
+  booleanAttribute,
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  ElementRef,
+  inject,
+  input,
+  ViewChild,
+  ViewEncapsulation,
+} from '@angular/core';
+import { IonModalToken } from '@ionic/angular/common';
+import {
+  IonButtons,
+  IonContent,
+  IonFooter,
+  IonHeader,
+  IonToolbar,
+} from '@ionic/angular/standalone';
+import { UIBottomSheetRef } from '../../services/bottom-sheet-ref';
+import { UIButton } from '../button/ui-button';
+import { UIIcon } from '../icon/ui-icon';
+import { UI_BOTTOM_SHEET_CONFIG } from './bottom-sheet-config';
+
+/** Layout shell used by components opened through UIBottomSheetService. */
+@Component({
+  selector: 'ui-bottom-sheet',
+  standalone: true,
+  imports: [IonButtons, IonContent, IonFooter, IonHeader, IonToolbar, UIButton, UIIcon],
+  template: `
+    <div class="ion-page">
+      <ion-header #header class="ion-no-border" [translucent]="true">
+        <ion-toolbar class="header-toolbar">
+          @if (showCloseButton()) {
+            <ion-buttons slot="end">
+              <ui-button
+                variant="secondary"
+                size="min-icon"
+                [ariaLabel]="config.closeLabel"
+                (click)="sheetRef.cancel()"
+              >
+                <ui-icon name="close" fill="no-fill" color="green" size="32" />
+              </ui-button>
+            </ion-buttons>
+          }
+        </ion-toolbar>
+      </ion-header>
+
+      <ion-content [fullscreen]="true" [forceOverscroll]="false">
+        <div #contentSurface class="content-surface" tabindex="-1">
+          <ng-content></ng-content>
+        </div>
+      </ion-content>
+
+      @if (hasFooter()) {
+        <ion-footer #footer class="ion-no-border">
+          <ion-toolbar>
+            <ng-content select="[footer]"></ng-content>
+          </ion-toolbar>
+        </ion-footer>
+      }
+    </div>
+  `,
+  styleUrl: 'ui-bottom-sheet.scss',
+  encapsulation: ViewEncapsulation.ShadowDom,
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class UIBottomSheet {
+  readonly showCloseButton = input(true, { transform: booleanAttribute });
+  readonly hasFooter = input(false, { transform: booleanAttribute });
+  protected readonly config = inject(UI_BOTTOM_SHEET_CONFIG);
+  protected readonly sheetRef = inject(UIBottomSheetRef);
+  private readonly modal = inject(IonModalToken, { optional: true });
+  private readonly destroyRef = inject(DestroyRef);
+  private resizeObserver?: ResizeObserver;
+  private mutationObserver?: MutationObserver;
+  private appliedHeight = 0;
+
+  @ViewChild('header', { read: ElementRef, static: true }) private header!: ElementRef<HTMLElement>;
+  @ViewChild('contentSurface', { read: ElementRef, static: true })
+  private contentSurface!: ElementRef<HTMLElement>;
+  private footer?: ElementRef<HTMLElement>;
+  @ViewChild('footer', { read: ElementRef })
+  private set footerElement(footer: ElementRef<HTMLElement> | undefined) {
+    this.footer = footer;
+    if (this.resizeObserver) {
+      this.observeProjectedContent();
+      this.updateHeight();
+    }
+  }
+
+  constructor() {
+    afterNextRender(() => {
+      this.initializeDynamicHeight();
+      this.sheetRef.registerInitialFocusTarget(this.contentSurface.nativeElement);
+    });
+    this.destroyRef.onDestroy(() => {
+      this.sheetRef.clearInitialFocusTarget();
+      this.resizeObserver?.disconnect();
+      this.mutationObserver?.disconnect();
+    });
+  }
+
+  private initializeDynamicHeight(): void {
+    if (!this.modal || typeof ResizeObserver === 'undefined') {
+      return;
+    }
+
+    // Measure the intrinsic surface, not Ionic's scroll viewport. No asynchronous
+    // initialization is needed, so observers cannot outlive a destroyed view.
+    this.resizeObserver = new ResizeObserver(this.updateHeight);
+    this.mutationObserver = new MutationObserver(() => {
+      this.observeProjectedContent();
+      this.updateHeight();
+    });
+    this.observeProjectedContent();
+
+    window.addEventListener('resize', this.updateHeight);
+    this.destroyRef.onDestroy(() => window.removeEventListener('resize', this.updateHeight));
+    this.updateHeight();
+  }
+
+  private observeProjectedContent(): void {
+    const content = this.contentSurface.nativeElement;
+
+    // Release removed descendants and rebuild subscriptions after projection changes.
+    this.resizeObserver!.disconnect();
+    this.mutationObserver!.disconnect();
+    this.resizeObserver!.observe(content);
+    this.resizeObserver!.observe(this.header.nativeElement);
+    if (this.footer) this.resizeObserver!.observe(this.footer.nativeElement);
+    this.observeTree(content);
+  }
+
+  private observeTree(root: ParentNode): void {
+    this.mutationObserver!.observe(root, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+
+    for (const element of Array.from(root.querySelectorAll('*'))) {
+      this.resizeObserver!.observe(element);
+      if (element.shadowRoot) {
+        this.observeTree(element.shadowRoot);
+      }
+    }
+  }
+
+  private readonly updateHeight = (): void => {
+    const chromeHeight =
+      this.header.nativeElement.offsetHeight + (this.footer?.nativeElement.offsetHeight ?? 0);
+    const minimumHeight = window.innerHeight * 0.5;
+    const modalOffsetTop = Number.parseFloat(
+      getComputedStyle(this.modal!).getPropertyValue('--ion-modal-offset-top'),
+    );
+    const safeAreaTop = Number.parseFloat(
+      getComputedStyle(document.documentElement).getPropertyValue('--ion-safe-area-top'),
+    );
+    const topInset = Number.isFinite(modalOffsetTop)
+      ? modalOffsetTop
+      : Number.isFinite(safeAreaTop)
+        ? safeAreaTop
+        : 0;
+    const maximumHeight = window.innerHeight - topInset;
+    const height = Math.min(
+      maximumHeight,
+      Math.max(minimumHeight, chromeHeight + this.contentSurface.nativeElement.scrollHeight),
+    );
+
+    if (height !== this.appliedHeight) {
+      this.appliedHeight = height;
+      this.modal!.style.setProperty('--height', `${height}px`);
+    }
+  };
+}

@@ -30,6 +30,20 @@ applies the `p-m` paragraph typography token.
 
 ## Inputs
 
+### `align`
+
+Controls the alignment of the entire paragraph.
+
+Type: `'start' | 'center' | 'end'`.
+
+Default: `'start'`.
+
+Use logical `start` and `end` values so the alignment also follows right-to-left locales.
+
+```html
+<ui-p align="center">Centered paragraph text.</ui-p>
+```
+
 ### Inline text
 
 `ui-p` owns the block semantics and default `p-m` typography. Use `ui-text` only for inline text

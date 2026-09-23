@@ -1,0 +1,65 @@
+@use '@ionic/angular/css/core.css';
+@use 'foundations/colors' as colors;
+@use 'foundations/sizes' as sizes;
+
+:host {
+  display: flex;
+  flex: 1 1 auto;
+  inline-size: 100%;
+  min-block-size: 0;
+  color: colors.$color-grey-default-grey;
+}
+
+.ion-page {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  inline-size: 100%;
+  min-block-size: 50dvh;
+  max-block-size: calc(
+    100dvh - var(--ion-modal-offset-top, var(--ion-safe-area-top, env(safe-area-inset-top, 0px)))
+  );
+}
+
+ion-content {
+  flex: 1 1 0;
+  min-block-size: 0;
+  --background: #{colors.$color-background-white};
+}
+
+ion-content::part(scroll) {
+  overscroll-behavior: contain;
+}
+
+.content-surface {
+  display: flow-root;
+}
+
+ion-toolbar {
+  --background: #{colors.$color-background-white};
+}
+
+.header-toolbar {
+  --min-height: #{sizes.$size-400};
+  --padding-start: #{sizes.$size-240};
+  --padding-end: #{sizes.$size-240};
+  --padding-top: #{sizes.$size-240};
+}
+
+.header-toolbar ion-buttons {
+  margin: 0;
+}
+
+ion-footer ion-toolbar {
+  --padding-start: #{sizes.$size-240};
+  --padding-end: #{sizes.$size-240};
+  --padding-top: #{sizes.$size-160};
+  --padding-bottom: #{sizes.$size-160};
+
+  &::part(content) {
+    display: flex;
+    flex-direction: column;
+    gap: #{sizes.$size-160};
+  }
+}

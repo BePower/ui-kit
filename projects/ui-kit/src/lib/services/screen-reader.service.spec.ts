@@ -122,6 +122,20 @@ describe('ScreenReaderService', () => {
     element.remove();
   });
 
+  it('focuses synchronously when accessibility focus is required by a modal', () => {
+    vi.spyOn(Capacitor, 'getPlatform').mockReturnValue('web');
+    const service = new ScreenReaderService();
+    const element = document.createElement('h2');
+    document.body.append(element);
+    const focus = vi.spyOn(element, 'focus');
+
+    service.focus(element, { onlyWhenEnabled: false });
+
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+    expect(screenReaderMocks.isEnabled).not.toHaveBeenCalled();
+    element.remove();
+  });
+
   it.each([false, true])(
     'does not focus when cancellation=%s prevents the request',
     async (cancel) => {
@@ -156,5 +170,166 @@ describe('ScreenReaderService', () => {
     await flush();
     expect(focus).not.toHaveBeenCalled();
     element.remove();
+  });
+});
+
+describe('screen reader focus across overlay transitions', () => {
+  function setup() {
+    vi.spyOn(Capacitor, 'getPlatform').mockReturnValue('web');
+    const frames = new Map<number, FrameRequestCallback>();
+    let frameId = 0;
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      frames.set(++frameId, callback);
+      return frameId;
+    });
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation((id) => {
+      frames.delete(id);
+    });
+    const renderFrame = () => {
+      const callbacks = Array.from(frames.values());
+      frames.clear();
+      callbacks.forEach((callback) => callback(0));
+    };
+    const host = document.createElement('div');
+    document.body.append(host);
+    const shadow = host.attachShadow({ mode: 'open' });
+    const title = document.createElement('h1');
+    title.tabIndex = -1;
+    shadow.append(title);
+    const service = new ScreenReaderService();
+    return { host, shadow, title, service, renderFrame };
+  }
+
+  it('focuses the actual heading in Shadow DOM after the view has been revealed', () => {
+    const { host, shadow, title, service, renderFrame } = setup();
+    try {
+      host.setAttribute('inert', '');
+      service.focus(title, { onlyWhenEnabled: false, afterRender: true });
+      expect(shadow.activeElement).toBeNull();
+      host.removeAttribute('inert');
+      renderFrame();
+      expect(shadow.activeElement).toBeNull();
+      renderFrame();
+      expect(shadow.activeElement).toBe(title);
+      expect(document.activeElement).toBe(host);
+    } finally {
+      host.remove();
+    }
+  });
+
+  it('cancels a pending focus when the modal closes before the next render', () => {
+    const { host, shadow, title, service, renderFrame } = setup();
+    try {
+      const cancel = service.focus(title, { onlyWhenEnabled: false, afterRender: true });
+      renderFrame();
+      cancel();
+      renderFrame();
+      expect(shadow.activeElement).toBeNull();
+    } finally {
+      host.remove();
+    }
+  });
+
+  it('restores the current page, even if the page changed while the modal was open', () => {
+    const { host, shadow, title, service, renderFrame } = setup();
+    try {
+      const oldTitle = document.createElement('h1');
+      oldTitle.tabIndex = -1;
+      shadow.append(oldTitle);
+      const unregisterOldPage = service.registerPageFocusTarget(() => oldTitle);
+      const unregisterCurrentPage = service.registerPageFocusTarget(() => title);
+      unregisterOldPage();
+      service.focusCurrentPage();
+      renderFrame();
+      renderFrame();
+      expect(shadow.activeElement).toBe(title);
+      unregisterCurrentPage();
+      title.blur();
+      service.focusCurrentPage();
+      renderFrame();
+      renderFrame();
+      expect(shadow.activeElement).toBeNull();
+    } finally {
+      host.remove();
+    }
+  });
+
+  it.each(['inert', 'hidden', 'aria-hidden'])('does not focus a page with %s', (attribute) => {
+    const { host, shadow, title, service, renderFrame } = setup();
+    try {
+      service.registerPageFocusTarget(() => title);
+      service.focusCurrentPage();
+      host.setAttribute(attribute, 'true');
+      renderFrame();
+      renderFrame();
+      expect(shadow.activeElement).toBeNull();
+    } finally {
+      host.remove();
+    }
+  });
+
+  it('does not steal focus from a modal still open above the page', () => {
+    const { host, shadow, title, service, renderFrame } = setup();
+    const modal = document.createElement('ion-modal');
+    Object.defineProperty(modal, 'presented', { value: true });
+    document.body.append(modal);
+    try {
+      service.registerPageFocusTarget(() => title);
+      service.focusCurrentPage();
+      renderFrame();
+      renderFrame();
+      expect(shadow.activeElement).toBeNull();
+    } finally {
+      modal.remove();
+      host.remove();
+    }
+  });
+
+  it.each(['display: none', 'visibility: hidden'])(
+    'skips a visually hidden ancestor: %s',
+    (style) => {
+      const { host, shadow, title, service } = setup();
+      try {
+        host.setAttribute('style', style);
+        service.focus(title, { onlyWhenEnabled: false });
+        expect(shadow.activeElement).toBeNull();
+      } finally {
+        host.remove();
+      }
+    },
+  );
+
+  it('returns a safe cancellation function without a registered page target', () => {
+    const { host, service } = setup();
+    try {
+      expect(() => service.focusCurrentPage()()).not.toThrow();
+      service.registerPageFocusTarget(() => undefined);
+      expect(() => service.focusCurrentPage()()).not.toThrow();
+    } finally {
+      host.remove();
+    }
+  });
+
+  it('allows focus only inside the highest active focus-trapping overlay', () => {
+    const { host, shadow, title, service } = setup();
+    const lower = document.createElement('ion-modal');
+    const upper = document.createElement('ion-modal');
+    Object.defineProperty(lower, 'presented', { value: true });
+    Object.defineProperty(upper, 'presented', { value: true });
+    lower.style.zIndex = '100';
+    upper.style.zIndex = '200';
+    document.body.append(upper, lower);
+    try {
+      lower.append(host);
+      service.focus(title, { onlyWhenEnabled: false });
+      expect(shadow.activeElement).toBeNull();
+      upper.append(host);
+      service.focus(title, { onlyWhenEnabled: false });
+      expect(shadow.activeElement).toBe(title);
+    } finally {
+      host.remove();
+      lower.remove();
+      upper.remove();
+    }
   });
 });
