@@ -11,7 +11,8 @@ Dal workspace, dopo il normale `npm ci`:
 node scripts/build-figma-plugin.mjs
 ```
 
-1. Apri **Figma Desktop**, preferibilmente un file vuoto per la prima prova.
+1. Apri **Figma Desktop**, preferibilmente un file vuoto per la prima prova, in modalità
+   **Design**, non Dev Mode. Servono permessi di modifica sul file.
 2. Assicurati che **Source Sans 3 Regular e SemiBold** siano disponibili in Figma.
    È la famiglia dichiarata in `foundations/base.scss`; il plugin non usa un font sostitutivo.
 3. Apri Plugins → Development → Import plugin from manifest.
@@ -28,6 +29,20 @@ Le istanze esistenti continuano a riferirsi agli stessi componenti. Il nodo Labe
 testo vengono mantenuti; i vettori dell'icona vengono invece ricostruiti, quindi eventuali override
 sui loro livelli interni non sono garantiti. Le voci rimosse dal repository non vengono eliminate
 automaticamente da Figma.
+
+## Errore «The manifest editorType does not include "dev"»
+
+Il plugin è stato avviato in **Dev Mode**, mentre il manifest dichiara `editorType: ["figma"]`.
+Questo è intenzionale: il generatore deve creare e aggiornare componenti, variabili e stili
+nell'editor Design, non nella modalità di ispezione per sviluppatori.
+
+Disattiva Dev Mode con il relativo interruttore nell'interfaccia Figma, torna alla modalità
+Design e avvia di nuovo il plugin da Plugins → Development. La voce **Development** del menu
+indica un plugin locale e non richiede Dev Mode. Se non puoi modificare il file, richiedi
+i permessi necessari oppure prova in un nuovo file modificabile.
+
+Non aggiungere `"dev"` al manifest per aggirare l'errore: non abilita la generazione
+di componenti in Dev Mode. Non occorre rigenerare il plugin per questo messaggio.
 
 ## Copertura del pilota
 
