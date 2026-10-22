@@ -13,6 +13,7 @@
     "storybook": "ng run ui-kit:storybook",
     "storybook:build": "ng run ui-kit:build-storybook",
     "icons:import": "node ./scripts/import-icons.mjs",
+    "pictograms:import": "node ./scripts/import-pictograms.mjs",
     "publish": "npm publish ./dist/ui-kit"
   },
   "repository": {

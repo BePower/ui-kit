@@ -10,6 +10,21 @@ typography, spacing, sizes, and shadows.
 - [Component documentation](./projects/ui-kit/docs/ui-elements.md)
 - [Interactive Storybook](https://app-ui-kit.bepower.tech)
 
+## Working with coding agents
+
+Shared development instructions live in [projects/ui-kit/AGENTS.md](./projects/ui-kit/AGENTS.md).
+They are versioned with the library so contributors and coding tools can follow the same rules.
+
+Instruction-loading behavior varies between coding agents and integrations. Before working on the
+library, ensure the agent has loaded the applicable `AGENTS.md` files. When starting from the
+repository root, or whenever automatic discovery is uncertain, explicitly tell the agent:
+
+> Before working on the library, read and follow `projects/ui-kit/AGENTS.md`.
+
+This README documents the workflow but does not configure instruction loading for any specific
+tool. After changing an instruction file, start a new session or ask the active agent to read it
+again.
+
 ## Requirements
 
 - Node.js `v24.17.0`, defined in [`.nvmrc`](./.nvmrc)
@@ -92,6 +107,18 @@ npm run icons:import
 
 See the [icon importing guide](./projects/ui-kit/src/lib/components/icon/IMPORTING_ICONS.md) for
 file naming and variant conventions.
+
+## Pictograms
+
+Source SVG files are stored in `pictograms/` and retain their original colors. Synchronize the
+lazy TypeScript registry with:
+
+```bash
+npm run pictograms:import
+```
+
+See the [pictogram importing guide](./projects/ui-kit/src/lib/components/pictogram/IMPORTING_PICTOGRAMS.md)
+for file naming and synchronization rules.
 
 ## Quality analysis
 
