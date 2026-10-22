@@ -1,4 +1,4 @@
-/* global figma, DATA */
+/* global figma, DATA, createCatalog */
 // This file is bundled with repository-derived DATA by build-figma-plugin.mjs.
 const prefix = 'BePower/';
 const key = 'bepower-source';
@@ -45,6 +45,7 @@ async function run() {
     style.lineHeight = { unit: 'PIXELS', value: type.lineHeight };
     style.textDecoration = type.underline ? 'UNDERLINE' : 'NONE';
     style.textCase = type.uppercase ? 'UPPER' : 'ORIGINAL';
+    if (!textStyles.some((item) => item.id === style.id)) textStyles.push(style);
   }
 
   await figma.loadAllPagesAsync();
@@ -152,9 +153,10 @@ async function run() {
     'UIButton / default',
     iconSet.x + iconSet.width + DATA.numbers['spacing-xl'],
   );
-  page.selection = [iconSet, buttonSet];
+  const catalog = await createCatalog({ page, iconSet, buttonSet, bindFill, textStyles });
+  page.selection = [catalog];
   figma.viewport.scrollAndZoomIntoView(page.selection);
-  figma.closePlugin('BePower pilot updated: variables, text styles, UIIcon and UIButton.');
+  figma.closePlugin('BePower updated: foundations, component catalog, UIIcon and UIButton.');
 }
 
 run().catch((error) => {

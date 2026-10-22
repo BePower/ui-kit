@@ -90,7 +90,7 @@ const output = `${root}figma-plugin/dist`;
 await mkdir(output, { recursive: true });
 await writeFile(
   `${output}/code.js`,
-  `const DATA = ${JSON.stringify(data)};\n${await read('figma-plugin/plugin.js')}`,
+  `const DATA = ${JSON.stringify(data)};\n${await read('figma-plugin/catalog.js')}\n${await read('figma-plugin/plugin.js')}`,
 );
 await writeFile(
   `${output}/manifest.json`,

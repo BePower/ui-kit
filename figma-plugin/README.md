@@ -17,7 +17,8 @@ node scripts/build-figma-plugin.mjs
    È la famiglia dichiarata in `foundations/base.scss`; il plugin non usa un font sostitutivo.
 3. Apri Plugins → Development → Import plugin from manifest.
 4. Seleziona `figma-plugin/dist/manifest.json` e avvia il plugin.
-5. Troverai la pagina **BePower · Repository pilot**, le variabili nella collezione
+5. Troverai le pagine **BePower · Repository pilot** (master e catalogo) e **BePower · Foundations**
+   (colori, tipografia, spaziature e dimensioni), le variabili nella collezione
    **BePower · repository** e gli stili testo con prefisso **BePower/**.
 6. Verifica il risultato e pubblica manualmente la libreria con gli strumenti Figma.
    La pubblicazione e l'abilitazione della libreria in altri file dipendono dal piano e dai permessi.
@@ -29,6 +30,36 @@ Le istanze esistenti continuano a riferirsi agli stessi componenti. Il nodo Labe
 testo vengono mantenuti; i vettori dell'icona vengono invece ricostruiti, quindi eventuali override
 sui loro livelli interni non sono garantiti. Le voci rimosse dal repository non vengono eliminate
 automaticamente da Figma.
+
+## Catalogo e tavole Foundations
+
+Le tavole vengono generate con auto layout, tipografia del repository e colori collegati
+alle variabili. I campioni tipografici sono collegati agli stili testo locali; le barre mostrano
+le dimensioni reali dei token numerici. Le tavole sono documentazione, non nuovi componenti
+da pubblicare: gli esempi del catalogo sono istanze dei master già esistenti.
+
+Il catalogo documenta varianti e stati del bottone, proprietà dell'istanza, corrispondenza
+con gli input Angular, limiti del pilota e flusso di aggiornamento/pubblicazione.
+La pagina del pilota e gli identificativi di master, set e proprietà Label restano invariati.
+
+Solo i frame marcati dal plugin come tavole di documentazione vengono ricostruiti a ogni
+esecuzione. Non inserire note personali dentro questi frame: usa livelli separati o un'altra pagina.
+Le altre pagine e i livelli non generati non vengono rimossi. Le istanze dimostrative del
+catalogo vengono ricreate; le istanze d'uso esterne alle tavole non vengono ricreate.
+
+Prima di pubblicare, verifica in Figma Desktop i campioni, i collegamenti alle variabili,
+la selezione degli stili testo e un'istanza già esistente. Il generatore non pubblica la libreria.
+
+Per verificare il generatore e la stabilità degli identificativi con un doppio in memoria
+delle API Figma:
+
+```bash
+node --test figma-plugin/plugin.test.mjs
+```
+
+Il test genera anche `dist/`. Verifica due esecuzioni consecutive, assenza di duplicazioni,
+preservazione di master, proprietà Label e contenuti esterni alle tavole.
+Non sostituisce la verifica visiva e delle API reali in Figma Desktop.
 
 ## Errore «The manifest editorType does not include "dev"»
 
