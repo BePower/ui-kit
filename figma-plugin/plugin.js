@@ -1,4 +1,4 @@
-/* global figma, DATA, createCatalog */
+/* global figma, DATA, createCatalog, renderComponents */
 // This file is bundled with repository-derived DATA by build-figma-plugin.mjs.
 const prefix = 'BePower/';
 const key = 'bepower-source';
@@ -74,25 +74,12 @@ async function run() {
       figma.variables.setBoundVariableForPaint(paint(name)[0], 'color', colorVariables[name]),
     ];
   }
-  const icons = [];
-  for (const [fill, svg] of Object.entries(DATA.icons)) {
-    const node = component(`icon/arrow/${fill}`, `fill=${fill}`);
-    const vector = figma.createNodeFromSvg(svg);
-    // The source SVG uses a placeholder color; UIIcon supplies its semantic color at runtime.
-    for (const child of vector.findAll((item) => item.type === 'VECTOR')) {
-      bindFill(child, 'color-grey-default-grey');
-    }
-    node.children.forEach((child) => child.remove());
-    node.resize(24, 24);
-    node.fills = [];
-    node.appendChild(vector);
-    icons.push(node);
-  }
   function variants(nodes, id, name, x) {
     let set = findManaged(
       (item) => item.type === 'COMPONENT_SET' && item.getPluginData(key) === id,
     );
     if (!set) set = figma.combineAsVariants(nodes, page);
+    nodes.forEach((node, index) => set.insertChild(index, node));
     set.setPluginData(key, id);
     set.name = name;
     set.x = x;
@@ -105,11 +92,46 @@ async function run() {
     set.paddingLeft = set.paddingRight = DATA.numbers['spacing-s'];
     return set;
   }
-  const iconSet = variants(icons, 'icons', 'UIIcon / arrow', 0);
+  const iconSets = [];
+  const defaultIconSize = Number(DATA.components.icon.inputs.size.default.replace(/['"]/g, ''));
+  const iconSizes = [
+    defaultIconSize,
+    ...DATA.components.icon.inputs.size.values
+      .map(Number)
+      .filter((size) => size !== defaultIconSize),
+  ];
+  for (const [name, fills] of Object.entries(DATA.icons)) {
+    const icons = [];
+    for (const [fill, svg] of Object.entries(fills)) {
+      for (const size of iconSizes) {
+        const id = `icon/${name}/${fill}${size === 24 ? '' : `/${size}`}`;
+        const node = component(id, `fill=${fill}, size=${size}`);
+        const vector = figma.createNodeFromSvg(svg);
+        for (const child of vector.findAll((item) => item.type === 'VECTOR')) {
+          // Match icons:import: recolor filled paths, preserve fill=none and stroke attributes.
+          if (Array.isArray(child.fills) && child.fills.length)
+            bindFill(child, 'color-grey-default-grey');
+        }
+        vector.rescale(size / vector.width);
+        vector.x = vector.y = 0;
+        node.children.forEach((child) => child.remove());
+        node.resize(size, size);
+        node.fills = [];
+        node.appendChild(vector);
+        icons.push(node);
+      }
+    }
+    iconSets.push(
+      variants(icons, name === 'arrow' ? 'icons' : `icons/${name}`, `UIIcon / ${name}`, 0),
+    );
+  }
   const buttons = [];
   for (const variant of ['primary', 'secondary', 'outlined']) {
     for (const state of ['default', 'disabled']) {
-      const node = component(`button/${variant}/${state}`, `variant=${variant}, state=${state}`);
+      const node = component(
+        `button/${variant}/${state}`,
+        `variant=${variant}, state=${state}, size=default`,
+      );
       node.layoutMode = 'HORIZONTAL';
       node.primaryAxisSizingMode = 'AUTO';
       node.counterAxisSizingMode = 'FIXED';
@@ -149,20 +171,30 @@ async function run() {
       buttons.push(node);
     }
   }
-  const buttonSet = variants(
-    buttons,
-    'buttons',
-    'UIButton / default',
-    iconSet.x + iconSet.width + DATA.numbers['spacing-xl'],
-  );
-  const catalog = await createCatalog({ page, iconSet, buttonSet, bindFill, textStyles });
+  const buttonSet = variants(buttons, 'buttons', 'UIButton', 0);
+  const library = await renderComponents({
+    component,
+    variants,
+    bindFill,
+    textStyles,
+    iconSets,
+    buttonSet,
+  });
+  const catalog = await createCatalog({
+    page,
+    iconSets,
+    buttonSet,
+    library,
+    bindFill,
+    textStyles,
+  });
   page.selection = [catalog];
   figma.viewport.scrollAndZoomIntoView(page.selection);
-  figma.closePlugin('BePower updated: foundations, component catalog, UIIcon and UIButton.');
+  figma.closePlugin('BePower updated: all exported components and registered icon variants.');
 }
 
 run().catch((error) => {
-  figma.notify(`BePower: ${error.message}. Check that Source Sans 3 is available.`, {
+  figma.notify(`BePower: ${error.message}`, {
     error: true,
   });
   figma.closePlugin();

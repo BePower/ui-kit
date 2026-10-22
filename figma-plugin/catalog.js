@@ -1,6 +1,6 @@
 /* global figma, DATA */
 // Only tagged documentation frames are rebuilt; masters and user-created layers stay intact.
-async function createCatalog({ page, iconSet, buttonSet, bindFill, textStyles }) {
+async function createCatalog({ page, iconSets, buttonSet, library, bindFill, textStyles }) {
   const tag = 'bepower-source';
   const space = DATA.numbers;
   const gutter = space['spacing-s'];
@@ -98,6 +98,18 @@ async function createCatalog({ page, iconSet, buttonSet, bindFill, textStyles })
   const logoPage = managedPage('logo-page', '_Logo');
   const componentsHeader = managedPage('components-header', '---- 🧩 COMPONENTS ----');
   page.name = '_Button';
+  const componentPages = new Map(
+    library.map((item) => [
+      item.id,
+      managedPage(
+        `component-page/${item.id}`,
+        `_${item.title.slice(2).replace('BottomSheet', 'Bottomsheet')}`,
+      ),
+    ]),
+  );
+  const allComponentPages = [page, ...componentPages.values()].sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
   const ordered = [
     foundationsHeader,
     foundations,
@@ -108,13 +120,22 @@ async function createCatalog({ page, iconSet, buttonSet, bindFill, textStyles })
     shadowPage,
     logoPage,
     componentsHeader,
-    page,
+    ...allComponentPages,
   ];
   ordered.forEach((target, index) => figma.root.insertChild(index, target));
   // Move the existing set, never recreate it: external instances retain their master IDs.
-  if (iconSet.parent !== iconsPage) iconsPage.appendChild(iconSet);
-  iconSet.x = 0;
-  iconSet.y = 0;
+  let iconY = 0;
+  let rowHeight = 0;
+  iconSets.forEach((set, index) => {
+    if (set.parent !== iconsPage) iconsPage.appendChild(set);
+    if (index % 5 === 0 && index > 0) {
+      iconY += rowHeight + gutter;
+      rowHeight = 0;
+    }
+    set.x = (index % 5) * (space['size-800'] * 2 + gutter);
+    set.y = iconY;
+    rowHeight = Math.max(rowHeight, set.height);
+  });
   buttonSet.x = 0;
   buttonSet.y = 0;
   const intro = root(foundationsHeader, 'foundations-intro', 'Foundations / Indice');
@@ -129,7 +150,35 @@ async function createCatalog({ page, iconSet, buttonSet, bindFill, textStyles })
     componentsIntro,
     'BEPOWER / COMPONENT LIBRARY',
     'Components',
-    'Il pilota include UIButton nella pagina _Button. Alert e Bottomsheet non sono ancora esportati: non vengono creati componenti fittizi.',
+    'Tutti i componenti esportati da @bepower/ui-kit hanno una pagina dedicata. Le icone sono in Foundations / _Icons. Alert non è presente nel repository e non viene inventato.',
+  );
+  for (const item of library) {
+    const target = componentPages.get(item.id);
+    if (item.set.parent !== target) target.appendChild(item.set);
+    item.set.x = item.set.y = 0;
+    const documentation = root(target, `catalog/${item.id}`, `${item.title} / Catalogo`);
+    documentation.y = item.set.height + gutter;
+    await heading(documentation, 'BEPOWER / COMPONENT LIBRARY', item.title, item.note);
+    await text(documentation, `Origine: ${DATA.components[item.id].source}`, 'p-s');
+    await text(documentation, 'Input Angular (estratti dal codice)', 'title-l');
+    for (const [name, input] of Object.entries(DATA.components[item.id].inputs)) {
+      await text(
+        documentation,
+        `${name}: ${input.type} · default ${input.default}${input.required ? ' · required' : ''}`,
+        'p-s',
+      );
+    }
+    const examples = await section(documentation, 'Esempi come istanze');
+    for (const master of item.set.children.filter((node) => node.type === 'COMPONENT')) {
+      await text(examples, master.name, 'label-m');
+      examples.appendChild(master.createInstance());
+    }
+    await text(componentsIntro, `${target.name} · ${item.set.children.length} varianti`, 'p-m');
+  }
+  await text(
+    componentsIntro,
+    '_Button · master esistenti conservati. _Icons · tutti i nomi, fill disponibili e sei dimensioni.',
+    'p-m',
   );
   const board = root(foundations, 'foundations-board', 'Foundations / Repository reference');
   await heading(
@@ -191,7 +240,7 @@ async function createCatalog({ page, iconSet, buttonSet, bindFill, textStyles })
   }
   await text(
     spacing.parent,
-    'Grids: il pilota non esporta ancora layout grid o breakpoint. Le scale sopra sono token di misura, non una griglia responsive.',
+    'Le primitive Grid, Row e Col sono disponibili nelle rispettive pagine Components. Le scale sopra sono token di misura; i breakpoint responsive di Ionic non sono eseguiti in Figma.',
     'p-s',
   );
   await text(
@@ -274,27 +323,39 @@ async function createCatalog({ page, iconSet, buttonSet, bindFill, textStyles })
   );
   await text(
     buttonSection,
-    'Copertura: default e disabled. Non inclusi: loading, focus, hover, pressed, expand, inline, slot icone e altre dimensioni. Bordo outlined: approssimazione Ionic da confrontare con Storybook.',
+    'Copertura: tutte le size, default e disabled. Icon/min-icon mostrano plus come contenuto consumer di esempio; inline è valido solo per secondary. Non inclusi: loading animato, focus, hover, pressed ed expand come varianti. Bordo outlined: approssimazione Ionic da confrontare con Storybook.',
     'p-s',
   );
+  const compactButtons = await section(catalog, 'Altre dimensioni');
+  for (const master of buttonSet.children.filter(
+    (node) => node.type === 'COMPONENT' && !node.name.endsWith('size=default'),
+  )) {
+    await text(compactButtons, master.name, 'label-m');
+    compactButtons.appendChild(master.createInstance());
+  }
   const iconBoard = root(iconsPage, 'icons-board', 'Icons / UIIcon');
   iconBoard.x = 0;
-  iconBoard.y = iconSet.height + gutter;
+  iconBoard.y = iconY + rowHeight + gutter;
   const iconSection = await section(
     iconBoard,
     '02 / UIIcon',
-    'name=arrow · size=24 · Due varianti tratte dagli SVG esistenti. Il colore placeholder degli SVG è sostituito da default-grey.',
+    `${Object.keys(DATA.icons).length} nomi dal registro, tutti i fill disponibili e size 16/24/32/36/40/48. Ogni nome ha un set dedicato; i colori pieni seguono il trattamento dell’importer e sono collegati a default-grey.`,
   );
-  const iconRow = stack(iconSection, 'Varianti icona', 'HORIZONTAL');
-  iconRow.itemSpacing = gutter;
-  for (const master of iconSet.children.filter((node) => node.type === 'COMPONENT')) {
-    const cell = stack(iconRow, master.name);
-    cell.appendChild(master.createInstance());
-    await text(cell, master.name, 'label-m', column);
+  for (const set of iconSets) {
+    await text(iconSection, set.name, 'label-m');
+    const iconRow = stack(iconSection, set.name, 'HORIZONTAL');
+    iconRow.itemSpacing = gutter;
+    for (const master of set.children.filter(
+      (node) => node.type === 'COMPONENT' && node.name.includes('size=24'),
+    )) {
+      const cell = stack(iconRow, master.name);
+      cell.appendChild(master.createInstance());
+      await text(cell, master.name, 'label-m', column);
+    }
   }
   await text(
     iconSection,
-    'Nel codice: name, fill, size, color. Il pilota espone solo fill nelle istanze Figma. Non usare la sola icona per comunicare un significato senza un nome accessibile nel controllo che la contiene.',
+    'Ogni set espone fill e size. Non vengono creati fill mancanti nel registro. Il colore si cambia tramite variabili/override, non moltiplicando le varianti. Non usare la sola icona per comunicare un significato senza un nome accessibile nel controllo che la contiene.',
     'p-s',
   );
   const workflow = await section(catalog, '03 / Aggiornamento e pubblicazione');

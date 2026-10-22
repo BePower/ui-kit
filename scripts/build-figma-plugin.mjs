@@ -1,6 +1,7 @@
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import * as sass from 'sass';
+import { collectInventory } from './figma-inventory.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const lib = `${root}projects/ui-kit/src/lib`;
@@ -79,10 +80,7 @@ data.button = {
   radius: required(/--border-radius: ([^;]+);/),
   disabledOpacity: required(/opacity: ([^;]+);/),
 };
-// This pilot intentionally exports one existing icon, in both available variants.
-for (const fill of ['fill', 'no-fill']) {
-  data.icons[fill] = await read(`icons/arrow_${fill}.svg`);
-}
+Object.assign(data, await collectInventory(root, read));
 const fontSource = await read('projects/ui-kit/src/lib/foundations/base.scss');
 data.fontFamily = fontSource.match(/--ion-font-family:\s*'([^']+)'/)?.[1];
 if (!data.fontFamily) throw new Error('Missing foundation font family');
@@ -90,7 +88,7 @@ const output = `${root}figma-plugin/dist`;
 await mkdir(output, { recursive: true });
 await writeFile(
   `${output}/code.js`,
-  `const DATA = ${JSON.stringify(data)};\n${await read('figma-plugin/catalog.js')}\n${await read('figma-plugin/plugin.js')}`,
+  `const DATA = ${JSON.stringify(data)};\n${await read('figma-plugin/components.js')}\n${await read('figma-plugin/catalog.js')}\n${await read('figma-plugin/plugin.js')}`,
 );
 await writeFile(
   `${output}/manifest.json`,

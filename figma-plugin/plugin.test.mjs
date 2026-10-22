@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 
@@ -25,6 +25,7 @@ function environment() {
       this.y = 0;
       this.data = {};
       this.componentPropertyDefinitions = {};
+      this.fills = type === 'VECTOR' ? [{ type: 'SOLID', color: { r: 1, g: 0, b: 0 } }] : [];
     }
     get children() {
       return [...this._children];
@@ -64,6 +65,10 @@ function environment() {
       assert.ok(width > 0 && height > 0);
       this.width = width;
       this.height = height;
+    }
+    rescale(scale) {
+      this.resize(this.width * scale, this.height * scale);
+      for (const node of this.children) node.rescale(scale);
     }
     async setTextStyleIdAsync(id) {
       assert.ok(
@@ -141,7 +146,15 @@ function environment() {
     createNodeFromSvg: (svg) => {
       assert.match(svg, /<svg/);
       const frame = new Node('FRAME');
+      frame.resize(
+        parseFloat(svg.match(/<svg[^>]*\bwidth="([^"]+)"/)?.[1] || '24'),
+        parseFloat(svg.match(/<svg[^>]*\bheight="([^"]+)"/)?.[1] || '24'),
+      );
       frame.appendChild(new Node('VECTOR'));
+      const outline = new Node('VECTOR');
+      outline.name = 'Unfilled path';
+      outline.fills = [];
+      frame.appendChild(outline);
       return frame;
     },
     combineAsVariants: (nodes, page) => {
@@ -183,7 +196,21 @@ test('generated data retains repository mappings', () => {
   assert.equal(data.button.paddingX, 88);
   assert.equal(data.numbers['spacing-s'], 32);
   assert.equal(Object.keys(data.typography).length, 13);
-  assert.equal(Object.keys(data.icons).length, 2);
+  const svgs = readdirSync(new URL('../icons', import.meta.url)).filter((file) =>
+    file.endsWith('.svg'),
+  );
+  assert.equal(
+    Object.values(data.icons).reduce((sum, fills) => sum + Object.keys(fills).length, 0),
+    svgs.length,
+  );
+  assert.deepEqual(
+    Object.keys(data.icons).sort(),
+    [...data.components.icon.inputs.name.values].sort(),
+  );
+  assert.equal(Object.keys(data.components).length, 11);
+  assert.equal(data.components.row.inputs.gap.default, "'none'");
+  assert.equal(data.components.title.inputs.size.default, "'l'");
+  assert.deepEqual(data.components.icon.inputs.size.values, ['16', '24', '32', '36', '40', '48']);
 });
 
 test('catalog generation preserves master IDs, properties and external content on rerun', async () => {
@@ -192,15 +219,63 @@ test('catalog generation preserves master IDs, properties and external content o
   const tagged = (id) =>
     env.document.findOne((node) => node.getPluginData('bepower-source') === id);
   const masters = env.document.findAll((node) => node.type === 'COMPONENT');
-  assert.equal(masters.length, 8);
+  const iconCount =
+    Object.values(data.icons).reduce((sum, fills) => sum + Object.keys(fills).length, 0) * 6;
+  assert.equal(
+    masters.filter((node) => node.getPluginData('bepower-source').startsWith('icon/')).length,
+    iconCount,
+  );
+  for (const [name, fills] of Object.entries(data.icons)) {
+    for (const fill of Object.keys(fills)) {
+      for (const size of data.components.icon.inputs.size.values.map(Number)) {
+        const master = tagged(`icon/${name}/${fill}${size === 24 ? '' : `/${size}`}`);
+        assert.ok(master, `${name} / ${fill} / ${size}`);
+        assert.equal(master.width, size);
+        assert.equal(master.height, size);
+        assert.equal(master.children[0].width, size);
+        const outline = master.findOne((node) => node.name === 'Unfilled path');
+        assert.equal(outline.fills.length, 0, 'preserves fill=none');
+        const filled = master.findOne(
+          (node) => node.type === 'VECTOR' && node.name !== 'Unfilled path',
+        );
+        assert.ok(filled.fills[0].boundVariables.color.id, 'binds filled paths to color variables');
+      }
+    }
+  }
+  for (const id of Object.keys(data.components).filter((id) => !['button', 'icon'].includes(id))) {
+    assert.ok(tagged(`components/${id}`), `exports native master set for ${id}`);
+    assert.ok(tagged(`catalog/${id}`), `documents ${id}`);
+  }
+  assert.equal(tagged('buttons').children.length, 20);
+  assert.equal(tagged('components/page').children.length, 50);
+  assert.equal(tagged('components/bottom-sheet').children.length, 4);
+  assert.equal(tagged('components/text').children.length, 7);
+  assert.equal(tagged('components/title').children.length, 4);
+  assert.equal(tagged('components/grid').children.length, 12);
+  assert.equal(tagged('components/row').children.length, 10);
+  assert.equal(tagged('components/col').children.length, 14);
+  assert.equal(tagged('components/p').children.length, 3);
+  assert.equal(tagged('components/progress-bar').children.length, 5);
+  for (const [setId, defaultId] of [
+    ['icons', 'icon/arrow/fill'],
+    ['components/title', 'title/l'],
+    ['components/row', 'row/none'],
+    ['components/grid', 'grid/false/xs'],
+  ]) {
+    assert.equal(tagged(setId).children[0].getPluginData('bepower-source'), defaultId);
+  }
+  assert.equal(masters.length, iconCount + 129);
   const masterIds = masters.map((node) => node.id);
   const label = tagged('button/primary/default').findOne((node) => node.type === 'TEXT');
   const property = Object.keys(tagged('button/primary/default').componentPropertyDefinitions)[0];
   const board = tagged('foundations-board');
   const catalog = tagged('component-catalog');
   assert.ok(board && catalog);
-  assert.equal(catalog.findAll((node) => node.type === 'INSTANCE').length, 6);
-  assert.equal(tagged('icons-board').findAll((node) => node.type === 'INSTANCE').length, 2);
+  assert.equal(catalog.findAll((node) => node.type === 'INSTANCE').length, 20);
+  assert.equal(
+    tagged('icons-board').findAll((node) => node.type === 'INSTANCE').length,
+    iconCount / 6,
+  );
   const expectedPages = [
     '---- 👑 FOUNDATIONS ----',
     '_Color & Accessibility',
@@ -211,10 +286,19 @@ test('catalog generation preserves master IDs, properties and external content o
     '_Shadow',
     '_Logo',
     '---- 🧩 COMPONENTS ----',
+    '_Bottomsheet',
     '_Button',
+    '_Col',
+    '_Grid',
+    '_P',
+    '_Page',
+    '_ProgressBar',
+    '_Row',
+    '_Text',
+    '_Title',
   ];
   assert.deepEqual(
-    env.document.children.slice(0, 10).map((node) => node.name),
+    env.document.children.slice(0, expectedPages.length).map((node) => node.name),
     expectedPages,
   );
   const texts = env.document.findAll((node) => node.type === 'TEXT');
@@ -236,7 +320,8 @@ test('catalog generation preserves master IDs, properties and external content o
   );
   const custom = env.figma.createFrame();
   custom.name = 'Note personali';
-  const external = tagged('button/primary/default').createInstance();
+  const originalButton = tagged('button/primary/default');
+  const external = originalButton.createInstance();
   env.figma.currentPage.appendChild(external);
   const counts = [env.variables.length, env.styles.length, env.collections.length];
   // Recreate the previous pilot's icon location to exercise the migration path.
@@ -245,8 +330,11 @@ test('catalog generation preserves master IDs, properties and external content o
   tagged('foundations-page').name = 'BePower · Foundations';
   await env.run();
   assert.deepEqual(
-    env.document.findAll((node) => node.type === 'COMPONENT').map((node) => node.id),
-    masterIds,
+    env.document
+      .findAll((node) => node.type === 'COMPONENT')
+      .map((node) => node.id)
+      .sort(),
+    [...masterIds].sort(),
   );
   assert.equal(tagged('foundations-board').id, board.id);
   assert.equal(tagged('component-catalog').id, catalog.id);
@@ -260,14 +348,90 @@ test('catalog generation preserves master IDs, properties and external content o
   );
   assert.ok(custom.parent);
   assert.ok(external.parent);
-  assert.equal(external.mainComponent.id, masterIds[2]);
+  assert.equal(external.mainComponent.id, originalButton.id);
   assert.deepEqual([env.variables.length, env.styles.length, env.collections.length], counts);
-  assert.equal(env.document.children.length, 11);
-  assert.equal(tagged('component-catalog').findAll((node) => node.type === 'INSTANCE').length, 6);
+  assert.equal(env.document.children.length, expectedPages.length + 1);
+  assert.equal(tagged('component-catalog').findAll((node) => node.type === 'INSTANCE').length, 20);
   assert.equal(tagged('icons').parent.name, '_Icons');
   assert.equal(tagged('buttons').parent.name, '_Button');
   assert.deepEqual(
-    env.document.children.slice(0, 10).map((node) => node.name),
+    env.document.children.slice(0, expectedPages.length).map((node) => node.name),
     expectedPages,
   );
+});
+
+test('migrates the original six buttons and two arrow masters without replacing them', async () => {
+  const env = environment();
+  const { figma } = env;
+  const pilot = figma.currentPage;
+  pilot.name = 'BePower · Repository pilot';
+  pilot.setPluginData('bepower-source', 'pilot-page');
+  const originals = [];
+  const buttons = [];
+  for (const variant of ['primary', 'secondary', 'outlined']) {
+    for (const state of ['default', 'disabled']) {
+      const node = figma.createComponent();
+      node.setPluginData('bepower-source', `button/${variant}/${state}`);
+      node.name = `variant=${variant}, state=${state}`;
+      const label = figma.createText();
+      node.appendChild(label);
+      label.name = 'Label';
+      label.characters = 'Continua';
+      const property = node.addComponentProperty('Label', 'TEXT', 'Continua');
+      label.componentPropertyReferences = { characters: property };
+      originals.push({ node, id: node.id, label, labelId: label.id, property });
+      buttons.push(node);
+    }
+  }
+  const buttonSet = figma.combineAsVariants(buttons, pilot);
+  buttonSet.setPluginData('bepower-source', 'buttons');
+  const arrows = [];
+  for (const fill of ['fill', 'no-fill']) {
+    const node = figma.createComponent();
+    node.setPluginData('bepower-source', `icon/arrow/${fill}`);
+    node.name = `fill=${fill}`;
+    originals.push({ node, id: node.id });
+    arrows.push(node);
+  }
+  const arrowSet = figma.combineAsVariants(arrows, pilot);
+  arrowSet.setPluginData('bepower-source', 'icons');
+  const work = figma.createPage();
+  work.name = 'My work';
+  const buttonInstance = buttons[0].createInstance();
+  const arrowInstance = arrows[0].createInstance();
+  work.appendChild(buttonInstance);
+  work.appendChild(arrowInstance);
+  await env.run();
+  await env.run();
+  for (const original of originals) {
+    assert.equal(original.node.id, original.id);
+    assert.ok(original.node.parent, 'legacy master is still attached');
+    if (original.label) {
+      assert.equal(
+        original.node.children.find((node) => node.type === 'TEXT').id,
+        original.labelId,
+      );
+      assert.ok(original.node.componentPropertyDefinitions[original.property]);
+    }
+  }
+  assert.equal(buttonInstance.mainComponent, buttons[0]);
+  assert.equal(arrowInstance.mainComponent, arrows[0]);
+  assert.equal(buttonInstance.parent, work);
+  assert.equal(arrowInstance.parent, work);
+  assert.equal(buttonSet.parent.name, '_Button');
+  assert.equal(arrowSet.parent.name, '_Icons');
+  assert.equal(buttonSet.children.length, 20);
+  assert.equal(arrowSet.children.length, 12);
+});
+
+test('unavailable repository font fails before modifying the document', async () => {
+  const env = environment();
+  env.figma.loadFontAsync = async () => {
+    throw new Error('Source Sans 3 is unavailable');
+  };
+  await assert.rejects(env.run(), /Source Sans 3 is unavailable/);
+  assert.equal(env.document.children.length, 1);
+  assert.equal(env.document.children[0].children.length, 0);
+  assert.equal(env.variables.length, 0);
+  assert.equal(env.styles.length, 0);
 });
