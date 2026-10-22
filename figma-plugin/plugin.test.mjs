@@ -3,6 +3,8 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, readdirSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
+import ts from 'typescript';
+import { JSDOM } from 'jsdom';
 
 const root = new URL('../', import.meta.url);
 execFileSync(process.execPath, ['scripts/build-figma-plugin.mjs'], { cwd: root });
@@ -99,6 +101,9 @@ function environment() {
   const collections = [];
   const variables = [];
   const notices = [];
+  const panels = [];
+  const messages = [];
+  const closes = [];
   const initial = new Node('PAGE');
   document.appendChild(initial);
   const figma = {
@@ -168,6 +173,11 @@ function environment() {
     },
     viewport: { scrollAndZoomIntoView: () => {} },
     notify: (message) => notices.push(message),
+    ui: { onmessage: null, postMessage: () => {} },
+    showUI: (html, options) => {
+      panels.push({ html, options });
+      Promise.resolve().then(() => figma.ui.onmessage({ type: 'ready' }));
+    },
   };
   for (const [method, type] of [
     ['createFrame', 'FRAME'],
@@ -184,13 +194,19 @@ function environment() {
   async function run() {
     return new Promise((resolve, reject) => {
       figma.closePlugin = (message) => {
-        if (message) resolve(message);
-        else reject(new Error(notices.join('\n')));
+        closes.push(message);
+        reject(new Error('Plugin closed before persistent status was delivered'));
+      };
+      figma.ui.postMessage = (message) => {
+        messages.push(message);
+        if (message.state === 'complete')
+          resolve(`BePower ${message.buildId} · ${message.message}`);
+        if (message.state === 'error') reject(new Error(message.message));
       };
       vm.runInNewContext(source, { figma }, { timeout: 10000 });
     });
   }
-  return { figma, run, document, styles, variables, collections };
+  return { figma, run, document, styles, variables, collections, panels, messages, closes };
 }
 
 test('generated data retains repository mappings', () => {
@@ -446,14 +462,16 @@ test('run reports distinguish creation from updates and identify the executed bu
   const env = environment();
   const first = await env.run();
   assert.ok(first.includes(buildId));
-  assert.match(first, /0 master aggiornati · 579 creati · nuovo bundle/);
+  assert.match(first, /0 master aggiornati · 579 creati/);
+  assert.match(first, /nuovo bundle/);
   const ids = env.document
     .findAll((node) => node.type === 'COMPONENT')
     .map((node) => node.id)
     .sort();
   const second = await env.run();
   assert.ok(second.includes(buildId));
-  assert.match(second, /579 master aggiornati · 0 creati · stesso bundle/);
+  assert.match(second, /579 master aggiornati · 0 creati/);
+  assert.match(second, /stesso bundle/);
   assert.equal(env.document.getPluginData('bepower-last-build'), buildId);
   assert.deepEqual(JSON.parse(env.document.getPluginData('bepower-last-report')), {
     buildId,
@@ -582,4 +600,73 @@ test('shell toolbars fill the viewport and preserve title/footer IDs when upgrad
     buttonWidth,
     'CTA resizing never changes the shared master',
   );
+});
+
+test('compatible bundle and persistent panel safely render diagnostic messages', () => {
+  const parsed = ts.createSourceFile(
+    'code.js',
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.JS,
+  );
+  function inspect(node) {
+    assert.ok(!ts.isOptionalChain(node), 'optional chains must be transpiled');
+    assert.ok(!ts.isSpreadAssignment(node), 'object spread must be transpiled');
+    ts.forEachChild(node, inspect);
+  }
+  inspect(parsed);
+  const html = parsed.statements
+    .filter(ts.isVariableStatement)
+    .flatMap((node) => node.declarationList.declarations)
+    .find((node) => node.name.getText(parsed) === 'STATUS_HTML').initializer.text;
+  const dom = new JSDOM(html, { runScripts: 'dangerously' });
+  dom.window.dispatchEvent(
+    new dom.window.MessageEvent('message', {
+      source: dom.window.parent,
+      data: {
+        pluginMessage: { type: 'status', buildId, state: 'error', message: '<invalid> API error' },
+      },
+    }),
+  );
+  const status = dom.window.document.getElementById('status');
+  assert.equal(status.textContent, `Build: ${buildId}\n\n<invalid> API error`);
+  assert.equal(status.children.length, 0);
+  assert.equal(status.dataset.state, 'error');
+  dom.window.close();
+});
+
+test('panel stays open on success and reports the failing phase on API errors', async () => {
+  const env = environment();
+  await env.run();
+  assert.equal(env.panels.length, 1);
+  assert.ok(env.messages.some((message) => message.message.includes('Source Sans 3')));
+  assert.equal(env.messages.at(-1).state, 'complete');
+  assert.equal(env.messages.at(-1).buildId, buildId);
+  assert.equal(env.closes.length, 0);
+  const failed = environment();
+  failed.figma.loadAllPagesAsync = async () => {
+    throw new Error('Page loading failed');
+  };
+  await assert.rejects(failed.run(), /Page loading failed/);
+  assert.equal(failed.messages.at(-1).state, 'error');
+  assert.match(failed.messages.at(-1).message, /Caricamento delle pagine Figma/);
+  assert.equal(failed.document.getPluginData('bepower-last-build'), '');
+  assert.equal(failed.closes.length, 0);
+});
+
+test('a late UI handshake receives the final result', async () => {
+  const env = environment();
+  env.figma.showUI = () => {};
+  let reachedViewport;
+  const reached = new Promise((resolve) => {
+    reachedViewport = resolve;
+  });
+  env.figma.viewport.scrollAndZoomIntoView = () => reachedViewport();
+  const pending = env.run();
+  await reached;
+  assert.equal(env.messages.length, 0);
+  env.figma.ui.onmessage({ type: 'ready' });
+  await pending;
+  assert.equal(env.messages.at(-1).state, 'complete');
 });

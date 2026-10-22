@@ -45,7 +45,9 @@ Inoltre `figma-plugin/dist` è ignorata da Git: aggiornare i soli sorgenti non r
    da Plugins → Development → Import plugin from manifest. Mantieni invariato l'ID del plugin.
 5. Apri il **file libreria originale**, in modalità Design, e avvia
    Plugins → Development → **BePower UI Kit · repository pilot**.
-6. A fine esecuzione il messaggio mostra ID, master aggiornati e creati. Con il catalogo
+6. Si apre subito la finestra **BePower · Aggiornamento**, con ID del bundle e fase corrente.
+   A fine esecuzione mostra master aggiornati e creati e **resta aperta** finché la chiudi
+   con la X di Figma. Gli errori rimangono leggibili nella stessa finestra. Con il catalogo
    attuale già completo, un secondo avvio deve indicare **579 aggiornati, 0 creati**.
    Nuovi componenti aggiunti ai sorgenti possono legittimamente aumentare il numero dei creati.
 
@@ -53,9 +55,11 @@ Non rimuovere pagine, master o variabili per aggiornare. La rimozione rompe i co
 delle istanze. Non eliminare o cambiare l'ID nel manifest: i dati privati che identificano
 i nodi sono associati al plugin.
 
-Se non compare l'ID atteso, Figma non sta eseguendo il bundle aggiornato: controlla prima
-la copia locale e il manifest, poi chiudi un'eventuale esecuzione ancora aperta e rilancia
-dal menu Development, anziché dai plugin recenti.
+Se non compare l'ID atteso, controlla la copia locale e il manifest, poi chiudi un'eventuale
+esecuzione ancora aperta e rilancia dal menu Development, anziché dai plugin recenti.
+Se non si apre neppure la finestra, apri la console dei plugin dal menu Plugins → Development
+→ Show/Hide console e condividi l'errore: il codice potrebbe essersi fermato prima dell'avvio
+della UI. Il messaggio del terminale conferma soltanto la generazione del bundle.
 `stesso bundle` significa che hai rieseguito lo stesso codice/dati dell'ultimo avvio riuscito;
 non significa che il plugin abbia saltato l'aggiornamento.
 
@@ -66,6 +70,20 @@ verifica file e ID del plugin: i metadati dei nodi potrebbero non essere riconos
 per esempio dopo aver registrato il codice come un nuovo plugin con un altro ID.
 Se invece il master resta errato, condividi ID del bundle, conteggi, eventuale errore e link
 al master interessato; non ricreare la libreria per nascondere il problema.
+
+### Finestra diagnostica
+
+Il plugin mostra avanzamento per font, stili, pagine, icone, componenti e catalogo.
+La finestra non si chiude automaticamente né al successo né all'errore. Non chiuderla mentre
+l'aggiornamento è in corso. In caso di errore alcuni nodi potrebbero già essere aggiornati,
+ma il documento non viene registrato come aggiornamento completato.
+
+Il bundle è compilato verso ES2017 con TypeScript per non distribuire optional chaining
+e object spread direttamente al sandbox. È una precauzione di compatibilità, non una
+conferma della causa di un errore su una particolare installazione.
+La UI è incorporata in `dist/code.js`: il manifest mantiene lo stesso ID e non serve
+registrare un nuovo plugin. `figma-plugin/status.html` è un sorgente versionato; `dist/`
+resta generata localmente.
 
 Negli **altri file** che consumano una libreria pubblicata, rilanciare il plugin non basta:
 prima pubblica l'aggiornamento dal file libreria e poi accettalo nei file utilizzatori.

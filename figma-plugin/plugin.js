@@ -1,4 +1,4 @@
-/* global figma, DATA, BUILD_ID, createCatalog, renderComponents */
+/* global figma, DATA, BUILD_ID, STATUS_HTML, createCatalog, renderComponents */
 // This file is bundled with repository-derived DATA by build-figma-plugin.mjs.
 const prefix = 'BePower/';
 const key = 'bepower-source';
@@ -9,12 +9,36 @@ const paint = (name) => {
 };
 const styleName = (name) => prefix + name.replaceAll('-', '/');
 
+let latestStatus;
+let panelReady = false;
+let phase = 'Avvio';
+function status(state, message) {
+  latestStatus = { type: 'status', buildId: BUILD_ID, state, message };
+  if (panelReady) figma.ui.postMessage(latestStatus);
+}
+figma.showUI(STATUS_HTML, {
+  width: DATA.numbers['size-480'] * 10,
+  height: DATA.numbers['size-320'] * 10,
+  title: 'BePower · Aggiornamento',
+});
+figma.ui.onmessage = (message) => {
+  if (message && message.type === 'ready') {
+    panelReady = true;
+    if (latestStatus) figma.ui.postMessage(latestStatus);
+  }
+};
+function progress(message) {
+  phase = message;
+  status('running', message);
+}
 async function run() {
+  progress('Caricamento Source Sans 3…');
   const previousBuild = figma.root.getPluginData('bepower-last-build');
   const counts = { created: 0, updated: 0 };
   // Fail before modifying the document if the exact repository font is unavailable.
   await figma.loadFontAsync({ family: DATA.fontFamily, style: 'Regular' });
   await figma.loadFontAsync({ family: DATA.fontFamily, style: 'SemiBold' });
+  progress('Aggiornamento variabili e stili…');
   const collections = await figma.variables.getLocalVariableCollectionsAsync();
   const collection =
     collections.find((item) => item.name === 'BePower · repository') ||
@@ -50,6 +74,7 @@ async function run() {
     if (!textStyles.some((item) => item.id === style.id)) textStyles.push(style);
   }
 
+  progress('Caricamento delle pagine Figma…');
   await figma.loadAllPagesAsync();
   let page = figma.root.children.find((item) => item.getPluginData(key) === 'pilot-page');
   if (!page) {
@@ -106,6 +131,7 @@ async function run() {
       .filter((size) => size !== defaultIconSize),
   ];
   for (const [name, fills] of Object.entries(DATA.icons)) {
+    progress(`Aggiornamento icona: ${name}`);
     const icons = [];
     for (const [fill, svg] of Object.entries(fills)) {
       for (const size of iconSizes) {
@@ -130,6 +156,7 @@ async function run() {
       variants(icons, name === 'arrow' ? 'icons' : `icons/${name}`, `UIIcon / ${name}`, 0),
     );
   }
+  progress('Aggiornamento UIButton…');
   const buttons = [];
   for (const variant of ['primary', 'secondary', 'outlined']) {
     for (const state of ['default', 'disabled']) {
@@ -177,6 +204,7 @@ async function run() {
     }
   }
   const buttonSet = variants(buttons, 'buttons', 'UIButton', 0);
+  progress('Aggiornamento componenti e shell…');
   const library = await renderComponents({
     component,
     variants,
@@ -185,6 +213,7 @@ async function run() {
     iconSets,
     buttonSet,
   });
+  progress('Aggiornamento catalogo e foundations…');
   const catalog = await createCatalog({
     page,
     iconSets,
@@ -198,14 +227,15 @@ async function run() {
   // Record only successful runs. A failed/partial update must not look like a completed build.
   figma.root.setPluginData('bepower-last-build', BUILD_ID);
   figma.root.setPluginData('bepower-last-report', JSON.stringify({ buildId: BUILD_ID, ...counts }));
-  figma.closePlugin(
-    `BePower ${BUILD_ID} · ${counts.updated} master aggiornati · ${counts.created} creati · ${previousBuild === BUILD_ID ? 'stesso bundle' : 'nuovo bundle'}`,
+  status(
+    'complete',
+    `Completato.\n${counts.updated} master aggiornati · ${counts.created} creati\n${previousBuild === BUILD_ID ? 'stesso bundle' : 'nuovo bundle'}\n\nPuoi chiudere questa finestra.`,
   );
 }
 
 run().catch((error) => {
-  figma.notify(`BePower ${BUILD_ID}: ${error.message}`, {
-    error: true,
-  });
-  figma.closePlugin();
+  status(
+    'error',
+    `Errore durante: ${phase}\n\n${error.message}\n\nL’aggiornamento non è completato. Non cancellare gli asset: condividi questo messaggio. Puoi poi chiudere questa finestra.`,
+  );
 });
