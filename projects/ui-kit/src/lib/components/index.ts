@@ -1,6 +1,7 @@
 export * from './button/ui-button';
 export * from './bottom-sheet/ui-bottom-sheet';
 export * from './icon/ui-icon';
+export * from './pictogram/ui-pictogram';
 export * from './page/ui-page';
 export * from './p/ui-p';
 export * from './input-field/ui-input-field';
