@@ -12,26 +12,43 @@ const styleName = (name) => prefix + name.replaceAll('-', '/');
 let latestStatus;
 let panelReady = false;
 let phase = 'Avvio';
+let resolveUIReady;
+const uiReady = new Promise((resolve) => {
+  resolveUIReady = resolve;
+});
+let chunkStarted = Date.now();
+let workUnits = 0;
+async function checkpoint(force = false) {
+  if (!force && ++workUnits < 20 && Date.now() - chunkStarted < 12) return;
+  // A resolved Promise alone does not let Figma paint or deliver iframe messages.
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  workUnits = 0;
+  chunkStarted = Date.now();
+}
 function status(state, message) {
   latestStatus = { type: 'status', buildId: BUILD_ID, state, message };
   if (panelReady) figma.ui.postMessage(latestStatus);
 }
+figma.ui.onmessage = (message) => {
+  if (message && message.type === 'ready') {
+    panelReady = true;
+    if (latestStatus) figma.ui.postMessage(latestStatus);
+    resolveUIReady();
+  }
+};
 figma.showUI(STATUS_HTML, {
   width: DATA.numbers['size-480'] * 10,
   height: DATA.numbers['size-320'] * 10,
   title: 'BePower · Aggiornamento',
 });
-figma.ui.onmessage = (message) => {
-  if (message && message.type === 'ready') {
-    panelReady = true;
-    if (latestStatus) figma.ui.postMessage(latestStatus);
-  }
-};
 function progress(message) {
   phase = message;
   status('running', message);
 }
 async function run() {
+  progress('Connessione alla finestra diagnostica…');
+  await uiReady;
+  await checkpoint(true);
   progress('Caricamento Source Sans 3…');
   const previousBuild = figma.root.getPluginData('bepower-last-build');
   const counts = { created: 0, updated: 0 };
@@ -56,8 +73,12 @@ async function run() {
   const colorVariables = {};
   for (const [name, { a, ...rgb }] of Object.entries(DATA.colors)) {
     colorVariables[name] = variable(name, 'COLOR', { ...rgb, a });
+    await checkpoint();
   }
-  for (const [name, value] of Object.entries(DATA.numbers)) variable(name, 'FLOAT', value);
+  for (const [name, value] of Object.entries(DATA.numbers)) {
+    variable(name, 'FLOAT', value);
+    await checkpoint();
+  }
   const textStyles = await figma.getLocalTextStylesAsync();
   for (const [name, type] of Object.entries(DATA.typography)) {
     const style =
@@ -72,10 +93,32 @@ async function run() {
     style.textDecoration = type.underline ? 'UNDERLINE' : 'NONE';
     style.textCase = type.uppercase ? 'UPPER' : 'ORIGINAL';
     if (!textStyles.some((item) => item.id === style.id)) textStyles.push(style);
+    await checkpoint();
   }
 
   progress('Caricamento delle pagine Figma…');
   await figma.loadAllPagesAsync();
+  progress('Indicizzazione dei master esistenti…');
+  // One traversal per run, never recurse into instances or scan all pages per master.
+  const managed = new Map();
+  const pending = [...figma.root.children];
+  while (pending.length) {
+    const node = pending.pop();
+    if (node.type === 'INSTANCE') continue;
+    if (node.type === 'COMPONENT' || node.type === 'COMPONENT_SET') {
+      const id = node.getPluginData(key);
+      if (id) {
+        const indexKey = `${node.type}:${id}`;
+        if (managed.has(indexKey))
+          throw new Error(
+            `Identificativo duplicato: ${id}. Non cancellare i master; condividi questo errore.`,
+          );
+        managed.set(indexKey, node);
+      }
+    }
+    if ('children' in node) pending.push(...node.children);
+    await checkpoint();
+  }
   let page = figma.root.children.find((item) => item.getPluginData(key) === 'pilot-page');
   if (!page) {
     page = figma.createPage();
@@ -83,14 +126,13 @@ async function run() {
     page.setPluginData(key, 'pilot-page');
   }
   await figma.setCurrentPageAsync(page);
-  const findManaged = (predicate) =>
-    figma.root.children.map((target) => target.findOne(predicate)).find(Boolean);
   function component(id, name) {
-    let node = findManaged((item) => item.type === 'COMPONENT' && item.getPluginData(key) === id);
+    let node = managed.get(`COMPONENT:${id}`);
     if (!node) {
       node = figma.createComponent();
       page.appendChild(node);
       node.setPluginData(key, id);
+      managed.set(`COMPONENT:${id}`, node);
       counts.created++;
     } else {
       counts.updated++;
@@ -105,10 +147,9 @@ async function run() {
     ];
   }
   function variants(nodes, id, name, x) {
-    let set = findManaged(
-      (item) => item.type === 'COMPONENT_SET' && item.getPluginData(key) === id,
-    );
+    let set = managed.get(`COMPONENT_SET:${id}`);
     if (!set) set = figma.combineAsVariants(nodes, page);
+    managed.set(`COMPONENT_SET:${id}`, set);
     nodes.forEach((node, index) => set.insertChild(index, node));
     set.setPluginData(key, id);
     set.name = name;
@@ -132,6 +173,7 @@ async function run() {
   ];
   for (const [name, fills] of Object.entries(DATA.icons)) {
     progress(`Aggiornamento icona: ${name}`);
+    await checkpoint(true);
     const icons = [];
     for (const [fill, svg] of Object.entries(fills)) {
       for (const size of iconSizes) {
@@ -150,6 +192,7 @@ async function run() {
         node.fills = [];
         node.appendChild(vector);
         icons.push(node);
+        await checkpoint();
       }
     }
     iconSets.push(
@@ -201,10 +244,12 @@ async function run() {
       if (!property) property = node.addComponentProperty('Label', 'TEXT', 'Continua');
       label.componentPropertyReferences = { characters: property };
       buttons.push(node);
+      await checkpoint();
     }
   }
   const buttonSet = variants(buttons, 'buttons', 'UIButton', 0);
   progress('Aggiornamento componenti e shell…');
+  await checkpoint(true);
   const library = await renderComponents({
     component,
     variants,
@@ -212,8 +257,10 @@ async function run() {
     textStyles,
     iconSets,
     buttonSet,
+    checkpoint,
   });
   progress('Aggiornamento catalogo e foundations…');
+  await checkpoint(true);
   const catalog = await createCatalog({
     page,
     iconSets,
@@ -221,6 +268,7 @@ async function run() {
     library,
     bindFill,
     textStyles,
+    checkpoint,
   });
   page.selection = [catalog];
   figma.viewport.scrollAndZoomIntoView(page.selection);

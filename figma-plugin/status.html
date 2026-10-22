@@ -33,17 +33,39 @@
     }
   </style>
   <div class="title">BePower · Aggiornamento libreria</div>
-  <pre id="status" role="status" aria-live="polite">Avvio del plugin…</pre>
+  <pre id="status" role="status" aria-live="polite">Connessione al plugin…</pre>
   <div>Attendi il completamento prima di chiudere questa finestra con la X di Figma.</div>
   <script>
+    var connected = false;
+    function requestStatus() {
+      parent.postMessage({ pluginMessage: { type: 'ready' } }, '*');
+    }
+    var retry = setInterval(requestStatus, 500);
+    var timeout = setTimeout(function () {
+      if (!connected) {
+        document.getElementById('status').textContent =
+          'La finestra è aperta ma non riceve lo stato del plugin. Controlla la console dei plugin; non cancellare gli asset.';
+      }
+    }, 5000);
     window.onmessage = function (event) {
-      if (event.source !== parent) return;
+      // The Figma bridge can proxy the event with a null/different source window.
+      // Validate the payload, not source identity; render only plain text.
       var message = event.data && event.data.pluginMessage;
-      if (!message || message.type !== 'status') return;
+      if (
+        !message ||
+        message.type !== 'status' ||
+        typeof message.buildId !== 'string' ||
+        typeof message.message !== 'string' ||
+        ['running', 'complete', 'error'].indexOf(message.state) === -1
+      )
+        return;
+      connected = true;
+      clearInterval(retry);
+      clearTimeout(timeout);
       var status = document.getElementById('status');
       status.textContent = 'Build: ' + message.buildId + '\n\n' + message.message;
       status.dataset.state = message.state;
     };
-    parent.postMessage({ pluginMessage: { type: 'ready' } }, '*');
+    requestStatus();
   </script>
 </html>

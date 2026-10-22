@@ -17,6 +17,7 @@ const { buildId } = JSON.parse(
 // Small in-memory Plugin API double. It checks lifecycle/identity, not Figma rendering.
 function environment() {
   let sequence = 0;
+  const stats = { findOneCalls: 0, yields: 0 };
   const makeId = () => `test:${++sequence}`;
   class Node {
     constructor(type) {
@@ -58,6 +59,7 @@ function environment() {
       ]);
     }
     findOne(predicate) {
+      stats.findOneCalls++;
       return this.findAll(predicate)[0] || null;
     }
     setPluginData(key, value) {
@@ -203,10 +205,21 @@ function environment() {
           resolve(`BePower ${message.buildId} · ${message.message}`);
         if (message.state === 'error') reject(new Error(message.message));
       };
-      vm.runInNewContext(source, { figma }, { timeout: 10000 });
+      vm.runInNewContext(
+        source,
+        {
+          figma,
+          setTimeout: (callback, delay) =>
+            setTimeout(() => {
+              stats.yields++;
+              callback();
+            }, delay),
+        },
+        { timeout: 10000 },
+      );
     });
   }
-  return { figma, run, document, styles, variables, collections, panels, messages, closes };
+  return { figma, run, document, styles, variables, collections, panels, messages, closes, stats };
 }
 
 test('generated data retains repository mappings', () => {
@@ -623,7 +636,7 @@ test('compatible bundle and persistent panel safely render diagnostic messages',
   const dom = new JSDOM(html, { runScripts: 'dangerously' });
   dom.window.dispatchEvent(
     new dom.window.MessageEvent('message', {
-      source: dom.window.parent,
+      source: null,
       data: {
         pluginMessage: { type: 'status', buildId, state: 'error', message: '<invalid> API error' },
       },
@@ -633,12 +646,25 @@ test('compatible bundle and persistent panel safely render diagnostic messages',
   assert.equal(status.textContent, `Build: ${buildId}\n\n<invalid> API error`);
   assert.equal(status.children.length, 0);
   assert.equal(status.dataset.state, 'error');
+  dom.window.dispatchEvent(
+    new dom.window.MessageEvent('message', {
+      source: null,
+      data: { pluginMessage: { type: 'status', buildId, state: 'unknown', message: 'ignored' } },
+    }),
+  );
+  assert.equal(status.dataset.state, 'error', 'rejects malformed bridge payloads');
   dom.window.close();
 });
 
 test('panel stays open on success and reports the failing phase on API errors', async () => {
   const env = environment();
   await env.run();
+  assert.equal(
+    env.stats.findOneCalls,
+    0,
+    'master lookup uses one index, not repeated tree searches',
+  );
+  assert.ok(env.stats.yields > 1, 'large updates yield actual event-loop turns');
   assert.equal(env.panels.length, 1);
   assert.ok(env.messages.some((message) => message.message.includes('Source Sans 3')));
   assert.equal(env.messages.at(-1).state, 'complete');
@@ -655,18 +681,66 @@ test('panel stays open on success and reports the failing phase on API errors', 
   assert.equal(failed.closes.length, 0);
 });
 
-test('a late UI handshake receives the final result', async () => {
+test('document updates wait for a delayed UI handshake', async () => {
   const env = environment();
   env.figma.showUI = () => {};
-  let reachedViewport;
-  const reached = new Promise((resolve) => {
-    reachedViewport = resolve;
-  });
-  env.figma.viewport.scrollAndZoomIntoView = () => reachedViewport();
   const pending = env.run();
-  await reached;
+  await new Promise(setImmediate);
   assert.equal(env.messages.length, 0);
+  assert.equal(env.document.children.length, 1);
+  assert.equal(env.document.children[0].children.length, 0);
+  assert.equal(env.variables.length, 0, 'no mutation before UI connection');
   env.figma.ui.onmessage({ type: 'ready' });
   await pending;
   assert.equal(env.messages.at(-1).state, 'complete');
+});
+
+test('UI retries a lost ready message and accepts a proxied status response', () => {
+  const parsed = ts.createSourceFile(
+    'code.js',
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.JS,
+  );
+  const html = parsed.statements
+    .filter(ts.isVariableStatement)
+    .flatMap((node) => node.declarationList.declarations)
+    .find((node) => node.name.getText(parsed) === 'STATUS_HTML').initializer.text;
+  const requests = [];
+  const cleared = [];
+  let retry;
+  let timeout;
+  const dom = new JSDOM(html, {
+    runScripts: 'dangerously',
+    beforeParse(window) {
+      window.postMessage = (message) => requests.push(message);
+      window.setInterval = (callback) => {
+        retry = callback;
+        return 1;
+      };
+      window.clearInterval = (id) => cleared.push(id);
+      window.setTimeout = (callback) => {
+        timeout = callback;
+        return 2;
+      };
+      window.clearTimeout = (id) => cleared.push(id);
+    },
+  });
+  assert.equal(requests.length, 1);
+  retry();
+  assert.equal(requests.length, 2, 'retries if the original ready message was lost');
+  timeout();
+  assert.match(dom.window.document.getElementById('status').textContent, /non riceve lo stato/);
+  dom.window.dispatchEvent(
+    new dom.window.MessageEvent('message', {
+      source: null,
+      data: {
+        pluginMessage: { type: 'status', state: 'complete', buildId, message: 'Completato' },
+      },
+    }),
+  );
+  assert.deepEqual(cleared, [1, 2]);
+  assert.match(dom.window.document.getElementById('status').textContent, /Completato/);
+  dom.window.close();
 });

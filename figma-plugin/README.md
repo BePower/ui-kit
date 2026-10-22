@@ -78,6 +78,18 @@ La finestra non si chiude automaticamente né al successo né all'errore. Non ch
 l'aggiornamento è in corso. In caso di errore alcuni nodi potrebbero già essere aggiornati,
 ma il documento non viene registrato come aggiornamento completato.
 
+La UI valida il contenuto dei messaggi del bridge Figma senza richiedere `event.source === parent`:
+il bridge può inoltrare eventi con source nullo o differente. La connessione viene ritentata
+finché arriva uno stato valido; dopo cinque secondi senza risposta compare un avviso locale.
+L'aggiornamento del documento parte solo dopo la connessione della finestra.
+
+I master vengono indicizzati una volta, senza attraversare le istanze né cercare ogni volta
+in tutte le pagine. La generazione viene suddivisa in blocchi con pause effettive dell'event loop,
+per consentire a Figma di aggiornare la finestra e ricevere input. Il lavoro completo può
+comunque richiedere tempo su file grandi: questa ottimizzazione non garantisce un tempo totale
+fisso. Se compaiono identificativi duplicati, l'esecuzione si ferma per evitare aggiornamenti
+ambigui, senza eliminare i master.
+
 Il bundle è compilato verso ES2017 con TypeScript per non distribuire optional chaining
 e object spread direttamente al sandbox. È una precauzione di compatibilità, non una
 conferma della causa di un errore su una particolare installazione.

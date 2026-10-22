@@ -7,6 +7,7 @@ async function renderComponents({
   textStyles,
   iconSets,
   buttonSet,
+  checkpoint,
 }) {
   const n = DATA.numbers;
   const tag = 'bepower-source';
@@ -61,6 +62,7 @@ async function renderComponents({
     node.textAutoResize = w ? 'HEIGHT' : 'WIDTH_AND_HEIGHT';
     if (w) node.resize(w, node.height);
     bindFill(node, 'color-grey-default-grey');
+    await checkpoint();
     return node;
   }
   function expose(master, node, name, value) {

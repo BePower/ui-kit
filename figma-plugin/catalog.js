@@ -1,6 +1,14 @@
 /* global figma, DATA */
 // Only tagged documentation frames are rebuilt; masters and user-created layers stay intact.
-async function createCatalog({ page, iconSets, buttonSet, library, bindFill, textStyles }) {
+async function createCatalog({
+  page,
+  iconSets,
+  buttonSet,
+  library,
+  bindFill,
+  textStyles,
+  checkpoint,
+}) {
   const tag = 'bepower-source';
   const space = DATA.numbers;
   const gutter = space['spacing-s'];
@@ -28,6 +36,7 @@ async function createCatalog({ page, iconSets, buttonSet, library, bindFill, tex
     node.textAutoResize = 'HEIGHT';
     node.resize(textWidth, node.height);
     bindFill(node, 'color-grey-default-grey');
+    await checkpoint();
     return node;
   }
   function root(targetPage, id, name) {
