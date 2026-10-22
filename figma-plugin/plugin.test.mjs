@@ -34,6 +34,11 @@ function environment() {
       this._children.push(child);
       child.parent = this;
     }
+    insertChild(index, child) {
+      child.remove();
+      this._children.splice(index, 0, child);
+      child.parent = this;
+    }
     remove() {
       if (this.parent) {
         this.parent._children = this.parent._children.filter((child) => child !== this);
@@ -194,8 +199,25 @@ test('catalog generation preserves master IDs, properties and external content o
   const board = tagged('foundations-board');
   const catalog = tagged('component-catalog');
   assert.ok(board && catalog);
-  assert.equal(catalog.findAll((node) => node.type === 'INSTANCE').length, 8);
-  const texts = board.findAll((node) => node.type === 'TEXT');
+  assert.equal(catalog.findAll((node) => node.type === 'INSTANCE').length, 6);
+  assert.equal(tagged('icons-board').findAll((node) => node.type === 'INSTANCE').length, 2);
+  const expectedPages = [
+    '---- 👑 FOUNDATIONS ----',
+    '_Color & Accessibility',
+    '_Typography',
+    '_Borders & Radius',
+    '_Grids & Spacing',
+    '_Icons',
+    '_Shadow',
+    '_Logo',
+    '---- 🧩 COMPONENTS ----',
+    '_Button',
+  ];
+  assert.deepEqual(
+    env.document.children.slice(0, 10).map((node) => node.name),
+    expectedPages,
+  );
+  const texts = env.document.findAll((node) => node.type === 'TEXT');
   for (const name of Object.keys(data.colors)) {
     assert.ok(
       texts.some((node) => node.characters === name),
@@ -217,6 +239,10 @@ test('catalog generation preserves master IDs, properties and external content o
   const external = tagged('button/primary/default').createInstance();
   env.figma.currentPage.appendChild(external);
   const counts = [env.variables.length, env.styles.length, env.collections.length];
+  // Recreate the previous pilot's icon location to exercise the migration path.
+  tagged('pilot-page').appendChild(tagged('icons'));
+  tagged('pilot-page').name = 'BePower · Repository pilot';
+  tagged('foundations-page').name = 'BePower · Foundations';
   await env.run();
   assert.deepEqual(
     env.document.findAll((node) => node.type === 'COMPONENT').map((node) => node.id),
@@ -236,6 +262,12 @@ test('catalog generation preserves master IDs, properties and external content o
   assert.ok(external.parent);
   assert.equal(external.mainComponent.id, masterIds[2]);
   assert.deepEqual([env.variables.length, env.styles.length, env.collections.length], counts);
-  assert.equal(env.document.children.length, 3);
-  assert.equal(tagged('component-catalog').findAll((node) => node.type === 'INSTANCE').length, 8);
+  assert.equal(env.document.children.length, 11);
+  assert.equal(tagged('component-catalog').findAll((node) => node.type === 'INSTANCE').length, 6);
+  assert.equal(tagged('icons').parent.name, '_Icons');
+  assert.equal(tagged('buttons').parent.name, '_Button');
+  assert.deepEqual(
+    env.document.children.slice(0, 10).map((node) => node.name),
+    expectedPages,
+  );
 });

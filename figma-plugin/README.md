@@ -17,8 +17,8 @@ node scripts/build-figma-plugin.mjs
    È la famiglia dichiarata in `foundations/base.scss`; il plugin non usa un font sostitutivo.
 3. Apri Plugins → Development → Import plugin from manifest.
 4. Seleziona `figma-plugin/dist/manifest.json` e avvia il plugin.
-5. Troverai le pagine **BePower · Repository pilot** (master e catalogo) e **BePower · Foundations**
-   (colori, tipografia, spaziature e dimensioni), le variabili nella collezione
+5. Troverai le pagine organizzate nei gruppi **FOUNDATIONS** e **COMPONENTS** descritti sotto,
+   le variabili nella collezione
    **BePower · repository** e gli stili testo con prefisso **BePower/**.
 6. Verifica il risultato e pubblica manualmente la libreria con gli strumenti Figma.
    La pubblicazione e l'abilitazione della libreria in altri file dipendono dal piano e dai permessi.
@@ -38,9 +38,38 @@ alle variabili. I campioni tipografici sono collegati agli stili testo locali; l
 le dimensioni reali dei token numerici. Le tavole sono documentazione, non nuovi componenti
 da pubblicare: gli esempi del catalogo sono istanze dei master già esistenti.
 
+### Organizzazione delle pagine
+
+```text
+---- 👑 FOUNDATIONS ----
+_Color & Accessibility
+_Typography
+_Borders & Radius
+_Grids & Spacing
+_Icons
+_Shadow
+_Logo
+---- 🧩 COMPONENTS ----
+_Button
+```
+
+Le intestazioni sono normali pagine Figma usate come separatori, come nel riferimento.
+Il generatore riordina solo le pagine gestite, posizionandole prima delle pagine personali;
+queste ultime mantengono contenuti e ordine relativo.
+La precedente pagina del pilota viene rinominata `_Button`, quella Foundations diventa
+`_Color & Accessibility`. Il set UIIcon esistente viene spostato in `_Icons` senza ricrearlo.
+Le altre tavole sono ripartite nelle pagine dedicate. I vecchi frame generati sono aggiornati,
+non archiviati come copie.
+
+`_Borders & Radius` documenta il raggio esportato da UIButton, non una nuova scala globale.
+`_Grids & Spacing` mostra le scale numeriche: layout grid e breakpoint non sono ancora esportati.
+`_Color & Accessibility` contiene indicazioni, non una certificazione di contrasto WCAG.
+`_Shadow` e `_Logo` sono sezioni esplicitamente predisposte, senza effetti o marchi inventati.
+Alert e Bottomsheet non vengono aggiunti come pagine vuote: il pilota esporta solo UIButton.
+
 Il catalogo documenta varianti e stati del bottone, proprietà dell'istanza, corrispondenza
 con gli input Angular, limiti del pilota e flusso di aggiornamento/pubblicazione.
-La pagina del pilota e gli identificativi di master, set e proprietà Label restano invariati.
+Gli identificativi delle due pagine originali, dei master, dei set e della proprietà Label restano invariati.
 
 Solo i frame marcati dal plugin come tavole di documentazione vengono ricostruiti a ogni
 esecuzione. Non inserire note personali dentro questi frame: usa livelli separati o un'altra pagina.

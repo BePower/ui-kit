@@ -56,8 +56,10 @@ async function run() {
     page.setPluginData(key, 'pilot-page');
   }
   await figma.setCurrentPageAsync(page);
+  const findManaged = (predicate) =>
+    figma.root.children.map((target) => target.findOne(predicate)).find(Boolean);
   function component(id, name) {
-    let node = page.findOne((item) => item.type === 'COMPONENT' && item.getPluginData(key) === id);
+    let node = findManaged((item) => item.type === 'COMPONENT' && item.getPluginData(key) === id);
     if (!node) {
       node = figma.createComponent();
       page.appendChild(node);
@@ -87,7 +89,7 @@ async function run() {
     icons.push(node);
   }
   function variants(nodes, id, name, x) {
-    let set = page.findOne(
+    let set = findManaged(
       (item) => item.type === 'COMPONENT_SET' && item.getPluginData(key) === id,
     );
     if (!set) set = figma.combineAsVariants(nodes, page);

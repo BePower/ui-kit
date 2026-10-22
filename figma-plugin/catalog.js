@@ -31,14 +31,15 @@ async function createCatalog({ page, iconSet, buttonSet, bindFill, textStyles })
     return node;
   }
   function root(targetPage, id, name) {
-    let frame = targetPage.children.find(
-      (node) => node.type === 'FRAME' && node.getPluginData(tag) === id,
-    );
+    let frame = figma.root.children
+      .flatMap((target) => target.children)
+      .find((node) => node.type === 'FRAME' && node.getPluginData(tag) === id);
     if (!frame) {
       frame = stack(targetPage, name);
       frame.setPluginData(tag, id);
     } else {
       frame.children.forEach((node) => node.remove());
+      if (frame.parent !== targetPage) targetPage.appendChild(frame);
     }
     frame.name = name;
     frame.layoutMode = 'VERTICAL';
@@ -78,19 +79,63 @@ async function createCatalog({ page, iconSet, buttonSet, bindFill, textStyles })
       .join('')
       .toUpperCase();
 
-  let foundations = figma.root.children.find(
-    (node) => node.getPluginData(tag) === 'foundations-page',
-  );
-  if (!foundations) {
-    foundations = figma.createPage();
-    foundations.name = 'BePower · Foundations';
-    foundations.setPluginData(tag, 'foundations-page');
+  function managedPage(id, name) {
+    let target = figma.root.children.find((node) => node.getPluginData(tag) === id);
+    if (!target) {
+      target = figma.createPage();
+      target.setPluginData(tag, id);
+    }
+    target.name = name;
+    return target;
   }
+  const foundationsHeader = managedPage('foundations-header', '---- 👑 FOUNDATIONS ----');
+  const foundations = managedPage('foundations-page', '_Color & Accessibility');
+  const typographyPage = managedPage('typography-page', '_Typography');
+  const bordersPage = managedPage('borders-page', '_Borders & Radius');
+  const spacingPage = managedPage('spacing-page', '_Grids & Spacing');
+  const iconsPage = managedPage('icons-page', '_Icons');
+  const shadowPage = managedPage('shadow-page', '_Shadow');
+  const logoPage = managedPage('logo-page', '_Logo');
+  const componentsHeader = managedPage('components-header', '---- 🧩 COMPONENTS ----');
+  page.name = '_Button';
+  const ordered = [
+    foundationsHeader,
+    foundations,
+    typographyPage,
+    bordersPage,
+    spacingPage,
+    iconsPage,
+    shadowPage,
+    logoPage,
+    componentsHeader,
+    page,
+  ];
+  ordered.forEach((target, index) => figma.root.insertChild(index, target));
+  // Move the existing set, never recreate it: external instances retain their master IDs.
+  if (iconSet.parent !== iconsPage) iconsPage.appendChild(iconSet);
+  iconSet.x = 0;
+  iconSet.y = 0;
+  buttonSet.x = 0;
+  buttonSet.y = 0;
+  const intro = root(foundationsHeader, 'foundations-intro', 'Foundations / Indice');
+  await heading(
+    intro,
+    'BEPOWER / DESIGN SYSTEM',
+    'Foundations',
+    'Colori, tipografia, bordi, spaziature e icone nelle pagine dedicate. I token provengono dal repository. Le sezioni non esportate sono indicate esplicitamente.',
+  );
+  const componentsIntro = root(componentsHeader, 'components-intro', 'Components / Indice');
+  await heading(
+    componentsIntro,
+    'BEPOWER / COMPONENT LIBRARY',
+    'Components',
+    'Il pilota include UIButton nella pagina _Button. Alert e Bottomsheet non sono ancora esportati: non vengono creati componenti fittizi.',
+  );
   const board = root(foundations, 'foundations-board', 'Foundations / Repository reference');
   await heading(
     board,
     'BEPOWER / DESIGN SYSTEM',
-    'Foundations',
+    'Color & Accessibility',
     'Token valutati dal Sass di @bepower/ui-kit. Modifica il repository e rigenera: questa tavola è un riferimento, non una seconda fonte di verità.',
   );
   const colors = await section(
@@ -114,7 +159,7 @@ async function createCatalog({ page, iconSet, buttonSet, bindFill, textStyles })
     }
   }
   const typography = await section(
-    board,
+    root(typographyPage, 'typography-board', 'Typography'),
     '02 / Tipografia',
     `${DATA.fontFamily} · Stili testo collegati ai mixin del repository.`,
   );
@@ -124,12 +169,12 @@ async function createCatalog({ page, iconSet, buttonSet, bindFill, textStyles })
     await text(sample, 'Energia per ogni nuovo viaggio', name);
   }
   const spacing = await section(
-    board,
+    root(spacingPage, 'spacing-board', 'Grids & Spacing'),
     '03 / Spaziature',
     'Scala spacing del repository, in pixel. I valori rem sono valutati con base 16px.',
   );
   const sizes = await section(
-    board,
+    spacing.parent,
     '04 / Dimensioni',
     'Scala size condivisa. Le barre visualizzano la misura reale; il valore zero non ha barra.',
   );
@@ -144,15 +189,59 @@ async function createCatalog({ page, iconSet, buttonSet, bindFill, textStyles })
       bindFill(bar, 'color-primary-e-mobility-green');
     }
   }
+  await text(
+    spacing.parent,
+    'Grids: il pilota non esporta ancora layout grid o breakpoint. Le scale sopra sono token di misura, non una griglia responsive.',
+    'p-s',
+  );
+  await text(
+    colors,
+    'Accessibility: i colori non garantiscono contrasto sufficiente in ogni combinazione. Verifica testo/sfondo e stati reali prima della pubblicazione; questa pagina non è un audit WCAG.',
+    'p-s',
+  );
+  const borders = root(bordersPage, 'borders-board', 'Borders & Radius');
+  await heading(
+    borders,
+    'BEPOWER / FOUNDATIONS',
+    'Borders & Radius',
+    'Misure attualmente esportate dal bottone, non una nuova scala globale di border token.',
+  );
+  const radiusSample = figma.createRectangle();
+  borders.appendChild(radiusSample);
+  radiusSample.resize(space['size-800'], space['size-800']);
+  radiusSample.cornerRadius = DATA.button.radius;
+  bindFill(radiusSample, 'color-primary-yellow-eni');
+  await text(borders, `UIButton / default · radius ${DATA.button.radius}px`, 'label-m');
+  await text(
+    borders,
+    'Outlined: bordo da 1px come approssimazione Ionic. Altri bordi e raggi non sono ancora esportati.',
+    'p-s',
+  );
+  for (const [target, id, title, note] of [
+    [
+      shadowPage,
+      'shadow-board',
+      'Shadow',
+      'Sezione predisposta. Le ombre di foundations/shadows.scss non sono ancora esportate dal pilota; nessun effetto Figma viene inventato.',
+    ],
+    [
+      logoPage,
+      'logo-board',
+      'Logo',
+      'Sezione predisposta. Il pilota non include ancora un asset logo approvato; nessun marchio viene ricostruito o sostituito.',
+    ],
+  ]) {
+    await heading(root(target, id, title), 'BEPOWER / FOUNDATIONS', title, note);
+  }
 
   const catalog = root(page, 'component-catalog', 'Catalogo / Componenti e utilizzo');
   // Leave the original master sets where they are; new documentation starts below them.
-  catalog.x = Math.min(iconSet.x, buttonSet.x);
-  catalog.y = Math.max(iconSet.y + iconSet.height, buttonSet.y + buttonSet.height) + gutter;
+  catalog.x = buttonSet.x;
+  catalog.y = buttonSet.y + buttonSet.height + gutter;
   await heading(
     catalog,
     'BEPOWER / COMPONENT LIBRARY',
-    'Componenti',
+    'UIButton',
     'Esempi come istanze native dei master sopra questa tavola. Trascina i componenti da Assets, non copiare le tavole di documentazione.',
   );
   const buttonSection = await section(
@@ -188,8 +277,11 @@ async function createCatalog({ page, iconSet, buttonSet, bindFill, textStyles })
     'Copertura: default e disabled. Non inclusi: loading, focus, hover, pressed, expand, inline, slot icone e altre dimensioni. Bordo outlined: approssimazione Ionic da confrontare con Storybook.',
     'p-s',
   );
+  const iconBoard = root(iconsPage, 'icons-board', 'Icons / UIIcon');
+  iconBoard.x = 0;
+  iconBoard.y = iconSet.height + gutter;
   const iconSection = await section(
-    catalog,
+    iconBoard,
     '02 / UIIcon',
     'name=arrow · size=24 · Due varianti tratte dagli SVG esistenti. Il colore placeholder degli SVG è sostituito da default-grey.',
   );
