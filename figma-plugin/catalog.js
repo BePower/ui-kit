@@ -153,7 +153,7 @@ async function createCatalog({
   );
   await text(
     compositionBoard,
-    'Composition / Content è solo un esempio opzionale: puoi inserire direttamente UITitle, UIP, UIText, UIProgressBar e UIButton negli slot. Nei pulsanti Content è aperto; gli swap Leading icon/Trailing icon rimangono per scegliere le icone.',
+    'Composition / Content è solo un esempio opzionale: puoi inserire direttamente UITitle, UIP, UIText, UIProgressBar e UIButton negli slot. Nei pulsanti abilita Show custom content per usare Content e nascondi Show label se necessario; gli swap delle icone restano disponibili.',
   );
   const compositionSamples = await section(compositionBoard, 'Esempi da esplorare nei Layers');
   const pageSample = composition.page.createInstance();

@@ -147,6 +147,11 @@ async function run() {
     ];
   }
   function exposeProperty(master, node, name, type, value, field) {
+    // Slot content is freely editable and cannot be bound to its parent's properties.
+    for (let parent = node.parent; parent; parent = parent.parent) {
+      if (parent.type === 'SLOT') return node.componentPropertyReferences?.[field];
+      if (parent.type === 'COMPONENT') break;
+    }
     // Figma only exposes definitions on the set once a component becomes a variant.
     const owner = master.parent?.type === 'COMPONENT_SET' ? master.parent : master;
     const definitions = owner.componentPropertyDefinitions;
@@ -155,10 +160,12 @@ async function run() {
     // Keep each existing reference, even if the set contains several legacy Label IDs.
     let property = matches(reference) ? reference : Object.keys(definitions).find(matches);
     if (!property) property = owner.addComponentProperty(name, type, value);
-    node.componentPropertyReferences = {
-      ...node.componentPropertyReferences,
-      [field]: property,
-    };
+    if (reference !== property) {
+      node.componentPropertyReferences = {
+        ...node.componentPropertyReferences,
+        [field]: property,
+      };
+    }
     return property;
   }
   function exposeText(master, text, name, value) {

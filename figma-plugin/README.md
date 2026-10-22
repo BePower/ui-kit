@@ -73,6 +73,12 @@ al master interessato; non ricreare la libreria per nascondere il problema.
 
 ### Finestra diagnostica
 
+L'errore `Cannot set component property references on slot sublayer` indica un tentativo
+di collegare un figlio dello slot alle proprietà del padre. Questi collegamenti non vengono
+creati né riscritti nei contenuti liberi. La pulizia dei vecchi swap avviene temporaneamente
+fuori dallo slot, ripristinando lo stesso nodo e la sua posizione; non modifica le istanze
+personali. Label dei pulsanti resta invece fuori dallo slot, come proprietà testo funzionante.
+
 L'errore `set_componentPropertyReferences ... Expected object, received null` era causato
 dalla pulizia dei vecchi riferimenti INSTANCE_SWAP. Il getter può restituire `null`, ma
 il setter richiede un oggetto: il generatore ora evita scritture inutili e usa `{}` quando
@@ -301,23 +307,23 @@ UIPage oppure UIBottomSheet
 │       └── UIRow / Columns [SLOT] → UICol, UICol, UICol…
 │           └── UICol / Content [SLOT] → testo, pulsanti, icone…
 └── Footer [SLOT] → UIButton, UIButton, testo…
-    └── UIButton / Content [SLOT] → Label, testo, icone…
+    └── UIButton / Content [SLOT] → testo, icone… (contenuto personalizzato opzionale)
 ```
 
 I nodi UI-kit sono istanze collegate ai master. Due colonne e una riga sono solo contenuti
 iniziali, non un massimo. In `_Composition` trovi un esempio con tre righe, tre colonne
 nella prima riga e più azioni nel footer.
 
-| Componente              | Proprietà di composizione                                                                  |
-| ----------------------- | ------------------------------------------------------------------------------------------ |
-| UIPage, UIBottomSheet   | Slot aperti `Body`, `Footer`                                                               |
-| UIGrid                  | Slot aperto `Rows`                                                                         |
-| UIRow                   | Slot aperto `Columns`, auto layout orizzontale con wrap                                    |
-| UICol                   | Slot aperto `Content`                                                                      |
-| UIButton default/inline | Slot aperto `Content`; gli swap Leading/Trailing icon restano opzionali; Label resta testo |
-| UIButton icon/min-icon  | `Icon`                                                                                     |
-| UITitle, UIText, UIP    | Sono componenti foglia annidabili con proprietà testo, non contenitori                     |
-| UIIcon, UIProgressBar   | Sono componenti foglia annidabili; restano disponibili fill/size o value                   |
+| Componente              | Proprietà di composizione                                                                               |
+| ----------------------- | ------------------------------------------------------------------------------------------------------- |
+| UIPage, UIBottomSheet   | Slot aperti `Body`, `Footer`                                                                            |
+| UIGrid                  | Slot aperto `Rows`                                                                                      |
+| UIRow                   | Slot aperto `Columns`, auto layout orizzontale con wrap                                                 |
+| UICol                   | Slot aperto `Content`                                                                                   |
+| UIButton default/inline | `Label` separata con `Show label`; slot `Content` attivabile con `Show custom content`; icone opzionali |
+| UIButton icon/min-icon  | `Icon`                                                                                                  |
+| UITitle, UIText, UIP    | Sono componenti foglia annidabili con proprietà testo, non contenitori                                  |
+| UIIcon, UIProgressBar   | Sono componenti foglia annidabili; restano disponibili fill/size o value                                |
 
 ### Uso in Figma
 
@@ -327,7 +333,9 @@ nella prima riga e più azioni nel footer.
 4. Seleziona `Columns` di una riga e aggiungi altre UICol; duplica, riordina o rimuovi liberamente.
 5. Inserisci direttamente pulsanti e testi nello slot Content di una colonna, e più sezioni
    in Body o più CTA in Footer. Regola Fill container e misure quando necessario.
-6. Per i pulsanti puoi comporre Content oppure usare gli swap opzionali delle icone.
+6. Per i pulsanti usa Label normalmente. Per contenuto libero abilita `Show custom content`,
+   disabilita `Show label` se non serve e inserisci testo o istanze nello slot Content.
+   Gli swap delle icone rimangono opzionali.
 
 Le modifiche ai figli sono consentite **dentro gli slot**, non nella struttura protetta
 esternamente agli slot. Non si aggiungono nuovi slot nominati dal corpo dell'istanza:
@@ -345,7 +353,9 @@ Il nuovo slot Columns sostituisce i due contenitori rigidi; i vecchi contenitori
 nascosti per compatibilità, mentre le istanze colonna iniziali vengono spostate nello slot.
 I master originali e gli ID delle proprietà testo sono conservati. I vecchi testi Content
 restano come placeholder **nascosti**, per evitare che si sovrappongano ai contenuti.
-`Show legacy placeholder` li rende nuovamente visibili, incluse le vecchie personalizzazioni testo.
+I vecchi campi Content/Show legacy placeholder restano conservati, ma non sono più controlli
+per i figli degli slot: Figma vieta questi collegamenti. Per modificare o mostrare contenuti
+dello slot agisci direttamente sui relativi livelli dell'istanza.
 Il flusso nuovo usa gli slot aperti, non i vecchi campi Content o gli swap di contenitore.
 Le vecchie definizioni swap, se già presenti, non vengono eliminate distruttivamente ma non
 controllano il nuovo contenuto. Le composizioni personali

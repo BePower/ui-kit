@@ -80,8 +80,27 @@ async function configureComposition({
     if (!current || !('mainComponent' in current)) return;
     const refs = { ...current };
     delete refs.mainComponent;
-    // The getter may return null, but Figma's setter only accepts an object.
-    instance.componentPropertyReferences = refs;
+    // Existing default children may already be in a Slot after a partial run.
+    // Clean legacy bindings while outside it, then restore the same node and position.
+    let ancestor = instance.parent;
+    let inSlot = false;
+    while (ancestor && ancestor.type !== 'COMPONENT') {
+      if (ancestor.type === 'SLOT') inSlot = true;
+      ancestor = ancestor.parent;
+    }
+    if (!inSlot) {
+      instance.componentPropertyReferences = refs;
+      return;
+    }
+    if (!ancestor) throw new Error('Impossibile migrare un riferimento fuori dal master.');
+    const parent = instance.parent;
+    const index = parent.children.indexOf(instance);
+    ancestor.appendChild(instance);
+    try {
+      instance.componentPropertyReferences = refs;
+    } finally {
+      parent.insertChild(index, instance);
+    }
   }
   async function defaultInstance(parent, name, source, width) {
     let instance = role(parent, name);
@@ -202,7 +221,13 @@ async function configureComposition({
           (node) => node.type === 'TEXT' && node.name === 'Label',
         );
       const body = frame(master, 'Button content');
-      if (label && label.parent !== body) body.appendChild(label);
+      // Label remains a normal component property. Slot content is edited directly.
+      if (label) {
+        if (label.parent !== master) master.insertChild(0, label);
+        exposeProperty(master, label, 'Label', 'TEXT', label.characters, 'characters');
+        label.visible = true;
+        exposeProperty(master, label, 'Show label', 'BOOLEAN', true, 'visible');
+      }
       openSlot(
         master,
         body,
@@ -214,6 +239,8 @@ async function configureComposition({
       body.primaryAxisSizingMode = 'AUTO';
       body.counterAxisSizingMode = 'AUTO';
       body.itemSpacing = n['size-80'];
+      body.visible = false;
+      exposeProperty(master, body, 'Show custom content', 'BOOLEAN', false, 'visible');
       for (const [name, atStart] of [
         ['Leading icon', true],
         ['Trailing icon', false],

@@ -46,6 +46,11 @@ function environment({ nativeSlots = true } = {}) {
         refs !== null && typeof refs === 'object' && !Array.isArray(refs),
         'Expected object, received null',
       );
+      for (let parent = this.parent; parent; parent = parent.parent) {
+        if (parent.type === 'SLOT')
+          throw new Error('Cannot set component property references on slot sublayer');
+        if (parent.type === 'COMPONENT') break;
+      }
       if (refs?.slotContentId) {
         assert.ok(['FRAME', 'SLOT'].includes(this.type), 'slot properties attach to frames only');
         let parent = this.parent;
@@ -169,7 +174,8 @@ function environment({ nativeSlots = true } = {}) {
         clone.characters = source.characters;
         parent.appendChild(clone);
         if (source.componentPropertyReferences) {
-          clone.componentPropertyReferences = { ...source.componentPropertyReferences };
+          // Inheritance during native instantiation is not a plugin setter operation.
+          clone._componentPropertyReferences = { ...source.componentPropertyReferences };
         }
         if (source.type !== 'INSTANCE') for (const child of source.children) copy(child, clone);
       }
@@ -1072,7 +1078,14 @@ test('legacy swap cleanup writes an object and preserves unrelated references', 
     projection.mainComponent.id,
   );
   const visible = owner.addComponentProperty('Keep visibility', 'BOOLEAN', true);
+  const originalParent = projection.parent;
+  const originalIndex = originalParent.children.indexOf(projection);
+  assert.throws(() => {
+    projection.componentPropertyReferences = {};
+  }, /slot sublayer/);
+  page.appendChild(projection);
   projection.componentPropertyReferences = { mainComponent: oldSwap, visible };
+  originalParent.insertChild(originalIndex, projection);
   const col = tagged('col/equal');
   const textProjection = role(role(col, 'Content slot'), 'Projected component');
   const oldContentSwap = col.parent.addComponentProperty(
@@ -1080,7 +1093,11 @@ test('legacy swap cleanup writes an object and preserves unrelated references', 
     'INSTANCE_SWAP',
     textProjection.mainComponent.id,
   );
+  const colParent = textProjection.parent;
+  const colIndex = colParent.children.indexOf(textProjection);
+  col.appendChild(textProjection);
   textProjection.componentPropertyReferences = { mainComponent: oldContentSwap };
+  colParent.insertChild(colIndex, textProjection);
   const ids = [projection.id, textProjection.id];
   await env.run();
   assert.equal(projection.componentPropertyReferences.visible, visible);
@@ -1097,6 +1114,39 @@ test('unsupported native Slots runtime reports an error rather than a fixed swap
   const env = environment({ nativeSlots: false });
   await assert.rejects(env.run(), /non supporta gli slot nativi/);
   assert.equal(env.document.getPluginData('bepower-last-build'), '');
+});
+
+test('a partial-run button label is recovered from its slot without writing sublayer references', async () => {
+  const env = environment();
+  await env.run();
+  const tagged = (id) =>
+    env.document.findOne((node) => node.getPluginData('bepower-source') === id);
+  const role = (node, name) =>
+    node.children.find((child) => child.getPluginData('bepower-role') === name);
+  const button = tagged('button/primary/default');
+  const label = button.children.find((node) => node.type === 'TEXT' && node.name === 'Label');
+  const labelId = label.id;
+  const reference = label.componentPropertyReferences.characters;
+  const content = role(button, 'Button content');
+  assert.equal(label.visible, true);
+  assert.equal(content.visible, false, 'custom content is opt-in; basic label stays compatible');
+  content.appendChild(label); // Reproduce the previous bundle's partial migration.
+  assert.throws(() => {
+    label.componentPropertyReferences = { characters: reference };
+  }, /slot sublayer/);
+  const user = button.createInstance();
+  env.figma.currentPage.appendChild(user);
+  user.setProperties({ [reference]: 'Personal label' });
+  const userSlot = role(user, 'Button content');
+  const custom = env.figma.createText();
+  custom.characters = 'Personal slot content';
+  userSlot.appendChild(custom);
+  await env.run();
+  assert.equal(label.parent, button);
+  assert.equal(label.id, labelId);
+  assert.equal(label.componentPropertyReferences.characters, reference);
+  assert.equal(user.componentProperties[reference].value, 'Personal label');
+  assert.equal(custom.parent, userSlot);
 });
 
 test('generated hierarchy has no component dependency cycles', async () => {
