@@ -48,7 +48,7 @@ Inoltre `figma-plugin/dist` è ignorata da Git: aggiornare i soli sorgenti non r
 6. Si apre subito la finestra **BePower · Aggiornamento**, con ID del bundle e fase corrente.
    A fine esecuzione mostra master aggiornati e creati e **resta aperta** finché la chiudi
    con la X di Figma. Gli errori rimangono leggibili nella stessa finestra. Con il catalogo
-   attuale già completo, un secondo avvio deve indicare **579 aggiornati, 0 creati**.
+   attuale già completo, un secondo avvio deve indicare **580 aggiornati, 0 creati**.
    Nuovi componenti aggiunti ai sorgenti possono legittimamente aumentare il numero dei creati.
 
 Non rimuovere pagine, master o variabili per aggiornare. La rimozione rompe i collegamenti
@@ -143,6 +143,7 @@ _ProgressBar
 _Row
 _Text
 _Title
+_Composition
 ```
 
 Le intestazioni sono normali pagine Figma usate come separatori, come nel riferimento.
@@ -220,7 +221,8 @@ di componenti in Dev Mode. Non occorre rigenerare il plugin per questo messaggio
 | UIRow                   | input gap e token spacing                              | 10 gap, top/bottom inizialmente none                                                          |
 | UICol                   | contratto Ionic size                                   | Span 1–12, equal e auto; 14 campioni                                                          |
 
-Totale attuale: **579 master in 60 set**, corrispondenti agli **11 componenti** del barrel.
+Totale attuale: **579 master in 60 set**, corrispondenti agli **11 componenti** del barrel,
+più **un componente standalone di esempio** `Composition / Content` (580 master totali).
 Il numero dei componenti Angular non coincide con quello dei master Figma: ogni variante
 è un master nel proprio set.
 
@@ -279,6 +281,70 @@ I riempimenti dei componenti sono collegati alle variabili colore.
 
 `dist/tokens.json` permette di ispezionare i dati generati. Tutto `dist/` è rigenerabile e
 non va modificato manualmente né versionato.
+
+## Gerarchia riutilizzabile nel design
+
+Il generatore configura gli slot come istanze native con proprietà **INSTANCE_SWAP**:
+non sono frame che assomigliano ai componenti.
+
+```text
+UIPage oppure UIBottomSheet
+├── Body slot → UIGrid
+│   └── Content slot → UIRow
+│       ├── Column 1 → UICol → Content slot → UIP
+│       └── Column 2 → UICol → Content slot → UIP
+└── Footer slot → UIButton
+    ├── Leading icon → UIIcon (opzionale)
+    ├── Label (proprietà testo)
+    └── Trailing icon → UIIcon (opzionale)
+```
+
+I frame intermedi sono necessari al layout e non sostituiscono i componenti: i nodi UI-kit
+sono vere istanze collegate ai rispettivi master. Le dipendenze sono costruite dal basso
+verso l'alto per evitare componenti ricorsivi.
+
+| Componente              | Proprietà di composizione                                                                       |
+| ----------------------- | ----------------------------------------------------------------------------------------------- |
+| UIPage, UIBottomSheet   | `Body component`, `Footer component`                                                            |
+| UIGrid                  | `Rows component`                                                                                |
+| UIRow                   | `Column 1 component`, `Column 2 component`                                                      |
+| UICol                   | `Content component`                                                                             |
+| UIButton default/inline | `Leading icon`, `Trailing icon`, `Show leading icon`, `Show trailing icon`; `Label` resta testo |
+| UIButton icon/min-icon  | `Icon`                                                                                          |
+| UITitle, UIText, UIP    | Sono componenti foglia annidabili con proprietà testo, non contenitori                          |
+| UIIcon, UIProgressBar   | Sono componenti foglia annidabili; restano disponibili fill/size o value                        |
+
+### Uso in Figma
+
+1. Inserisci UIPage da Assets e scegli una variante con footer se necessario.
+2. Espandi l'istanza nei Layers: trovi istanze UIGrid, UIRow, UICol, UIP e UIButton.
+3. Seleziona la UICol annidata e cambia **Content component** dal pannello proprietà.
+   Puoi provare `Composition / Content`, che contiene UITitle, UIP, UIText, UIProgressBar e UIButton.
+4. Per più righe o un contenuto diverso, crea **un tuo componente di composizione**
+   usando istanze del kit; selezionalo nello swap del contenitore superiore.
+5. Per i pulsanti abilita Show leading/trailing icon e scegli l'icona, oppure inserisci
+   il pulsante come Content component di una colonna o in un componente footer.
+
+La pagina `_Composition` contiene esempi nativi Page e Bottomsheet da esplorare.
+Non serve Detach. Non è però un'istanza liberamente editabile come il DOM Angular:
+Figma non permette di aggiungere livelli arbitrari a queste istanze. Per quantità arbitrarie
+di elementi serve un componente di contenuto, e la Row generata offre due colonne dimostrative.
+Creare più istanze sulla stessa canvas non le annida automaticamente.
+
+Le larghezze utilizzano auto layout/stretch ove applicabile. Il layout resta una rappresentazione
+Figma, non esegue il modello percentuale Ionic, i breakpoint, lo scrolling o il codice Angular.
+Verifica contenuti lunghi, componenti di contenuto personalizzati e ridimensionamento in Figma.
+
+### Aggiornamento dei file esistenti
+
+I master originali e gli ID delle proprietà testo sono conservati. I vecchi testi Content
+restano come placeholder **nascosti**, per evitare che si sovrappongano al componente proiettato.
+`Show legacy placeholder` li rende nuovamente visibili, incluse le vecchie personalizzazioni testo.
+Il flusso nuovo usa gli swap, non il vecchio campo Content. Le composizioni personali
+devono stare fuori dalle tavole generate; i loro override non vengono cancellati dal plugin.
+
+Al primo aggiornamento dal precedente catalogo sono previsti **579 aggiornati e 1 creato**:
+il nuovo master è Composition / Content. Ai successivi: **580 aggiornati e 0 creati**.
 
 ## Verifica prima della pubblicazione
 

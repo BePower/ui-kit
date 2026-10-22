@@ -1,4 +1,4 @@
-/* global figma, DATA, BUILD_ID, STATUS_HTML, createCatalog, renderComponents */
+/* global figma, DATA, BUILD_ID, STATUS_HTML, createCatalog, renderComponents, configureComposition */
 // This file is bundled with repository-derived DATA by build-figma-plugin.mjs.
 const prefix = 'BePower/';
 const key = 'bepower-source';
@@ -146,22 +146,23 @@ async function run() {
       figma.variables.setBoundVariableForPaint(paint(name)[0], 'color', colorVariables[name]),
     ];
   }
-  function exposeText(master, text, name, value) {
+  function exposeProperty(master, node, name, type, value, field) {
     // Figma only exposes definitions on the set once a component becomes a variant.
     const owner = master.parent?.type === 'COMPONENT_SET' ? master.parent : master;
     const definitions = owner.componentPropertyDefinitions;
-    const reference = text.componentPropertyReferences?.characters;
-    const isTextProperty = (key) =>
-      key && key.startsWith(`${name}#`) && definitions[key]?.type === 'TEXT';
+    const reference = node.componentPropertyReferences?.[field];
+    const matches = (key) => key && key.startsWith(`${name}#`) && definitions[key]?.type === type;
     // Keep each existing reference, even if the set contains several legacy Label IDs.
-    let property = isTextProperty(reference)
-      ? reference
-      : Object.keys(definitions).find(isTextProperty);
-    if (!property) property = owner.addComponentProperty(name, 'TEXT', value);
-    text.componentPropertyReferences = {
-      ...text.componentPropertyReferences,
-      characters: property,
+    let property = matches(reference) ? reference : Object.keys(definitions).find(matches);
+    if (!property) property = owner.addComponentProperty(name, type, value);
+    node.componentPropertyReferences = {
+      ...node.componentPropertyReferences,
+      [field]: property,
     };
+    return property;
+  }
+  function exposeText(master, text, name, value) {
+    return exposeProperty(master, text, name, 'TEXT', value, 'characters');
   }
   function variants(nodes, id, name, x) {
     let set = managed.get(`COMPONENT_SET:${id}`);
@@ -273,6 +274,15 @@ async function run() {
     checkpoint,
     exposeText,
   });
+  progress('Configurazione della gerarchia e dei contenuti sostituibili…');
+  const composition = await configureComposition({
+    component,
+    library,
+    buttonSet,
+    iconSets,
+    exposeProperty,
+    checkpoint,
+  });
   progress('Aggiornamento catalogo e foundations…');
   await checkpoint(true);
   const catalog = await createCatalog({
@@ -283,6 +293,7 @@ async function run() {
     bindFill,
     textStyles,
     checkpoint,
+    composition,
   });
   page.selection = [catalog];
   figma.viewport.scrollAndZoomIntoView(page.selection);

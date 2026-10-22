@@ -89,7 +89,12 @@ if (!data.fontFamily) throw new Error('Missing foundation font family');
 const output = `${root}figma-plugin/dist`;
 await mkdir(output, { recursive: true });
 const sources = await Promise.all(
-  ['figma-plugin/components.js', 'figma-plugin/catalog.js', 'figma-plugin/plugin.js'].map(read),
+  [
+    'figma-plugin/components.js',
+    'figma-plugin/composition.js',
+    'figma-plugin/catalog.js',
+    'figma-plugin/plugin.js',
+  ].map(read),
 );
 const rgba = (name) => {
   const { r, g, b, a } = data.colors[name];

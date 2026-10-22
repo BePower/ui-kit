@@ -8,6 +8,7 @@ async function createCatalog({
   bindFill,
   textStyles,
   checkpoint,
+  composition,
 }) {
   const tag = 'bepower-source';
   const space = DATA.numbers;
@@ -106,6 +107,7 @@ async function createCatalog({
   const shadowPage = managedPage('shadow-page', '_Shadow');
   const logoPage = managedPage('logo-page', '_Logo');
   const componentsHeader = managedPage('components-header', '---- 🧩 COMPONENTS ----');
+  const compositionPage = managedPage('composition-page', '_Composition');
   page.name = '_Button';
   const componentPages = new Map(
     library.map((item) => [
@@ -130,8 +132,37 @@ async function createCatalog({
     logoPage,
     componentsHeader,
     ...allComponentPages,
+    compositionPage,
   ];
   ordered.forEach((target, index) => figma.root.insertChild(index, target));
+  if (composition.example.parent !== compositionPage)
+    compositionPage.appendChild(composition.example);
+  composition.example.x = 0;
+  composition.example.y = 0;
+  const compositionBoard = root(compositionPage, 'composition-board', 'Composizione / Guida');
+  compositionBoard.x = composition.example.width + gutter;
+  await heading(
+    compositionBoard,
+    'BEPOWER / COMPOSITION',
+    'Gerarchia di componenti',
+    'Questi esempi sono istanze native, non frame disegnati a mano. Espandi UIPage o UIBottomSheet nei Layers: Body slot → UIGrid → UIRow → UICol → UIP. Il footer contiene UIButton, con slot UIIcon.',
+  );
+  await text(
+    compositionBoard,
+    'Per personalizzare: seleziona un’istanza e cambia Body component, Rows component, Column 1/2 component o Content component nel pannello proprietà. Per più elementi, crea un tuo componente di composizione con istanze UI-kit e selezionalo nello swap. Non fare Detach.',
+  );
+  await text(
+    compositionBoard,
+    'Esempio pronto: Composition / Content contiene UITitle, UIP, UIText, UIProgressBar e UIButton. Sceglilo in Content component di una colonna. Leading icon/Trailing icon e Show leading/trailing icon configurano le icone dei pulsanti; Label rimane testo modificabile.',
+  );
+  const compositionSamples = await section(compositionBoard, 'Esempi da esplorare nei Layers');
+  compositionSamples.appendChild(composition.page.createInstance());
+  compositionSamples.appendChild(composition.sheet.createInstance());
+  await text(
+    compositionBoard,
+    'I vecchi testi Content restano conservati come placeholder nascosti: Show legacy placeholder li rende visibili. I master si aggiornano dal repository; crea composizioni personali fuori dalle tavole generate.',
+    'p-s',
+  );
   // Move the existing set, never recreate it: external instances retain their master IDs.
   let iconY = 0;
   let rowHeight = 0;

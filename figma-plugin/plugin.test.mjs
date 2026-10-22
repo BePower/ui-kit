@@ -113,7 +113,36 @@ function environment() {
       instance.mainComponent = this;
       instance.width = this.width;
       instance.height = this.height;
+      instance.layoutMode = this.layoutMode;
       return instance;
+    }
+    async getMainComponentAsync() {
+      assert.equal(this.type, 'INSTANCE');
+      return this.mainComponent;
+    }
+    swapInstance(component) {
+      assert.equal(this.type, 'INSTANCE');
+      assert.equal(component.type, 'COMPONENT');
+      this.mainComponent = component;
+      this.layoutMode = component.layoutMode;
+    }
+    get componentProperties() {
+      assert.equal(this.type, 'INSTANCE');
+      const source = this.mainComponent;
+      const owner = source.parent?.type === 'COMPONENT_SET' ? source.parent : source;
+      return Object.fromEntries(
+        Object.entries(owner.componentPropertyDefinitions).map(([key, definition]) => [
+          key,
+          { type: definition.type, value: this.overrides?.[key] ?? definition.defaultValue },
+        ]),
+      );
+    }
+    setProperties(properties) {
+      assert.equal(this.type, 'INSTANCE');
+      for (const [key, value] of Object.entries(properties)) {
+        assert.ok(this.componentProperties[key], `unknown property ${key}`);
+        this.overrides = { ...this.overrides, [key]: value };
+      }
     }
   }
   const document = new Node('DOCUMENT');
@@ -316,7 +345,7 @@ test('catalog generation preserves master IDs, properties and external content o
   ]) {
     assert.equal(tagged(setId).children[0].getPluginData('bepower-source'), defaultId);
   }
-  assert.equal(masters.length, iconCount + 129);
+  assert.equal(masters.length, iconCount + 130);
   const masterIds = masters.map((node) => node.id);
   const label = tagged('button/primary/default').findOne((node) => node.type === 'TEXT');
   const property = label.componentPropertyReferences.characters;
@@ -348,6 +377,7 @@ test('catalog generation preserves master IDs, properties and external content o
     '_Row',
     '_Text',
     '_Title',
+    '_Composition',
   ];
   assert.deepEqual(
     env.document.children.slice(0, expectedPages.length).map((node) => node.name),
@@ -490,7 +520,7 @@ test('run reports distinguish creation from updates and identify the executed bu
   const env = environment();
   const first = await env.run();
   assert.ok(first.includes(buildId));
-  assert.match(first, /0 master aggiornati · 579 creati/);
+  assert.match(first, /0 master aggiornati · 580 creati/);
   assert.match(first, /nuovo bundle/);
   const ids = env.document
     .findAll((node) => node.type === 'COMPONENT')
@@ -498,13 +528,13 @@ test('run reports distinguish creation from updates and identify the executed bu
     .sort();
   const second = await env.run();
   assert.ok(second.includes(buildId));
-  assert.match(second, /579 master aggiornati · 0 creati/);
+  assert.match(second, /580 master aggiornati · 0 creati/);
   assert.match(second, /stesso bundle/);
   assert.equal(env.document.getPluginData('bepower-last-build'), buildId);
   assert.deepEqual(JSON.parse(env.document.getPluginData('bepower-last-report')), {
     buildId,
     created: 0,
-    updated: 579,
+    updated: 580,
   });
   assert.deepEqual(
     env.document
@@ -834,4 +864,85 @@ test('all exposed text references remain valid at the property owner across repe
   assert.ok(original.references.length > 100);
   await env.run();
   assert.deepEqual(snapshot(), original);
+});
+
+test('container content and button icons are real instances with stable swap properties', async () => {
+  const env = environment();
+  await env.run();
+  const tagged = (id) =>
+    env.document.findOne((node) => node.getPluginData('bepower-source') === id);
+  const role = (node, name) =>
+    node.children.find((child) => child.getPluginData('bepower-role') === name);
+  const owner = (node) => (node.parent.type === 'COMPONENT_SET' ? node.parent : node);
+  const assertSwap = (master, instance, targetId) => {
+    assert.equal(instance.type, 'INSTANCE');
+    assert.equal(instance.mainComponent, tagged(targetId));
+    const property = instance.componentPropertyReferences.mainComponent;
+    assert.equal(owner(master).componentPropertyDefinitions[property].type, 'INSTANCE_SWAP');
+    assert.equal(
+      owner(master).componentPropertyDefinitions[property].defaultValue,
+      tagged(targetId).id,
+    );
+    return property;
+  };
+  for (const id of ['page/white/white/true', 'bottom-sheet/true/true']) {
+    const master = tagged(id);
+    const body = role(master, 'Body slot');
+    assertSwap(master, role(body, 'Projected component'), 'grid/false/xs');
+    assert.equal(role(body, 'Content').visible, false);
+    assertSwap(master, role(master, 'Footer slot').children[0], 'button/primary/default');
+  }
+  const grid = tagged('grid/false/xs');
+  assertSwap(grid, role(role(grid, 'Content slot'), 'Projected component'), 'row/xxs');
+  const row = tagged('row/xxs');
+  for (const index of [1, 2]) {
+    assertSwap(row, role(role(row, `Column ${index}`), 'Projected component'), 'col/equal');
+  }
+  const col = tagged('col/equal');
+  const colSlot = role(role(col, 'Content slot'), 'Projected component');
+  const swap = assertSwap(col, colSlot, 'p/start');
+  const button = tagged('button/primary/default');
+  for (const name of ['Leading icon', 'Trailing icon']) {
+    const icon = role(button, name);
+    assertSwap(button, icon, 'icon/plus/no-fill');
+    assert.equal(icon.visible, false);
+    assert.equal(
+      owner(button).componentPropertyDefinitions[icon.componentPropertyReferences.visible].type,
+      'BOOLEAN',
+    );
+  }
+  assertSwap(
+    tagged('button/primary/default/icon'),
+    role(tagged('button/primary/default/icon'), 'Icon slot'),
+    'icon/plus/no-fill',
+  );
+  const userPage = env.figma.createPage();
+  userPage.name = 'Personal compositions';
+  const userCol = col.createInstance();
+  userPage.appendChild(userCol);
+  userCol.setProperties({ [swap]: tagged('composition/content').id });
+  const originalId = colSlot.id;
+  await env.run();
+  assert.equal(role(role(col, 'Content slot'), 'Projected component').id, originalId);
+  assert.equal(userCol.componentProperties[swap].value, tagged('composition/content').id);
+});
+
+test('generated hierarchy has no component dependency cycles', async () => {
+  const env = environment();
+  await env.run();
+  const masters = env.document.findAll((node) => node.type === 'COMPONENT');
+  const checked = new Set();
+  const active = new Set();
+  function inspect(master) {
+    assert.ok(!active.has(master.id), `recursive dependency in ${master.name}`);
+    if (checked.has(master.id)) return;
+    active.add(master.id);
+    for (const instance of master.findAll((node) => node.type === 'INSTANCE')) {
+      inspect(instance.mainComponent);
+    }
+    active.delete(master.id);
+    checked.add(master.id);
+  }
+  masters.forEach(inspect);
+  assert.equal(checked.size, masters.length);
 });
