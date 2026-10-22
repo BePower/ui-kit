@@ -42,6 +42,17 @@ async function renderComponents({
     node.counterAxisSizingMode = 'FIXED';
     node.resize(w, h);
   }
+  function fullWidth(node, w = width) {
+    node.counterAxisSizingMode = 'FIXED';
+    node.resize(w, node.height);
+    node.layoutAlign = 'STRETCH';
+  }
+  function moveRoles(parent, destination, roles) {
+    for (const role of roles) {
+      const node = parent.children.find((item) => item.getPluginData('bepower-role') === role);
+      if (node) destination.appendChild(node);
+    }
+  }
   async function text(parent, role, value, style = 'p-m', w) {
     const node = child(parent, role, 'TEXT');
     const found = textStyles.find((item) => item.name === `BePower/${style.replaceAll('-', '/')}`);
@@ -117,7 +128,26 @@ async function renderComponents({
       instance = source.createInstance();
       parent.appendChild(instance);
     }
+    // The CTA demonstrates `expand`; resize the instance, never its shared master.
+    instance.primaryAxisSizingMode = 'FIXED';
+    instance.resize(width - parent.paddingLeft - parent.paddingRight, DATA.button.height);
+    instance.layoutAlign = 'STRETCH';
+    instance.layoutGrow = 0;
     return instance;
+  }
+  function footer(parent, id, selector, visible, background) {
+    const node = frame(parent, 'Footer slot');
+    fullWidth(node);
+    node.visible = visible;
+    node.layoutGrow = 0;
+    node.paddingLeft = cssNumber(id, selector, '--padding-start');
+    node.paddingRight = cssNumber(id, selector, '--padding-end');
+    node.paddingTop = cssNumber(id, selector, '--padding-top');
+    node.paddingBottom = cssNumber(id, selector, '--padding-bottom');
+    node.itemSpacing = n['size-160'];
+    bindFill(node, background);
+    footerButton(node);
+    return node;
   }
   for (const size of DATA.components.button.inputs.size.values.filter(
     (value) => value !== 'default',
@@ -222,6 +252,7 @@ async function renderComponents({
     background.resize(w, progressHeight);
     background.x = background.y = 0;
     background.cornerRadius = progressRadius;
+    background.constraints = { horizontal: 'STRETCH', vertical: 'MIN' };
     bindFill(background, 'color-primary-accessible-green');
     background.opacity = 0.2; // Ionic track approximation, documented in the catalog.
     const bar = frame(track, 'Value');
@@ -230,6 +261,7 @@ async function renderComponents({
     bar.resize(Math.max(w * value, 0.01), progressHeight);
     bar.x = bar.y = 0;
     bar.cornerRadius = progressRadius;
+    bar.constraints = { horizontal: 'SCALE', vertical: 'MIN' };
     bindFill(bar, 'color-primary-accessible-green');
     return track;
   }
@@ -313,13 +345,22 @@ async function renderComponents({
       bindFill(node, 'color-background-white');
       const header = frame(node, 'Header', 'HORIZONTAL');
       header.primaryAxisAlignItems = 'MAX';
+      header.counterAxisAlignItems = 'CENTER';
       header.paddingLeft = header.paddingRight = cssNumber(
         'bottom-sheet',
         '.header-toolbar',
         '--padding-start',
       );
       header.paddingTop = cssNumber('bottom-sheet', '.header-toolbar', '--padding-top');
-      fixed(header, width, n['size-400'] + header.paddingTop);
+      header.paddingBottom = 0;
+      fixed(
+        header,
+        width,
+        cssNumber('bottom-sheet', '.header-toolbar', '--min-height') + header.paddingTop,
+      );
+      header.layoutAlign = 'STRETCH';
+      header.layoutGrow = 0;
+      bindFill(header, 'color-background-white');
       const closeIcon = icon(header, 'Close', 'close', 'no-fill', 32);
       closeIcon.visible = close;
       for (const vector of closeIcon.findAll((item) => item.type === 'VECTOR')) {
@@ -328,12 +369,9 @@ async function renderComponents({
       }
       const body = await slot(node, 'Body slot', width, n['size-800'] * 2);
       body.body.layoutGrow = 1;
+      body.body.layoutAlign = body.label.layoutAlign = 'STRETCH';
       expose(node, body.label, 'Content', 'Contenuto del consumer');
-      const footer = frame(node, 'Footer slot');
-      footer.visible = hasFooter;
-      footer.paddingLeft = footer.paddingRight = n['size-240'];
-      footer.paddingTop = footer.paddingBottom = n['size-160'];
-      footerButton(footer);
+      footer(node, 'bottom-sheet', 'ion-footer ion-toolbar', hasFooter, 'color-background-white');
       sheets.push(node);
     }
   }
@@ -363,28 +401,34 @@ async function renderComponents({
         bindFill(node, backgrounds[background]);
         const header = frame(node, 'Header');
         header.visible = headerType !== 'none';
-        header.paddingLeft = header.paddingRight = cssNumber(
-          'page',
-          ':host ion-header ion-toolbar',
-          '--padding-start',
-        );
-        header.paddingTop = cssNumber('page', ':host ion-header ion-toolbar', '--padding-top');
-        header.paddingBottom = cssNumber(
+        fullWidth(header);
+        header.layoutGrow = 0;
+        header.paddingLeft = header.paddingRight = header.paddingTop = header.paddingBottom = 0;
+        const toolbar = frame(header, 'Title toolbar');
+        fullWidth(toolbar);
+        // Migrate the existing title node so its instance property/overrides keep their IDs.
+        moveRoles(header, toolbar, ['Title']);
+        toolbar.paddingLeft = cssNumber('page', ':host ion-header ion-toolbar', '--padding-start');
+        toolbar.paddingRight = cssNumber('page', ':host ion-header ion-toolbar', '--padding-end');
+        toolbar.paddingTop = cssNumber('page', ':host ion-header ion-toolbar', '--padding-top');
+        toolbar.paddingBottom = cssNumber(
           'page',
           ':host ion-header ion-toolbar',
           '--padding-bottom',
         );
         bindFill(
-          header,
+          toolbar,
           headerType === 'green' ? 'color-primary-e-mobility-green' : backgrounds[background],
         );
         const title = await text(
-          header,
+          toolbar,
           'Title',
           'Titolo pagina',
           'title-s',
-          width - header.paddingLeft * 2,
+          width - toolbar.paddingLeft - toolbar.paddingRight,
         );
+        title.textAlignHorizontal = 'CENTER';
+        title.layoutAlign = 'STRETCH';
         bindFill(
           title,
           headerType === 'green'
@@ -395,18 +439,27 @@ async function renderComponents({
         );
         expose(node, title, 'Title', 'Titolo pagina');
         if (headerType === 'step') {
-          await progress(header, 'Step progress', 0.5, width - header.paddingLeft * 2);
-          await text(header, 'Step label', '2 di 4', 'label-l');
-          header.itemSpacing = n['size-80'];
+          const step = frame(header, 'Step toolbar');
+          fullWidth(step);
+          moveRoles(header, step, ['Step progress', 'Step label']);
+          const selector = 'ion-header ion-toolbar.header-step-toolbar';
+          step.paddingLeft = cssNumber('page', selector, '--padding-start');
+          step.paddingRight = cssNumber('page', selector, '--padding-end');
+          step.paddingTop = cssNumber('page', selector, '--padding-top');
+          step.paddingBottom = cssNumber('page', selector, '--padding-bottom');
+          step.itemSpacing = n['size-80'];
+          const available = width - step.paddingLeft - step.paddingRight;
+          const track = await progress(step, 'Step progress', 0.5, available);
+          track.layoutAlign = 'STRETCH';
+          const label = await text(step, 'Step label', '2 di 4', 'label-l', available);
+          label.textAlignHorizontal = 'RIGHT';
+          label.layoutAlign = 'STRETCH';
         }
         const body = await slot(node, 'Body slot', width, n['size-800'] * 4);
         body.body.layoutGrow = 1;
+        body.body.layoutAlign = body.label.layoutAlign = 'STRETCH';
         expose(node, body.label, 'Content', 'Contenuto del consumer');
-        const footer = frame(node, 'Footer slot');
-        footer.visible = hasFooter;
-        footer.paddingLeft = footer.paddingRight = n['size-240'];
-        footer.paddingTop = n['size-160'];
-        footerButton(footer);
+        footer(node, 'page', ':host ion-footer ion-toolbar', hasFooter, backgrounds[background]);
         pages.push(node);
       }
     }

@@ -174,6 +174,12 @@ I riempimenti dei componenti sono collegati alle variabili colore.
   Le scritte Content e le CTA nei footer sono contenuto consumer dimostrativo, non copy
   incorporato nei componenti Angular. Non vengono simulati safe area, router, screen reader,
   scrolling, chiusura modali, altezza dinamica, condensedHeader, translucent e stati di elevazione.
+  Gli header e i footer riempiono la larghezza della shell e seguono il ridimensionamento
+  orizzontale con auto layout. Il footer contiene una CTA dimostrativa `expand`, larga quanto
+  lo spazio disponibile dopo gli inset laterali Sass da 24px: non modifica il master UIButton.
+  Il titolo di UIPage è centrato nella toolbar; l'header step usa una seconda toolbar con
+  inset da 24px e indicazione del passo allineata a destra. UIBottomSheet mantiene solo
+  il controllo close nel suo header: un eventuale titolo appartiene al contenuto consumer.
 - UIProgressBar usa height/radius Sass e colore tertiary; il track al 20% è un'approssimazione
   Ionic. Il valore è continuo nel codice, mentre in Figma sono disponibili cinque campioni.
 - Grid/Row/Col usano auto layout per esempi visivi, non eseguono percentuali CSS o breakpoint.

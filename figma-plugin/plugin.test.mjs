@@ -435,3 +435,118 @@ test('unavailable repository font fails before modifying the document', async ()
   assert.equal(env.variables.length, 0);
   assert.equal(env.styles.length, 0);
 });
+
+test('shell toolbars fill the viewport and preserve title/footer IDs when upgrading old layouts', async () => {
+  const env = environment();
+  await env.run();
+  const role = (node, name) =>
+    node.children.find((child) => child.getPluginData('bepower-role') === name);
+  const tagged = (id) =>
+    env.document.findOne((node) => node.getPluginData('bepower-source') === id);
+  const buttonWidth = tagged('button/primary/default').width;
+  const shells = env.document.findAll(
+    (node) =>
+      node.type === 'COMPONENT' &&
+      /^(page|bottom-sheet)\//.test(node.getPluginData('bepower-source')),
+  );
+  assert.equal(shells.length, 54);
+  function checkShells() {
+    for (const shell of shells) {
+      const id = shell.getPluginData('bepower-source');
+      const isPage = id.startsWith('page/');
+      const header = role(shell, 'Header');
+      const footer = role(shell, 'Footer slot');
+      const cta = footer.children.find((node) => node.type === 'INSTANCE');
+      assert.equal(header.width, shell.width, `${id}: full-width header`);
+      assert.equal(header.layoutAlign, 'STRETCH');
+      assert.equal(header.counterAxisSizingMode, 'FIXED');
+      assert.equal(footer.width, shell.width, `${id}: full-width footer background`);
+      assert.equal(footer.layoutAlign, 'STRETCH');
+      assert.equal(footer.counterAxisSizingMode, 'FIXED');
+      assert.equal(footer.primaryAxisSizingMode, 'AUTO', 'footer hugs height, not width');
+      assert.equal(footer.visible, id.endsWith('/true'));
+      assert.equal(footer.paddingLeft, 24);
+      assert.equal(footer.paddingRight, 24);
+      assert.equal(footer.paddingTop, 16);
+      assert.equal(footer.paddingBottom, isPage ? 0 : 16);
+      assert.equal(cta.width, shell.width - 48);
+      assert.equal(cta.primaryAxisSizingMode, 'FIXED');
+      assert.equal(cta.layoutAlign, 'STRETCH');
+      assert.ok(footer.fills[0].boundVariables.color.id);
+      const body = role(shell, 'Body slot');
+      assert.equal(body.layoutGrow, 1, 'body occupies remaining vertical space');
+      assert.equal(body.layoutAlign, 'STRETCH');
+      if (isPage) {
+        const toolbar = role(header, 'Title toolbar');
+        const title = role(toolbar, 'Title');
+        assert.equal(header.paddingLeft, 0, 'padding belongs to the individual toolbars');
+        assert.equal(toolbar.width, shell.width);
+        assert.equal(toolbar.paddingLeft, 16);
+        assert.equal(toolbar.paddingRight, 16);
+        assert.equal(toolbar.paddingTop, 8);
+        assert.equal(toolbar.paddingBottom, 16);
+        assert.equal(title.textAlignHorizontal, 'CENTER');
+        assert.equal(title.width, shell.width - 32);
+        assert.equal(title.layoutAlign, 'STRETCH');
+        assert.equal(
+          header.children.filter((node) => node.getPluginData('bepower-role') === 'Title').length,
+          0,
+          'no duplicate title',
+        );
+        if (id.includes('/step/')) {
+          const step = role(header, 'Step toolbar');
+          assert.equal(step.width, shell.width);
+          assert.equal(step.paddingLeft, 24);
+          assert.equal(step.paddingRight, 24);
+          assert.equal(step.paddingTop, 0);
+          assert.equal(step.paddingBottom, 16);
+          assert.equal(step.itemSpacing, 8);
+          assert.equal(role(step, 'Step progress').width, shell.width - 48);
+          assert.equal(role(step, 'Step label').textAlignHorizontal, 'RIGHT');
+        }
+      } else {
+        assert.equal(header.primaryAxisAlignItems, 'MAX', 'close stays at the trailing edge');
+        assert.equal(header.counterAxisAlignItems, 'CENTER');
+        assert.equal(header.paddingLeft, 24);
+        assert.equal(header.paddingRight, 24);
+        assert.equal(header.paddingTop, 24);
+        assert.equal(header.height, 64);
+      }
+    }
+  }
+  checkShells();
+  const page = tagged('page/white/step/true');
+  const header = role(page, 'Header');
+  const toolbar = role(header, 'Title toolbar');
+  const title = role(toolbar, 'Title');
+  const references = title.componentPropertyReferences.characters;
+  const footer = role(page, 'Footer slot');
+  const cta = footer.children[0];
+  const identities = [title.id, footer.id, cta.id];
+  // Previous bundle placed title and step content directly in a padded header.
+  header.appendChild(title);
+  toolbar.remove();
+  const step = role(header, 'Step toolbar');
+  for (const child of step.children) header.appendChild(child);
+  step.remove();
+  header.paddingLeft = header.paddingRight = 16;
+  footer.counterAxisSizingMode = 'AUTO';
+  footer.resize(292, footer.height);
+  cta.primaryAxisSizingMode = 'AUTO';
+  cta.resize(244, cta.height);
+  await env.run();
+  checkShells();
+  assert.deepEqual(
+    [role(role(header, 'Title toolbar'), 'Title').id, footer.id, cta.id],
+    identities,
+  );
+  assert.equal(
+    role(role(header, 'Title toolbar'), 'Title').componentPropertyReferences.characters,
+    references,
+  );
+  assert.equal(
+    tagged('button/primary/default').width,
+    buttonWidth,
+    'CTA resizing never changes the shared master',
+  );
+});
