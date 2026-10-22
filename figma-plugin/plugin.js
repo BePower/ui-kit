@@ -146,6 +146,23 @@ async function run() {
       figma.variables.setBoundVariableForPaint(paint(name)[0], 'color', colorVariables[name]),
     ];
   }
+  function exposeText(master, text, name, value) {
+    // Figma only exposes definitions on the set once a component becomes a variant.
+    const owner = master.parent?.type === 'COMPONENT_SET' ? master.parent : master;
+    const definitions = owner.componentPropertyDefinitions;
+    const reference = text.componentPropertyReferences?.characters;
+    const isTextProperty = (key) =>
+      key && key.startsWith(`${name}#`) && definitions[key]?.type === 'TEXT';
+    // Keep each existing reference, even if the set contains several legacy Label IDs.
+    let property = isTextProperty(reference)
+      ? reference
+      : Object.keys(definitions).find(isTextProperty);
+    if (!property) property = owner.addComponentProperty(name, 'TEXT', value);
+    text.componentPropertyReferences = {
+      ...text.componentPropertyReferences,
+      characters: property,
+    };
+  }
   function variants(nodes, id, name, x) {
     let set = managed.get(`COMPONENT_SET:${id}`);
     if (!set) set = figma.combineAsVariants(nodes, page);
@@ -238,11 +255,7 @@ async function run() {
       label.textDecoration = type.underline ? 'UNDERLINE' : 'NONE';
       label.characters = 'Continua';
       bindFill(label, 'color-grey-default-grey');
-      let property = Object.keys(node.componentPropertyDefinitions).find((name) =>
-        name.startsWith('Label#'),
-      );
-      if (!property) property = node.addComponentProperty('Label', 'TEXT', 'Continua');
-      label.componentPropertyReferences = { characters: property };
+      exposeText(node, label, 'Label', 'Continua');
       buttons.push(node);
       await checkpoint();
     }
@@ -258,6 +271,7 @@ async function run() {
     iconSets,
     buttonSet,
     checkpoint,
+    exposeText,
   });
   progress('Aggiornamento catalogo e foundations…');
   await checkpoint(true);

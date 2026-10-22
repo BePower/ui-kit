@@ -8,6 +8,7 @@ async function renderComponents({
   iconSets,
   buttonSet,
   checkpoint,
+  exposeText: expose,
 }) {
   const n = DATA.numbers;
   const tag = 'bepower-source';
@@ -64,13 +65,6 @@ async function renderComponents({
     bindFill(node, 'color-grey-default-grey');
     await checkpoint();
     return node;
-  }
-  function expose(master, node, name, value) {
-    let property = Object.keys(master.componentPropertyDefinitions).find((key) =>
-      key.startsWith(`${name}#`),
-    );
-    if (!property) property = master.addComponentProperty(name, 'TEXT', value);
-    node.componentPropertyReferences = { characters: property };
   }
   function master(id, name) {
     const node = component(id, name);

@@ -73,6 +73,13 @@ al master interessato; non ricreare la libreria per nascondere il problema.
 
 ### Finestra diagnostica
 
+L'errore `Can only get component property definitions of a component set or non-variant component`
+indica una lettura delle definizioni dal singolo master già inserito in un set. Il generatore
+ora legge e aggiunge le proprietà sul set per le varianti, sul componente per i master standalone.
+Riutilizza prima il riferimento testo esistente (anche se il set contiene più ID legacy con lo
+stesso nome) e usa solo definizioni di tipo TEXT. Questo vale per Label, Text, Title e Content.
+Non serve eliminare gli asset: rigenera il bundle aggiornato e rieseguilo nello stesso file.
+
 Il plugin mostra avanzamento per font, stili, pagine, icone, componenti e catalogo.
 La finestra non si chiude automaticamente né al successo né all'errore. Non chiuderla mentre
 l'aggiornamento è in corso. In caso di errore alcuni nodi potrebbero già essere aggiornati,

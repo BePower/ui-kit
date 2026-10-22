@@ -30,21 +30,36 @@ function environment() {
       this.x = 0;
       this.y = 0;
       this.data = {};
-      this.componentPropertyDefinitions = {};
+      this._componentPropertyDefinitions = {};
       this.fills = type === 'VECTOR' ? [{ type: 'SOLID', color: { r: 1, g: 0, b: 0 } }] : [];
     }
     get children() {
       return [...this._children];
     }
+    get componentPropertyDefinitions() {
+      if (this.type === 'COMPONENT' && this.parent?.type === 'COMPONENT_SET') {
+        throw new Error(
+          'Can only get component property definitions of a component set or non-variant component',
+        );
+      }
+      return this._componentPropertyDefinitions;
+    }
+    promoteProperties(child) {
+      if (this.type === 'COMPONENT_SET' && child.type === 'COMPONENT') {
+        Object.assign(this._componentPropertyDefinitions, child._componentPropertyDefinitions);
+      }
+    }
     appendChild(child) {
       child.remove();
       this._children.push(child);
       child.parent = this;
+      this.promoteProperties(child);
     }
     insertChild(index, child) {
       child.remove();
       this._children.splice(index, 0, child);
       child.parent = this;
+      this.promoteProperties(child);
     }
     remove() {
       if (this.parent) {
@@ -85,6 +100,9 @@ function environment() {
       this.textStyleId = id;
     }
     addComponentProperty(name, type, defaultValue) {
+      if (this.type === 'COMPONENT' && this.parent?.type === 'COMPONENT_SET') {
+        throw new Error('Can only add properties on a component set or non-variant component');
+      }
       const id = `${name}#${makeId()}`;
       this.componentPropertyDefinitions[id] = { type, defaultValue };
       return id;
@@ -301,7 +319,7 @@ test('catalog generation preserves master IDs, properties and external content o
   assert.equal(masters.length, iconCount + 129);
   const masterIds = masters.map((node) => node.id);
   const label = tagged('button/primary/default').findOne((node) => node.type === 'TEXT');
-  const property = Object.keys(tagged('button/primary/default').componentPropertyDefinitions)[0];
+  const property = label.componentPropertyReferences.characters;
   const board = tagged('foundations-board');
   const catalog = tagged('component-catalog');
   assert.ok(board && catalog);
@@ -376,10 +394,7 @@ test('catalog generation preserves master IDs, properties and external content o
     tagged('button/primary/default').findOne((node) => node.type === 'TEXT').id,
     label.id,
   );
-  assert.equal(
-    Object.keys(tagged('button/primary/default').componentPropertyDefinitions)[0],
-    property,
-  );
+  assert.equal(label.componentPropertyReferences.characters, property);
   assert.ok(custom.parent);
   assert.ok(external.parent);
   assert.equal(external.mainComponent.id, originalButton.id);
@@ -445,7 +460,7 @@ test('migrates the original six buttons and two arrow masters without replacing 
         original.node.children.find((node) => node.type === 'TEXT').id,
         original.labelId,
       );
-      assert.ok(original.node.componentPropertyDefinitions[original.property]);
+      assert.ok(original.node.parent.componentPropertyDefinitions[original.property]);
     }
   }
   assert.equal(buttonInstance.mainComponent, buttons[0]);
@@ -743,4 +758,80 @@ test('UI retries a lost ready message and accepts a proxied status response', ()
   assert.deepEqual(cleared, [1, 2]);
   assert.match(dom.window.document.getElementById('status').textContent, /Completato/);
   dom.window.close();
+});
+
+test('variant text properties are owned by the set and keep legacy reference IDs', async () => {
+  const env = environment();
+  const { figma } = env;
+  const components = [];
+  const labels = [];
+  for (const variant of ['primary', 'secondary']) {
+    const component = figma.createComponent();
+    component.setPluginData('bepower-source', `button/${variant}/default`);
+    const label = figma.createText();
+    label.name = 'Label';
+    component.appendChild(label);
+    components.push(component);
+    labels.push(label);
+  }
+  const set = figma.combineAsVariants(components, figma.currentPage);
+  set.setPluginData('bepower-source', 'buttons');
+  const boolean = set.addComponentProperty('Label', 'BOOLEAN', false);
+  const canonical = set.addComponentProperty('Label', 'TEXT', 'Continua');
+  const legacy = set.addComponentProperty('Label', 'TEXT', 'Continua');
+  labels[0].componentPropertyReferences = { characters: legacy };
+  assert.throws(() => components[0].componentPropertyDefinitions, /component set or non-variant/);
+  assert.throws(
+    () => components[0].addComponentProperty('Wrong', 'TEXT', ''),
+    /component set or non-variant/,
+  );
+  await env.run();
+  assert.equal(
+    labels[0].componentPropertyReferences.characters,
+    legacy,
+    'retains a noncanonical legacy ID',
+  );
+  assert.equal(
+    labels[1].componentPropertyReferences.characters,
+    canonical,
+    'fallback selects TEXT, not BOOLEAN',
+  );
+  assert.notEqual(labels[1].componentPropertyReferences.characters, boolean);
+  const propertyKeys = Object.keys(set.componentPropertyDefinitions).sort();
+  await env.run();
+  assert.equal(labels[0].componentPropertyReferences.characters, legacy);
+  assert.equal(labels[1].componentPropertyReferences.characters, canonical);
+  assert.deepEqual(
+    Object.keys(set.componentPropertyDefinitions).sort(),
+    propertyKeys,
+    'does not add duplicate properties',
+  );
+});
+
+test('all exposed text references remain valid at the property owner across repeated runs', async () => {
+  const env = environment();
+  function snapshot() {
+    const references = [];
+    const definitions = [];
+    for (const master of env.document.findAll((node) => node.type === 'COMPONENT')) {
+      const owner = master.parent.type === 'COMPONENT_SET' ? master.parent : master;
+      for (const node of master.findAll((node) => node.type === 'TEXT')) {
+        const property = node.componentPropertyReferences?.characters;
+        if (!property) continue;
+        assert.equal(owner.componentPropertyDefinitions[property]?.type, 'TEXT');
+        references.push(`${master.id}:${node.id}:${property}`);
+      }
+    }
+    for (const set of env.document.findAll((node) => node.type === 'COMPONENT_SET')) {
+      definitions.push(
+        `${set.id}:${Object.keys(set.componentPropertyDefinitions).sort().join(',')}`,
+      );
+    }
+    return { references: references.sort(), definitions: definitions.sort() };
+  }
+  await env.run();
+  const original = snapshot();
+  assert.ok(original.references.length > 100);
+  await env.run();
+  assert.deepEqual(snapshot(), original);
 });
