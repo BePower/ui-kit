@@ -8,6 +8,9 @@ const root = new URL('../', import.meta.url);
 execFileSync(process.execPath, ['scripts/build-figma-plugin.mjs'], { cwd: root });
 const source = readFileSync(new URL('dist/code.js', import.meta.url), 'utf8');
 const data = JSON.parse(readFileSync(new URL('dist/tokens.json', import.meta.url), 'utf8'));
+const { buildId } = JSON.parse(
+  readFileSync(new URL('dist/build-info.json', import.meta.url), 'utf8'),
+);
 
 // Small in-memory Plugin API double. It checks lifecycle/identity, not Figma rendering.
 function environment() {
@@ -179,9 +182,9 @@ function environment() {
     };
   }
   async function run() {
-    await new Promise((resolve, reject) => {
+    return new Promise((resolve, reject) => {
       figma.closePlugin = (message) => {
-        if (message) resolve();
+        if (message) resolve(message);
         else reject(new Error(notices.join('\n')));
       };
       vm.runInNewContext(source, { figma }, { timeout: 10000 });
@@ -191,6 +194,8 @@ function environment() {
 }
 
 test('generated data retains repository mappings', () => {
+  assert.match(buildId, /^[0-9a-f]{12}$/);
+  assert.ok(source.startsWith(`const BUILD_ID = "${buildId}";`));
   assert.equal(data.fontFamily, 'Source Sans 3');
   assert.equal(data.button.height, 48);
   assert.equal(data.button.paddingX, 88);
@@ -434,6 +439,34 @@ test('unavailable repository font fails before modifying the document', async ()
   assert.equal(env.document.children[0].children.length, 0);
   assert.equal(env.variables.length, 0);
   assert.equal(env.styles.length, 0);
+  assert.equal(env.document.getPluginData('bepower-last-build'), '');
+});
+
+test('run reports distinguish creation from updates and identify the executed bundle', async () => {
+  const env = environment();
+  const first = await env.run();
+  assert.ok(first.includes(buildId));
+  assert.match(first, /0 master aggiornati · 579 creati · nuovo bundle/);
+  const ids = env.document
+    .findAll((node) => node.type === 'COMPONENT')
+    .map((node) => node.id)
+    .sort();
+  const second = await env.run();
+  assert.ok(second.includes(buildId));
+  assert.match(second, /579 master aggiornati · 0 creati · stesso bundle/);
+  assert.equal(env.document.getPluginData('bepower-last-build'), buildId);
+  assert.deepEqual(JSON.parse(env.document.getPluginData('bepower-last-report')), {
+    buildId,
+    created: 0,
+    updated: 579,
+  });
+  assert.deepEqual(
+    env.document
+      .findAll((node) => node.type === 'COMPONENT')
+      .map((node) => node.id)
+      .sort(),
+    ids,
+  );
 });
 
 test('shell toolbars fill the viewport and preserve title/footer IDs when upgrading old layouts', async () => {

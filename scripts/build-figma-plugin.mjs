@@ -1,5 +1,6 @@
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 import * as sass from 'sass';
 import { collectInventory } from './figma-inventory.mjs';
 
@@ -86,10 +87,13 @@ data.fontFamily = fontSource.match(/--ion-font-family:\s*'([^']+)'/)?.[1];
 if (!data.fontFamily) throw new Error('Missing foundation font family');
 const output = `${root}figma-plugin/dist`;
 await mkdir(output, { recursive: true });
-await writeFile(
-  `${output}/code.js`,
-  `const DATA = ${JSON.stringify(data)};\n${await read('figma-plugin/components.js')}\n${await read('figma-plugin/catalog.js')}\n${await read('figma-plugin/plugin.js')}`,
+const sources = await Promise.all(
+  ['figma-plugin/components.js', 'figma-plugin/catalog.js', 'figma-plugin/plugin.js'].map(read),
 );
+const body = `const DATA = ${JSON.stringify(data)};\n${sources.join('\n')}`;
+const buildId = createHash('sha256').update(body).digest('hex').slice(0, 12);
+await writeFile(`${output}/code.js`, `const BUILD_ID = ${JSON.stringify(buildId)};\n${body}`);
+await writeFile(`${output}/build-info.json`, JSON.stringify({ buildId, main: 'code.js' }, null, 2));
 await writeFile(
   `${output}/manifest.json`,
   JSON.stringify(
@@ -107,4 +111,6 @@ await writeFile(
   ),
 );
 await writeFile(`${output}/tokens.json`, JSON.stringify(data, null, 2));
-console.log('Figma plugin generated in figma-plugin/dist (manifest.json, code.js, tokens.json)');
+console.log(
+  `BePower build ${buildId} generated in figma-plugin/dist. Import the manifest from this same local directory in Figma Desktop.`,
+);

@@ -23,7 +23,53 @@ node scripts/build-figma-plugin.mjs
 6. Verifica il risultato e pubblica manualmente la libreria con gli strumenti Figma.
    La pubblicazione e l'abilitazione della libreria in altri file dipendono dal piano e dai permessi.
 
-Per aggiornare: rigenera i file, quindi riesegui il plugin **nello stesso file Figma**.
+### Come rilanciare un aggiornamento senza cancellare gli asset
+
+Figma Desktop esegue il `code.js` **sul tuo computer**, nella cartella da cui hai importato
+il manifest. Non legge automaticamente il repository o il workspace di Make. Il bundle
+generato qui e quello importato sul computer sono due copie distinte finché non le aggiorni.
+Inoltre `figma-plugin/dist` è ignorata da Git: aggiornare i soli sorgenti non rigenera il bundle.
+
+1. Aggiorna sul computer i sorgenti modificati qui (scarica/esporta nuovamente il progetto,
+   se necessario), nella copia locale che usi per il plugin.
+2. Da quella cartella del repository esegui:
+
+   ```bash
+   node scripts/build-figma-plugin.mjs
+   ```
+
+3. Il terminale stampa **BePower build `<id>`**. Lo stesso ID è in
+   `figma-plugin/dist/build-info.json`.
+4. Verifica che il plugin locale importato in Figma usi il manifest di **questa cartella**,
+   non un vecchio download o un'altra copia di `dist`. Se serve, importa il manifest aggiornato
+   da Plugins → Development → Import plugin from manifest. Mantieni invariato l'ID del plugin.
+5. Apri il **file libreria originale**, in modalità Design, e avvia
+   Plugins → Development → **BePower UI Kit · repository pilot**.
+6. A fine esecuzione il messaggio mostra ID, master aggiornati e creati. Con il catalogo
+   attuale già completo, un secondo avvio deve indicare **579 aggiornati, 0 creati**.
+   Nuovi componenti aggiunti ai sorgenti possono legittimamente aumentare il numero dei creati.
+
+Non rimuovere pagine, master o variabili per aggiornare. La rimozione rompe i collegamenti
+delle istanze. Non eliminare o cambiare l'ID nel manifest: i dati privati che identificano
+i nodi sono associati al plugin.
+
+Se non compare l'ID atteso, Figma non sta eseguendo il bundle aggiornato: controlla prima
+la copia locale e il manifest, poi chiudi un'eventuale esecuzione ancora aperta e rilancia
+dal menu Development, anziché dai plugin recenti.
+`stesso bundle` significa che hai rieseguito lo stesso codice/dati dell'ultimo avvio riuscito;
+non significa che il plugin abbia saltato l'aggiornamento.
+
+Se l'ID corrisponde e i master originali sono corretti ma un'istanza personale non cambia,
+controlla gli override locali prima di ripristinarli: non vengono cancellati indiscriminatamente.
+Se molti master risultano nuovamente **creati** nonostante quelli originali siano ancora presenti,
+verifica file e ID del plugin: i metadati dei nodi potrebbero non essere riconosciuti,
+per esempio dopo aver registrato il codice come un nuovo plugin con un altro ID.
+Se invece il master resta errato, condividi ID del bundle, conteggi, eventuale errore e link
+al master interessato; non ricreare la libreria per nascondere il problema.
+
+Negli **altri file** che consumano una libreria pubblicata, rilanciare il plugin non basta:
+prima pubblica l'aggiornamento dal file libreria e poi accettalo nei file utilizzatori.
+
 Componenti, set, variabili e stili vengono riutilizzati tramite identificativi o nomi stabili.
 Non rinominare le variabili o gli stili generati; evita modifiche manuali ai master generati.
 Le istanze esistenti continuano a riferirsi agli stessi componenti. Il nodo Label e la proprietà

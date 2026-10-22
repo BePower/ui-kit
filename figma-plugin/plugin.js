@@ -1,4 +1,4 @@
-/* global figma, DATA, createCatalog, renderComponents */
+/* global figma, DATA, BUILD_ID, createCatalog, renderComponents */
 // This file is bundled with repository-derived DATA by build-figma-plugin.mjs.
 const prefix = 'BePower/';
 const key = 'bepower-source';
@@ -10,6 +10,8 @@ const paint = (name) => {
 const styleName = (name) => prefix + name.replaceAll('-', '/');
 
 async function run() {
+  const previousBuild = figma.root.getPluginData('bepower-last-build');
+  const counts = { created: 0, updated: 0 };
   // Fail before modifying the document if the exact repository font is unavailable.
   await figma.loadFontAsync({ family: DATA.fontFamily, style: 'Regular' });
   await figma.loadFontAsync({ family: DATA.fontFamily, style: 'SemiBold' });
@@ -64,6 +66,9 @@ async function run() {
       node = figma.createComponent();
       page.appendChild(node);
       node.setPluginData(key, id);
+      counts.created++;
+    } else {
+      counts.updated++;
     }
     node.name = name;
     node.description = 'Generated from @bepower/ui-kit. Edit the repository, then regenerate.';
@@ -190,11 +195,16 @@ async function run() {
   });
   page.selection = [catalog];
   figma.viewport.scrollAndZoomIntoView(page.selection);
-  figma.closePlugin('BePower updated: all exported components and registered icon variants.');
+  // Record only successful runs. A failed/partial update must not look like a completed build.
+  figma.root.setPluginData('bepower-last-build', BUILD_ID);
+  figma.root.setPluginData('bepower-last-report', JSON.stringify({ buildId: BUILD_ID, ...counts }));
+  figma.closePlugin(
+    `BePower ${BUILD_ID} · ${counts.updated} master aggiornati · ${counts.created} creati · ${previousBuild === BUILD_ID ? 'stesso bundle' : 'nuovo bundle'}`,
+  );
 }
 
 run().catch((error) => {
-  figma.notify(`BePower: ${error.message}`, {
+  figma.notify(`BePower ${BUILD_ID}: ${error.message}`, {
     error: true,
   });
   figma.closePlugin();
