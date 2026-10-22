@@ -2,6 +2,7 @@
 
 # Compiled output
 /dist
+/figma-plugin/dist
 /storybook-static
 /tmp
 /out-tsc
