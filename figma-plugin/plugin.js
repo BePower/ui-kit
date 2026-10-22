@@ -243,7 +243,11 @@ async function run() {
         node.strokeWeight = 1;
       }
       // Retain the label node and component property IDs on subsequent updates.
-      let label = node.children.find((child) => child.type === 'TEXT');
+      let label =
+        node.children.find((child) => child.type === 'TEXT') ||
+        node.children
+          .find((child) => child.getPluginData('bepower-role') === 'Button content')
+          ?.children.find((child) => child.type === 'TEXT' && child.name === 'Label');
       if (!label) {
         label = figma.createText();
         node.appendChild(label);

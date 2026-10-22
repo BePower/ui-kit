@@ -284,52 +284,50 @@ non va modificato manualmente né versionato.
 
 ## Gerarchia riutilizzabile nel design
 
-Il generatore configura gli slot come istanze native con proprietà **INSTANCE_SWAP**:
-non sono frame che assomigliano ai componenti.
+Il generatore usa **slot nativi Figma (`SLOT`)**, non contenuti singoli con INSTANCE_SWAP.
+Gli slot sono collezioni aperte: `minChildren: 0`, `maxChildren: null`, nessuna restrizione
+ai soli componenti preferiti. Puoi aggiungere, duplicare, riordinare e rimuovere contenuti
+direttamente nelle istanze senza Detach né un componente wrapper.
 
 ```text
 UIPage oppure UIBottomSheet
-├── Body slot → UIGrid
-│   └── Content slot → UIRow
-│       ├── Column 1 → UICol → Content slot → UIP
-│       └── Column 2 → UICol → Content slot → UIP
-└── Footer slot → UIButton
-    ├── Leading icon → UIIcon (opzionale)
-    ├── Label (proprietà testo)
-    └── Trailing icon → UIIcon (opzionale)
+├── Body [SLOT] → UIGrid, titoli, sezioni, altre griglie…
+│   └── UIGrid / Rows [SLOT] → UIRow, UIRow, UIRow…
+│       └── UIRow / Columns [SLOT] → UICol, UICol, UICol…
+│           └── UICol / Content [SLOT] → testo, pulsanti, icone…
+└── Footer [SLOT] → UIButton, UIButton, testo…
+    └── UIButton / Content [SLOT] → Label, testo, icone…
 ```
 
-I frame intermedi sono necessari al layout e non sostituiscono i componenti: i nodi UI-kit
-sono vere istanze collegate ai rispettivi master. Le dipendenze sono costruite dal basso
-verso l'alto per evitare componenti ricorsivi.
+I nodi UI-kit sono istanze collegate ai master. Due colonne e una riga sono solo contenuti
+iniziali, non un massimo. In `_Composition` trovi un esempio con tre righe, tre colonne
+nella prima riga e più azioni nel footer.
 
-| Componente              | Proprietà di composizione                                                                       |
-| ----------------------- | ----------------------------------------------------------------------------------------------- |
-| UIPage, UIBottomSheet   | `Body component`, `Footer component`                                                            |
-| UIGrid                  | `Rows component`                                                                                |
-| UIRow                   | `Column 1 component`, `Column 2 component`                                                      |
-| UICol                   | `Content component`                                                                             |
-| UIButton default/inline | `Leading icon`, `Trailing icon`, `Show leading icon`, `Show trailing icon`; `Label` resta testo |
-| UIButton icon/min-icon  | `Icon`                                                                                          |
-| UITitle, UIText, UIP    | Sono componenti foglia annidabili con proprietà testo, non contenitori                          |
-| UIIcon, UIProgressBar   | Sono componenti foglia annidabili; restano disponibili fill/size o value                        |
+| Componente              | Proprietà di composizione                                                                  |
+| ----------------------- | ------------------------------------------------------------------------------------------ |
+| UIPage, UIBottomSheet   | Slot aperti `Body`, `Footer`                                                               |
+| UIGrid                  | Slot aperto `Rows`                                                                         |
+| UIRow                   | Slot aperto `Columns`, auto layout orizzontale con wrap                                    |
+| UICol                   | Slot aperto `Content`                                                                      |
+| UIButton default/inline | Slot aperto `Content`; gli swap Leading/Trailing icon restano opzionali; Label resta testo |
+| UIButton icon/min-icon  | `Icon`                                                                                     |
+| UITitle, UIText, UIP    | Sono componenti foglia annidabili con proprietà testo, non contenitori                     |
+| UIIcon, UIProgressBar   | Sono componenti foglia annidabili; restano disponibili fill/size o value                   |
 
 ### Uso in Figma
 
 1. Inserisci UIPage da Assets e scegli una variante con footer se necessario.
 2. Espandi l'istanza nei Layers: trovi istanze UIGrid, UIRow, UICol, UIP e UIButton.
-3. Seleziona la UICol annidata e cambia **Content component** dal pannello proprietà.
-   Puoi provare `Composition / Content`, che contiene UITitle, UIP, UIText, UIProgressBar e UIButton.
-4. Per più righe o un contenuto diverso, crea **un tuo componente di composizione**
-   usando istanze del kit; selezionalo nello swap del contenitore superiore.
-5. Per i pulsanti abilita Show leading/trailing icon e scegli l'icona, oppure inserisci
-   il pulsante come Content component di una colonna o in un componente footer.
+3. Seleziona lo slot `Rows` della griglia e trascina altre istanze UIRow da Assets al suo interno.
+4. Seleziona `Columns` di una riga e aggiungi altre UICol; duplica, riordina o rimuovi liberamente.
+5. Inserisci direttamente pulsanti e testi nello slot Content di una colonna, e più sezioni
+   in Body o più CTA in Footer. Regola Fill container e misure quando necessario.
+6. Per i pulsanti puoi comporre Content oppure usare gli swap opzionali delle icone.
 
-La pagina `_Composition` contiene esempi nativi Page e Bottomsheet da esplorare.
-Non serve Detach. Non è però un'istanza liberamente editabile come il DOM Angular:
-Figma non permette di aggiungere livelli arbitrari a queste istanze. Per quantità arbitrarie
-di elementi serve un componente di contenuto, e la Row generata offre due colonne dimostrative.
-Creare più istanze sulla stessa canvas non le annida automaticamente.
+Le modifiche ai figli sono consentite **dentro gli slot**, non nella struttura protetta
+esternamente agli slot. Non si aggiungono nuovi slot nominati dal corpo dell'istanza:
+Body e Footer accettano già molti elementi ciascuno, come gli slot Angular del componente.
+Non serve predisporre Body1, Body2, Body3. `Composition / Content` resta solo un esempio opzionale.
 
 Le larghezze utilizzano auto layout/stretch ove applicabile. Il layout resta una rappresentazione
 Figma, non esegue il modello percentuale Ionic, i breakpoint, lo scrolling o il codice Angular.
@@ -337,14 +335,32 @@ Verifica contenuti lunghi, componenti di contenuto personalizzati e ridimensiona
 
 ### Aggiornamento dei file esistenti
 
+I frame esistenti vengono convertiti in slot con `slotContentId`, preservandone gli ID.
+Il nuovo slot Columns sostituisce i due contenitori rigidi; i vecchi contenitori restano
+nascosti per compatibilità, mentre le istanze colonna iniziali vengono spostate nello slot.
 I master originali e gli ID delle proprietà testo sono conservati. I vecchi testi Content
-restano come placeholder **nascosti**, per evitare che si sovrappongano al componente proiettato.
+restano come placeholder **nascosti**, per evitare che si sovrappongano ai contenuti.
 `Show legacy placeholder` li rende nuovamente visibili, incluse le vecchie personalizzazioni testo.
-Il flusso nuovo usa gli swap, non il vecchio campo Content. Le composizioni personali
+Il flusso nuovo usa gli slot aperti, non i vecchi campi Content o gli swap di contenitore.
+Le vecchie definizioni swap, se già presenti, non vengono eliminate distruttivamente ma non
+controllano il nuovo contenuto. Le composizioni personali
 devono stare fuori dalle tavole generate; i loro override non vengono cancellati dal plugin.
 
 Al primo aggiornamento dal precedente catalogo sono previsti **579 aggiornati e 1 creato**:
 il nuovo master è Composition / Content. Ai successivi: **580 aggiornati e 0 creati**.
+
+### Requisiti e API
+
+Serve una versione/runtime Figma con supporto a Slots. Se `createSlot` non è disponibile,
+il plugin mostra un errore esplicito: non torna silenziosamente a un numero fisso di swap.
+Verifica il rollout della funzionalità nel tuo ambiente e aggiorna Figma Desktop.
+
+Riferimento ufficiale:
+[Add slot properties](https://developers.figma.com/docs/plugins/working-with-component-properties/#add-slot-properties).
+La conversione di un frame usa una proprietà SLOT e `componentPropertyReferences.slotContentId`.
+I figli di uno slot si modificano con le normali API `appendChild`/`insertChild`/`remove`;
+`InstanceNode.setProperties` non modifica il contenuto SLOT. Il plugin non chiama
+`resetSlot` sugli utenti: i contenuti personali devono essere preservati.
 
 ## Verifica prima della pubblicazione
 

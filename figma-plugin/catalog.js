@@ -145,18 +145,53 @@ async function createCatalog({
     compositionBoard,
     'BEPOWER / COMPOSITION',
     'Gerarchia di componenti',
-    'Questi esempi sono istanze native, non frame disegnati a mano. Espandi UIPage o UIBottomSheet nei Layers: Body slot → UIGrid → UIRow → UICol → UIP. Il footer contiene UIButton, con slot UIIcon.',
+    'Slot nativi aperti, senza numero massimo di figli. Espandi UIPage o UIBottomSheet nei Layers: Body → UIGrid → Rows → UIRow → Columns → UICol → Content. I due elementi iniziali sono esempi, non un limite.',
   );
   await text(
     compositionBoard,
-    'Per personalizzare: seleziona un’istanza e cambia Body component, Rows component, Column 1/2 component o Content component nel pannello proprietà. Per più elementi, crea un tuo componente di composizione con istanze UI-kit e selezionalo nello swap. Non fare Detach.',
+    'Per personalizzare, seleziona lo slot nei Layers e trascina al suo interno istanze da Assets, oppure duplica, riordina e rimuovi quelle presenti. Body e Footer accettano molti elementi; Rows molte righe; Columns molte colonne. Non serve Detach né un componente wrapper.',
   );
   await text(
     compositionBoard,
-    'Esempio pronto: Composition / Content contiene UITitle, UIP, UIText, UIProgressBar e UIButton. Sceglilo in Content component di una colonna. Leading icon/Trailing icon e Show leading/trailing icon configurano le icone dei pulsanti; Label rimane testo modificabile.',
+    'Composition / Content è solo un esempio opzionale: puoi inserire direttamente UITitle, UIP, UIText, UIProgressBar e UIButton negli slot. Nei pulsanti Content è aperto; gli swap Leading icon/Trailing icon rimangono per scegliere le icone.',
   );
   const compositionSamples = await section(compositionBoard, 'Esempi da esplorare nei Layers');
-  compositionSamples.appendChild(composition.page.createInstance());
+  const pageSample = composition.page.createInstance();
+  compositionSamples.appendChild(pageSample);
+  const body = pageSample.children.find((node) => node.type === 'SLOT' && node.name === 'Body');
+  const sampleGrid = body.children.find(
+    (node) => node.type === 'INSTANCE' && node.name === 'UIGrid',
+  );
+  const sampleRows = sampleGrid.children.find(
+    (node) => node.type === 'SLOT' && node.name === 'Rows',
+  );
+  const rowSource = library
+    .find((item) => item.id === 'row')
+    .set.children.find((node) => node.getPluginData(tag) === 'row/xxs');
+  for (let index = 0; index < 2; index++) {
+    const instance = rowSource.createInstance();
+    instance.name = 'UIRow';
+    sampleRows.appendChild(instance);
+  }
+  const sampleRow = sampleRows.children.find((node) => node.type === 'INSTANCE');
+  const sampleColumns = sampleRow.children.find(
+    (node) => node.type === 'SLOT' && node.name === 'Columns',
+  );
+  const colSource = library
+    .find((item) => item.id === 'col')
+    .set.children.find((node) => node.getPluginData(tag) === 'col/equal');
+  const thirdColumn = colSource.createInstance();
+  thirdColumn.name = 'UICol';
+  thirdColumn.layoutGrow = 1;
+  sampleColumns.appendChild(thirdColumn);
+  const footerSlot = pageSample.children.find(
+    (node) => node.type === 'SLOT' && node.name === 'Footer',
+  );
+  footerSlot.appendChild(
+    buttonSet.children
+      .find((node) => node.getPluginData(tag) === 'button/secondary/default')
+      .createInstance(),
+  );
   compositionSamples.appendChild(composition.sheet.createInstance());
   await text(
     compositionBoard,

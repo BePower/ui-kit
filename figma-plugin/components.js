@@ -22,6 +22,11 @@ async function renderComponents({
   }
   function child(parent, role, type) {
     let node = parent.children.find((item) => item.getPluginData('bepower-role') === role);
+    if (!node && type === 'TEXT' && role === 'Label') {
+      node = parent.children
+        .find((item) => item.getPluginData('bepower-role') === 'Button content')
+        ?.children.find((item) => item.getPluginData('bepower-role') === role);
+    }
     if (!node) {
       node = type === 'TEXT' ? figma.createText() : figma.createFrame();
       node.setPluginData('bepower-role', role);

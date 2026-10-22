@@ -15,7 +15,7 @@ const { buildId } = JSON.parse(
 );
 
 // Small in-memory Plugin API double. It checks lifecycle/identity, not Figma rendering.
-function environment() {
+function environment({ nativeSlots = true } = {}) {
   let sequence = 0;
   const stats = { findOneCalls: 0, yields: 0 };
   const makeId = () => `test:${++sequence}`;
@@ -31,10 +31,28 @@ function environment() {
       this.y = 0;
       this.data = {};
       this._componentPropertyDefinitions = {};
+      this._componentPropertyReferences = null;
+      if (!nativeSlots && type === 'COMPONENT') this.createSlot = undefined;
       this.fills = type === 'VECTOR' ? [{ type: 'SOLID', color: { r: 1, g: 0, b: 0 } }] : [];
     }
     get children() {
       return [...this._children];
+    }
+    get componentPropertyReferences() {
+      return this._componentPropertyReferences;
+    }
+    set componentPropertyReferences(refs) {
+      if (refs?.slotContentId) {
+        assert.ok(['FRAME', 'SLOT'].includes(this.type), 'slot properties attach to frames only');
+        let parent = this.parent;
+        while (parent && !['COMPONENT', 'INSTANCE'].includes(parent.type)) parent = parent.parent;
+        assert.ok(parent, 'slots must belong to a component or instance');
+        const master = parent.type === 'INSTANCE' ? parent.mainComponent : parent;
+        const owner = master.parent?.type === 'COMPONENT_SET' ? master.parent : master;
+        assert.equal(owner.componentPropertyDefinitions[refs.slotContentId]?.type, 'SLOT');
+        this.type = 'SLOT';
+      }
+      this._componentPropertyReferences = refs;
     }
     get componentPropertyDefinitions() {
       if (this.type === 'COMPONENT' && this.parent?.type === 'COMPONENT_SET') {
@@ -50,12 +68,14 @@ function environment() {
       }
     }
     appendChild(child) {
+      assert.ok(!(this.type === 'INSTANCE' && this.locked), 'cannot insert outside a native slot');
       child.remove();
       this._children.push(child);
       child.parent = this;
       this.promoteProperties(child);
     }
     insertChild(index, child) {
+      assert.ok(!(this.type === 'INSTANCE' && this.locked), 'cannot insert outside a native slot');
       child.remove();
       this._children.splice(index, 0, child);
       child.parent = this;
@@ -107,6 +127,23 @@ function environment() {
       this.componentPropertyDefinitions[id] = { type, defaultValue };
       return id;
     }
+    editComponentProperty(key, patch) {
+      const definition = this.componentPropertyDefinitions[key];
+      assert.ok(definition);
+      if (definition.type === 'SLOT') assert.ok(!('defaultValue' in patch));
+      Object.assign(definition, patch);
+      return key;
+    }
+    createSlot() {
+      assert.equal(this.type, 'COMPONENT');
+      const owner = this.parent?.type === 'COMPONENT_SET' ? this.parent : this;
+      const slot = new Node('FRAME');
+      this.appendChild(slot);
+      slot.componentPropertyReferences = {
+        slotContentId: owner.addComponentProperty('Slot', 'SLOT', ''),
+      };
+      return slot;
+    }
     createInstance() {
       assert.equal(this.type, 'COMPONENT');
       const instance = new Node('INSTANCE');
@@ -114,13 +151,33 @@ function environment() {
       instance.width = this.width;
       instance.height = this.height;
       instance.layoutMode = this.layoutMode;
+      function copy(source, parent) {
+        const clone =
+          source.type === 'INSTANCE'
+            ? source.mainComponent.createInstance()
+            : new Node(source.type);
+        clone.name = source.name;
+        clone.data = { ...source.data };
+        clone.width = source.width;
+        clone.height = source.height;
+        clone.visible = source.visible;
+        clone.layoutMode = source.layoutMode;
+        clone.characters = source.characters;
+        parent.appendChild(clone);
+        clone.componentPropertyReferences = source.componentPropertyReferences && {
+          ...source.componentPropertyReferences,
+        };
+        if (source.type !== 'INSTANCE') for (const child of source.children) copy(child, clone);
+      }
+      for (const slot of this.children.filter((node) => node.type === 'SLOT')) copy(slot, instance);
+      instance.locked = true;
       return instance;
     }
     async getMainComponentAsync() {
       assert.equal(this.type, 'INSTANCE');
       return this.mainComponent;
     }
-    swapInstance(component) {
+    swapComponent(component) {
       assert.equal(this.type, 'INSTANCE');
       assert.equal(component.type, 'COMPONENT');
       this.mainComponent = component;
@@ -141,6 +198,7 @@ function environment() {
       assert.equal(this.type, 'INSTANCE');
       for (const [key, value] of Object.entries(properties)) {
         assert.ok(this.componentProperties[key], `unknown property ${key}`);
+        assert.notEqual(this.componentProperties[key].type, 'SLOT', 'cannotSetSlotProperty');
         this.overrides = { ...this.overrides, [key]: value };
       }
     }
@@ -487,7 +545,7 @@ test('migrates the original six buttons and two arrow masters without replacing 
     assert.ok(original.node.parent, 'legacy master is still attached');
     if (original.label) {
       assert.equal(
-        original.node.children.find((node) => node.type === 'TEXT').id,
+        original.node.findAll((node) => node.type === 'TEXT' && node.name === 'Label')[0].id,
         original.labelId,
       );
       assert.ok(original.node.parent.componentPropertyDefinitions[original.property]);
@@ -845,7 +903,16 @@ test('all exposed text references remain valid at the property owner across repe
     const definitions = [];
     for (const master of env.document.findAll((node) => node.type === 'COMPONENT')) {
       const owner = master.parent.type === 'COMPONENT_SET' ? master.parent : master;
-      for (const node of master.findAll((node) => node.type === 'TEXT')) {
+      const ownText = [];
+      function collect(parent) {
+        for (const child of parent.children) {
+          if (child.type === 'INSTANCE') continue;
+          if (child.type === 'TEXT') ownText.push(child);
+          else collect(child);
+        }
+      }
+      collect(master);
+      for (const node of ownText) {
         const property = node.componentPropertyReferences?.characters;
         if (!property) continue;
         assert.equal(owner.componentPropertyDefinitions[property]?.type, 'TEXT');
@@ -866,7 +933,7 @@ test('all exposed text references remain valid at the property owner across repe
   assert.deepEqual(snapshot(), original);
 });
 
-test('container content and button icons are real instances with stable swap properties', async () => {
+test('containers expose open native slots; only icon choices use instance swaps', async () => {
   const env = environment();
   await env.run();
   const tagged = (id) =>
@@ -874,6 +941,15 @@ test('container content and button icons are real instances with stable swap pro
   const role = (node, name) =>
     node.children.find((child) => child.getPluginData('bepower-role') === name);
   const owner = (node) => (node.parent.type === 'COMPONENT_SET' ? node.parent : node);
+  const assertSlot = (master, slot) => {
+    assert.equal(slot.type, 'SLOT');
+    const definition =
+      owner(master).componentPropertyDefinitions[slot.componentPropertyReferences.slotContentId];
+    assert.equal(definition.type, 'SLOT');
+    assert.equal(definition.slotSettings.maxChildren, null);
+    assert.equal(definition.slotSettings.minChildren, 0);
+    assert.equal(definition.slotSettings.allowPreferredValuesOnly, false);
+  };
   const assertSwap = (master, instance, targetId) => {
     assert.equal(instance.type, 'INSTANCE');
     assert.equal(instance.mainComponent, tagged(targetId));
@@ -888,20 +964,21 @@ test('container content and button icons are real instances with stable swap pro
   for (const id of ['page/white/white/true', 'bottom-sheet/true/true']) {
     const master = tagged(id);
     const body = role(master, 'Body slot');
-    assertSwap(master, role(body, 'Projected component'), 'grid/false/xs');
+    assertSlot(master, body);
+    assert.equal(role(body, 'Projected component').mainComponent, tagged('grid/false/xs'));
     assert.equal(role(body, 'Content').visible, false);
-    assertSwap(master, role(master, 'Footer slot').children[0], 'button/primary/default');
+    assertSlot(master, role(master, 'Footer slot'));
   }
   const grid = tagged('grid/false/xs');
-  assertSwap(grid, role(role(grid, 'Content slot'), 'Projected component'), 'row/xxs');
+  assertSlot(grid, role(grid, 'Content slot'));
   const row = tagged('row/xxs');
-  for (const index of [1, 2]) {
-    assertSwap(row, role(role(row, `Column ${index}`), 'Projected component'), 'col/equal');
-  }
+  assertSlot(row, role(row, 'Columns'));
+  assert.equal(role(row, 'Columns').children.filter((node) => node.type === 'INSTANCE').length, 2);
   const col = tagged('col/equal');
-  const colSlot = role(role(col, 'Content slot'), 'Projected component');
-  const swap = assertSwap(col, colSlot, 'p/start');
+  const colSlot = role(col, 'Content slot');
+  assertSlot(col, colSlot);
   const button = tagged('button/primary/default');
+  assertSlot(button, role(button, 'Button content'));
   for (const name of ['Leading icon', 'Trailing icon']) {
     const icon = role(button, name);
     assertSwap(button, icon, 'icon/plus/no-fill');
@@ -920,11 +997,62 @@ test('container content and button icons are real instances with stable swap pro
   userPage.name = 'Personal compositions';
   const userCol = col.createInstance();
   userPage.appendChild(userCol);
-  userCol.setProperties({ [swap]: tagged('composition/content').id });
+  const userSlot = role(userCol, 'Content slot');
+  const property = userSlot.componentPropertyReferences.slotContentId;
+  assert.throws(() => userCol.setProperties({ [property]: 'wrong' }), /cannotSetSlotProperty/);
+  const custom = tagged('composition/content').createInstance();
+  userSlot.appendChild(custom);
   const originalId = colSlot.id;
   await env.run();
-  assert.equal(role(role(col, 'Content slot'), 'Projected component').id, originalId);
-  assert.equal(userCol.componentProperties[swap].value, tagged('composition/content').id);
+  assert.equal(role(col, 'Content slot').id, originalId);
+  assert.equal(custom.parent, userSlot);
+});
+
+test('instances accept many rows, columns and page sections without detaching', async () => {
+  const env = environment();
+  await env.run();
+  const tagged = (id) =>
+    env.document.findOne((node) => node.getPluginData('bepower-source') === id);
+  const role = (node, name) =>
+    node.children.find((child) => child.getPluginData('bepower-role') === name);
+  const page = tagged('page/white/white/true').createInstance();
+  env.figma.currentPage.appendChild(page);
+  assert.throws(
+    () => page.appendChild(tagged('p/start').createInstance()),
+    /outside a native slot/,
+  );
+  const body = role(page, 'Body slot');
+  const grid = body.children.find((node) => node.type === 'INSTANCE');
+  const rows = role(grid, 'Content slot');
+  for (let index = 0; index < 4; index++) rows.appendChild(tagged('row/xxs').createInstance());
+  assert.equal(rows.children.filter((node) => node.type === 'INSTANCE').length, 5);
+  const firstRow = rows.children.find((node) => node.type === 'INSTANCE');
+  const columns = role(firstRow, 'Columns');
+  for (let index = 0; index < 5; index++) columns.appendChild(tagged('col/equal').createInstance());
+  assert.equal(columns.children.length, 7);
+  body.appendChild(tagged('title/m').createInstance());
+  body.appendChild(tagged('grid/false/xs').createInstance());
+  const footer = role(page, 'Footer slot');
+  footer.appendChild(tagged('button/primary/default').createInstance());
+  footer.appendChild(tagged('p/start').createInstance());
+  assert.equal(footer.children.length, 3);
+  columns.insertChild(0, columns.children.at(-1));
+  rows.children.at(-1).remove();
+  assert.equal(rows.children.filter((node) => node.type === 'INSTANCE').length, 4);
+  const customIds = columns.children.map((node) => node.id);
+  await env.run();
+  assert.equal(page.type, 'INSTANCE');
+  assert.deepEqual(
+    columns.children.map((node) => node.id),
+    customIds,
+  );
+  assert.equal(footer.children.length, 3);
+});
+
+test('unsupported native Slots runtime reports an error rather than a fixed swap fallback', async () => {
+  const env = environment({ nativeSlots: false });
+  await assert.rejects(env.run(), /non supporta gli slot nativi/);
+  assert.equal(env.document.getPluginData('bepower-last-build'), '');
 });
 
 test('generated hierarchy has no component dependency cycles', async () => {
