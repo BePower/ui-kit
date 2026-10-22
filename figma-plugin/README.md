@@ -73,6 +73,11 @@ al master interessato; non ricreare la libreria per nascondere il problema.
 
 ### Finestra diagnostica
 
+L'errore `set_componentPropertyReferences ... Expected object, received null` era causato
+dalla pulizia dei vecchi riferimenti INSTANCE_SWAP. Il getter può restituire `null`, ma
+il setter richiede un oggetto: il generatore ora evita scritture inutili e usa `{}` quando
+rimuove l'ultimo riferimento, preservando eventuali riferimenti di visibilità.
+
 L'errore `Can only get component property definitions of a component set or non-variant component`
 indica una lettura delle definizioni dal singolo master già inserito in un set. Il generatore
 ora legge e aggiunge le proprietà sul set per le varianti, sul componente per i master standalone.

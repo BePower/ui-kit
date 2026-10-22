@@ -76,9 +76,12 @@ async function configureComposition({
     return node;
   }
   function clearLegacySwap(instance) {
-    const refs = { ...instance.componentPropertyReferences };
+    const current = instance.componentPropertyReferences;
+    if (!current || !('mainComponent' in current)) return;
+    const refs = { ...current };
     delete refs.mainComponent;
-    instance.componentPropertyReferences = Object.keys(refs).length ? refs : null;
+    // The getter may return null, but Figma's setter only accepts an object.
+    instance.componentPropertyReferences = refs;
   }
   async function defaultInstance(parent, name, source, width) {
     let instance = role(parent, name);

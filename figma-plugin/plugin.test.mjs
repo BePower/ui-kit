@@ -42,6 +42,10 @@ function environment({ nativeSlots = true } = {}) {
       return this._componentPropertyReferences;
     }
     set componentPropertyReferences(refs) {
+      assert.ok(
+        refs !== null && typeof refs === 'object' && !Array.isArray(refs),
+        'Expected object, received null',
+      );
       if (refs?.slotContentId) {
         assert.ok(['FRAME', 'SLOT'].includes(this.type), 'slot properties attach to frames only');
         let parent = this.parent;
@@ -164,9 +168,9 @@ function environment({ nativeSlots = true } = {}) {
         clone.layoutMode = source.layoutMode;
         clone.characters = source.characters;
         parent.appendChild(clone);
-        clone.componentPropertyReferences = source.componentPropertyReferences && {
-          ...source.componentPropertyReferences,
-        };
+        if (source.componentPropertyReferences) {
+          clone.componentPropertyReferences = { ...source.componentPropertyReferences };
+        }
         if (source.type !== 'INSTANCE') for (const child of source.children) copy(child, clone);
       }
       for (const slot of this.children.filter((node) => node.type === 'SLOT')) copy(slot, instance);
@@ -1047,6 +1051,46 @@ test('instances accept many rows, columns and page sections without detaching', 
     customIds,
   );
   assert.equal(footer.children.length, 3);
+});
+
+test('legacy swap cleanup writes an object and preserves unrelated references', async () => {
+  const env = environment();
+  await env.run();
+  const tagged = (id) =>
+    env.document.findOne((node) => node.getPluginData('bepower-source') === id);
+  const role = (node, name) =>
+    node.children.find((child) => child.getPluginData('bepower-role') === name);
+  const page = tagged('page/white/white/true');
+  const projection = role(role(page, 'Body slot'), 'Projected component');
+  assert.throws(() => {
+    projection.componentPropertyReferences = null;
+  }, /Expected object/);
+  const owner = page.parent;
+  const oldSwap = owner.addComponentProperty(
+    'Old Body swap',
+    'INSTANCE_SWAP',
+    projection.mainComponent.id,
+  );
+  const visible = owner.addComponentProperty('Keep visibility', 'BOOLEAN', true);
+  projection.componentPropertyReferences = { mainComponent: oldSwap, visible };
+  const col = tagged('col/equal');
+  const textProjection = role(role(col, 'Content slot'), 'Projected component');
+  const oldContentSwap = col.parent.addComponentProperty(
+    'Old Content swap',
+    'INSTANCE_SWAP',
+    textProjection.mainComponent.id,
+  );
+  textProjection.componentPropertyReferences = { mainComponent: oldContentSwap };
+  const ids = [projection.id, textProjection.id];
+  await env.run();
+  assert.equal(projection.componentPropertyReferences.visible, visible);
+  assert.equal(Object.keys(projection.componentPropertyReferences).length, 1);
+  assert.equal(Object.keys(textProjection.componentPropertyReferences).length, 0);
+  assert.deepEqual([projection.id, textProjection.id], ids);
+  assert.ok(
+    owner.componentPropertyDefinitions[oldSwap],
+    'legacy property definitions are not deleted',
+  );
 });
 
 test('unsupported native Slots runtime reports an error rather than a fixed swap fallback', async () => {
