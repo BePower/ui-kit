@@ -1,0 +1,743 @@
+--- files ---
+./projects/ui-kit/README.md
+./projects/ui-kit/package.json
+./vitest.config.mts
+./README.md
+./package.json
+--- package ---
+{
+  "name": "bepower-ui-kit",
+  "version": "0.0.0",
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve",
+    "build": "ng build",
+    "watch": "ng build --watch --configuration development",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:typecheck": "tsc --project projects/ui-kit/tsconfig.spec.json --noEmit",
+    "storybook": "ng run ui-kit:storybook",
+    "storybook:build": "ng run ui-kit:build-storybook",
+    "icons:import": "node ./scripts/import-icons.mjs",
+    "publish": "npm publish ./dist/ui-kit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BePower/ui-kit.git"
+  },
+  "private": true,
+  "packageManager": "npm@11.13.0",
+  "dependencies": {
+    "@angular/common": "^21.0.0",
+    "@angular/compiler": "^21.0.0",
+    "@angular/core": "^21.0.0",
+    "@angular/forms": "^21.0.0",
+    "@angular/platform-browser": "^21.0.0",
+    "@angular/router": "^21.0.0",
+    "@capacitor/core": "^8.5.0",
+    "@capacitor/screen-reader": "^8.0.1",
+    "@capacitor/status-bar": "^8.0.3",
+    "@ionic/angular": "^8.8.13",
+    "@ionic/core": "^8.8.13",
+    "i": "^0.3.7",
+    "npm": "^11.18.0",
+    "rxjs": "~7.8.0",
+    "source-sans": "^3.52.0",
+    "tslib": "^2.3.0"
+  },
+  "devDependencies": {
+    "@analogjs/vite-plugin-angular": "2.7.1",
+    "@angular-devkit/build-angular": "21.2.18",
+    "@angular/animations": "21.2.17",
+    "@angular/build": "^21.0.0",
+    "@angular/cli": "^21.0.0",
+    "@angular/compiler-cli": "^21.0.0",
+    "@angular/localize": "21.2.17",
+    "@angular/platform-server": "21.2.17",
+    "@angular/service-worker": "21.2.17",
+    "@angular/ssr": "21.2.18",
+    "@compodoc/compodoc": "1.1.26",
+    "@storybook/addon-a11y": "10.5.10",
+    "@storybook/addon-docs": "10.5.10",
+    "@storybook/angular-vite": "10.5.10",
+    "@vitest/coverage-v8": "4.1.9",
+    "jsdom": "^28.0.0",
+    "ng-packagr": "^21.0.0",
+    "prettier": "^3.8.1",
+    "storybook": "10.5.10",
+    "typescript": ">=5.9.0 <6.0.0",
+    "vite": "8.2.2",
+    "vitest": "4.1.9"
+  }
+}
+--- env examples/docs/reads ---
+### ./projects/ui-kit/AGENTS.md
+# Development instructions for @bepower/ui-kit
+
+These versioned project rules apply to `projects/ui-kit` and its descendants, regardless of the
+contributor, coding tool, account, or editor. If the current tool does not load this file
+automatically, provide it explicitly before work begins. Do not depend on private chat history,
+tool-specific memory, personal configuration, or machine-specific paths. Explicit task
+instructions take precedence over these defaults; report material exceptions.
+
+## Start here
+
+- Read the [library README](README.md), [UI Elements Guide](docs/ui-elements.md), and the relevant
+  component documentation in `docs/components`. Read the [workspace README](../../README.md)
+  for setup and development commands. The UI Elements Guide defines the authoring pattern.
+- Inspect `git status --short`, the affected implementation, its tests, and its stories before
+  editing. Preserve pre-existing changes and untracked files; do not overwrite unrelated work.
+- Read any more specific `AGENTS.md` in the directories you change.
+- Keep changes scoped to the requested behavior. Resolve routine choices from existing patterns;
+  ask when missing requirements affect the public API or intended user experience.
+- Run npm commands from the workspace root (`bepower-ui-kit`), two levels above this file.
+  Use `.nvmrc`, root `package.json#packageManager`, and the existing npm lockfile for setup.
+  Check executable configuration before relying on a documented command.
+
+## Structure and public contracts
+
+- Components: `src/lib/components/<name>/ui-<name>.ts`, companion `.scss`, and `.spec.ts`.
+- Shared tokens and mixins: `src/lib/foundations`; shared types: `src/lib/interfaces`.
+  Keep component-local types beside their component until they are reused.
+- Shared runtime behavior: `src/lib/services`; examples: `stories`; Storybook setup: `.storybook`.
+- Public TypeScript entry point: `src/public-api.ts`, with component and interface barrel exports.
+  Export new consumer-facing components and types through the appropriate public entry points.
+- Package metadata and Sass exports: local `package.json`; packaging and foundation assets:
+  `ng-package.json`. Keep published exports and documentation consistent with implementation.
+- Treat input names, defaults, outputs, slots, exported types, accessibility behavior, and Sass
+  entry points as consumer contracts. Identify breaking changes rather than introducing them
+  silently. Keep app-specific business logic and API calls out of this reusable library.
+
+## Component implementation
+
+- Default to standalone Angular components with `ui-` selectors, `UI` class names,
+  `ViewEncapsulation.ShadowDom`, and `ChangeDetectionStrategy.OnPush`.
+- Follow the existing signal input pattern: `input()`, `booleanAttribute` for boolean attributes,
+  and `computed()` for derived state. Keep state in TypeScript and presentation in SCSS.
+- Keep APIs small and express design-system intent, such as `variant`, `size`, or `disabled`.
+  Avoid arbitrary styling inputs that make consumers reconstruct the design system.
+- Import only the required Ionic primitives from the standalone entry point. Prefer Ionic public
+  inputs, supported CSS custom properties, and exposed `::part` targets over internal DOM details.
+- Maintain strict typing. Do not suppress type errors or weaken configuration to hide defects.
+- Clean up subscriptions, event listeners, observers, and imperative overlays. Preserve browser
+  behavior and native-plugin fallback behavior where the affected component or service uses them.
+
+## Styling and accessibility
+
+- Read `docs/ui-elements.md` for Shadow DOM boundaries, slots, and semantic typography.
+  `ui-button` is the reference implementation; copy relevant patterns, not unrelated behavior.
+- Reuse `foundations` tokens for colors, spacing, sizes, typography, and shadows. Avoid new literal
+  visual values when equivalent tokens exist. Keep shared changes in foundations and local styles
+  in the component SCSS file.
+- For Ionic wrappers, include `root.shadow-root` on the host for Ionic color mapping.
+  Do not use unsupported selectors to reach through Ionic's shadow root.
+- Keep document-level rules in `foundations/base.scss`. Consumers explicitly import
+  `@bepower/ui-kit/base` after Ionic global imports; component styles cannot replace that contract.
+- Preserve semantic headings, paragraphs, and interactive elements. Do not introduce
+  `display: contents` on semantic typography primitives.
+- Verify accessible names, keyboard interaction, focus visibility, disabled/loading behavior,
+  and focus restoration for overlays as relevant. Accept consumer-provided labels rather than
+  embedding application-specific copy or a new application translation system.
+- For layout changes, check narrow and wide viewports, long content, scrolling, and safe areas
+  where relevant. Unit tests alone do not establish correct visual rendering or screen-reader use.
+
+## Stories, documentation, and icons
+
+- Add or update `stories/ui-<name>.stories.ts` for public variants and meaningful interaction
+  states. Storybook imports library sources directly, not `dist/ui-kit`.
+- Update the component's `docs/components` page when its API or behavior changes. Keep the
+  library README and UI Elements Guide current when adding public components or authoring rules.
+- Source SVGs live in the workspace `icons` directory. Read the
+  [icon importing guide](src/lib/components/icon/IMPORTING_ICONS.md) before changing icons;
+  use `npm run icons:import` for the generated registry and inspect its diff.
+
+## Verification
+
+All commands below run from the workspace root, not from `projects/ui-kit`.
+
+- Setup: `nvm use`, then `npm ci` when dependencies need installation.
+- Focused tests: `npm test -- projects/ui-kit/src/lib/components/button/ui-button.spec.ts`
+  (replace the example with the affected spec).
+- Full suite: `npm test`.
+- Coverage: `npm run test:coverage`.
+- Test type checking: `npm run test:typecheck`.
+- Interactive component checks: `npm run storybook`.
+- Static Storybook validation: `npm run storybook:build`.
+- Publishable package validation: `npm run build`.
+- Formatting: `./node_modules/.bin/prettier --check <changed-files>`; format only relevant files.
+
+Tests use Vitest, Angular TestBed, and jsdom. Reuse workspace `testing/helpers.ts` and
+`testing/setup.ts`; tests transform sources in memory and must not depend on building `dist/ui-kit`.
+Add meaningful regression tests for changed behavior, including relevant error and interaction
+states. The measured runtime code has 100% coverage thresholds in `vitest.config.mts`; do not
+lower thresholds or add exclusions to conceal missing tests.
+
+For runtime changes, run focused tests during development and full coverage plus test type checking
+before handoff. Validate package compilation for component/API/Sass changes and Storybook builds
+for story/configuration changes. For documentation-only work, check formatting and local links.
+Report exactly which checks ran and any blockers; do not claim unperformed browser/native checks.
+
+## Workspace safety and handoff
+
+- `npm run build` writes `dist/ui-kit`, which may be linked to a consumer. Use it deliberately
+  for package validation, not as a prerequisite for tests or Storybook. Do not start watch builds
+  concurrently with tasks that need the linked output to stay unchanged.
+- Do not hand-edit `dist`, `coverage`, `storybook-static`, installed dependencies, or generated
+  icon output in place of its sources. Do not commit credentials or expose tokens in logs.
+- Publishing, deployment, version changes, and history rewrites must be part of the authorized
+  task. Ordinary component development does not imply publishing the package.
+- If work is shared across multiple contributors or coding tools, assign bounded tasks and file
+  ownership. Everyone involved must read these rules; coordinate shared-file changes and review the
+  combined result.
+- Review the final diff. Report the behavior changed, consumer impact, checks run, and remaining
+  limitations. Preserve unrelated work and avoid repository-wide formatting.
+- Update this file when development conventions change. Keep rules portable and versioned here
+  rather than duplicating divergent instructions in personal accounts or editor settings.
+### ./projects/ui-kit/README.md
+# `@bepower/ui-kit`
+
+Angular UI library for BePower design system components.
+
+## Documentation
+
+- [UI Elements Guide](./docs/ui-elements.md)
+- [Bottom sheet (programmatic)](./docs/components/ui-bottom-sheet.md)
+- [Legacy content migration](./docs/legacy-content.md)
+- [UIButton](./docs/components/ui-button.md)
+- [UICol](./docs/components/ui-col.md)
+- [UIGrid](./docs/components/ui-grid.md)
+- [UIIcon](./docs/components/ui-icon.md)
+- [UIPage](./docs/components/ui-page.md)
+- [UIP](./docs/components/ui-p.md)
+- [UIRow](./docs/components/ui-row.md)
+- [UIText](./docs/components/ui-text.md)
+- [UITitle](./docs/components/ui-title.md)
+
+## Interactive documentation
+
+Run Storybook locally to browse and exercise the components in isolation:
+
+```bash
+npm run storybook
+```
+
+The local server does not build or consume `dist/ui-kit`: stories import the library sources directly.
+
+To create a static Storybook site, use:
+
+```bash
+npm run storybook:build
+```
+
+Its output is written to `storybook-static/ui-kit`, separately from the publishable library package.
+
+## Requirements
+
+- Angular `21.x`
+- `@angular/common` and `@angular/core` as peer dependencies
+
+## Installation
+
+```bash
+npm install @bepower/ui-kit
+```
+
+## Using the library in Angular components
+
+The library exposes standalone components, including `UIButton`, `UICol`, `UIGrid`, `UIIcon`,
+`UIPage`, `UIP`, `UIRow`, `UIText`, and `UITitle`.
+
+Example:
+
+```ts
+import { Component } from '@angular/core';
+import { UIP, UIText, UITitle } from '@bepower/ui-kit';
+
+@Component({
+  selector: 'app-example',
+  standalone: true,
+  imports: [UIP, UIText, UITitle],
+  template: `
+    <ui-title size="xl">Page title</ui-title>
+    <ui-p>Paragraph <ui-text variant="body-s">detail</ui-text>.</ui-p>
+  `,
+})
+export class ExampleComponent {}
+```
+
+## Required global import in the consumer
+
+The library exposes a global `base.scss` file that must be explicitly imported by the consumer application to apply document-level rules such as:
+
+- `html { font-size: 16px; }`
+- `body { font-size: 1rem; }`
+
+In the consumer app global SCSS file, for example `src/global.scss` or `src/styles.scss`, add:
+
+```scss
+@use '@ionic/angular/css/core.css';
+@use '@ionic/angular/css/normalize.css';
+@use '@ionic/angular/css/typography.css';
+@use '@bepower/ui-kit/base';
+```
+
+Important:
+
+- `@use` statements must be declared before any CSS rules in the file
+- Place `@use '@bepower/ui-kit/base';` after the Ionic `@use` statements so its global rules can override Ionic defaults when needed
+
+Valid example:
+
+```scss
+@use '@ionic/angular/css/core.css';
+@use '@ionic/angular/css/normalize.css';
+@use '@bepower/ui-kit/base';
+
+body {
+  margin: 0;
+}
+```
+
+## Why the global import is required
+
+The library components use `ViewEncapsulation.ShadowDom`, so their internal styles are shipped with the component itself. Global rules targeting `html` and `body`, on the other hand, cannot be applied automatically by the library and must be imported by the consumer application.
+
+## Development
+
+Build the library:
+
+```bash
+ng build ui-kit
+```
+
+Watch mode:
+
+```bash
+npm run watch
+```
+
+## Publishing
+
+Build the package:
+
+```bash
+npm run build
+```
+
+Publish the contents of `dist/ui-kit`:
+
+```bash
+npm publish ./dist/ui-kit
+```
+
+Important:
+
+- use `./dist/ui-kit` and not `dist/ui-kit`
+- without `./`, npm may interpret the path as a remote repository reference
+### ./projects/ui-kit/docs/legacy-content.md
+# Legacy content migration
+
+`ui-page`, `ui-grid`, `ui-row`, and `ui-col` expose a temporary boolean `legacyContent` input to
+support gradual migration from consumer styles to UI-kit components.
+
+## Choosing a mode
+
+| Value             | Content placement                                              | Consumer global styles                                         |
+| ----------------- | -------------------------------------------------------------- | -------------------------------------------------------------- |
+| `false` (default) | Angular `ng-content` inside the container's Shadow DOM         | Cannot select content across that boundary                     |
+| `true`            | Native slot; children remain in the container host's light DOM | Can reach that content if no ancestor UI container isolates it |
+
+Use the bare attribute `legacyContent` or `[legacyContent]="true"` for legacy pages. Omit the input
+or use `[legacyContent]="false"` for migrated content. The containers retain Shadow DOM encapsulation
+in both modes; this option only changes how their content is placed.
+
+The value is read once in `ngOnInit`. Later changes are ignored so that existing nodes are not moved
+between DOM trees during the lifetime of the component. Recreate the component to change modes.
+Other inputs and consumer bindings, events, `@if`, and `@for` continue to update normally.
+
+## Nested containers
+
+The setting is not inherited. Enable it at every container boundary through which consumer global
+styles need to reach the content:
+
+```html
+<ui-page legacyContent hasHeader title="FAQ">
+  <ui-grid legacyContent horizontal="xs">
+    <ui-row legacyContent gap="xxs">
+      <ui-col legacyContent size="12">
+        <div class="legacy-faq-content">Content styled by the consumer</div>
+      </ui-col>
+    </ui-row>
+  </ui-grid>
+</ui-page>
+```
+
+For example, enabling it only on `ui-col` is not enough when the enclosing `ui-page` projects the
+entire grid into its Shadow DOM. Conversely, components such as `ui-title` and `ui-button` retain
+their own internal style boundaries even inside legacy containers.
+
+After migrating the content and its styles to the UI-kit APIs, remove `legacyContent` from the
+relevant containers to restore Angular content projection. This compatibility path is intended to
+be removed once migration is complete.
+
+## Limitations
+
+- Style your own elements directly. Selectors that require internal ancestors, such as
+  `ion-content .legacy-faq-content`, cannot match across the Shadow DOM boundary.
+- Slotted nodes are not DOM descendants of the wrapped Ionic elements. Components that use
+  `closest('ion-content')` can lose scroll integration. In particular, verify infinite scroll,
+  reordering, sliding items, ranges, and native input keyboard/scroll behavior before migrating
+  those screens.
+- A direct child with a named `slot` needs a matching native slot on the UI container. These
+  containers expose only the default body slot; `slot="fixed"` is not forwarded to `ion-content`.
+- `ui-page` footer content still uses Angular projection with the `footer` attribute and requires
+  `hasFooter`. `legacyContent` does not make that content reachable by consumer global styles.
+- The UI kit still owns the container layout and internal styles. Legacy mode does not expose
+  arbitrary internal elements or guarantee compatibility with all Ionic content integrations.
+### ./projects/ui-kit/docs/ui-elements.md
+# UI Elements Guide
+
+This guide defines the expected approach for building UI elements inside `@bepower/ui-kit`.
+
+It is intended for developers working on the library itself, not only for consumers of the package.
+
+## Goals
+
+Each UI element should be:
+
+- aligned with the BePower design system
+- ready to use without local restyling in the consumer app
+- isolated from external CSS as much as possible
+- consistent across Angular applications
+- based on a small, repeatable authoring pattern
+
+## Default authoring pattern
+
+Every new UI element should follow these defaults unless there is a strong reason not to:
+
+- standalone Angular component
+- `ViewEncapsulation.ShadowDom`
+- `ChangeDetectionStrategy.OnPush`
+- styling in a dedicated `.scss` file
+- visual tokens imported from `foundations/*`
+- use Ionic public APIs first when wrapping Ionic components
+
+## Recommended file structure
+
+For a component named `ui-example`:
+
+```text
+src/lib/components/example/
+  ui-example.ts
+  ui-example.scss
+```
+
+Shared design tokens and global rules live in:
+
+```text
+src/lib/foundations/
+  base.scss
+  colors.scss
+  root.scss
+  shadows.scss
+  sizes.scss
+  spacing.scss
+  typography.scss
+```
+
+Types and interfaces shared by multiple components live in:
+
+```text
+src/lib/interfaces/
+```
+
+Keep a type next to its component while it remains local. Move it to `interfaces/` once more than
+one component depends on it.
+
+## Component API
+
+Expose a small and intentional public API.
+
+Prefer inputs that describe the design system intent:
+
+- `variant`
+- `size`
+- `expand`
+- `disabled`
+- `isLoading`
+
+Avoid exposing low-level styling hooks unless they are part of the intended contract.
+
+## Semantic typography
+
+Use `ui-title` and `ui-p` for design-system headings and paragraphs instead of asking consumers to
+apply typography mixins or local CSS. The components render native semantic elements internally and
+own their typography rules through Shadow DOM.
+
+- `ui-title` maps `xl`, `l`, `m`, and `s` to native `h1`, `h2`, `h3`, and `h4` respectively,
+  and accepts an optional Ionic color.
+- `ui-p` always renders a native `p` element with the `p-m` token.
+- `ui-text` is an inline primitive. Its default `inherit` variant preserves the surrounding
+  typography; `body-l`, `body-m`, and `body-s` apply the corresponding paragraph tokens. Its
+  `label-l`, `label-m`, and `label-s` variants apply the corresponding label tokens. Its Ionic
+  color defaults to `default-grey` and is independent from the typography variant.
+- Use native `strong`, `em`, and `a` elements for semantic emphasis and links.
+- Do not use `display: contents` for semantic primitives. It removes only the host layout box and
+  makes accessibility behavior less predictable across platforms.
+
+## Signals
+
+Signal inputs are allowed and currently used as the preferred internal component API.
+
+Typical pattern:
+
+```ts
+variant = input<'primary' | 'secondary'>('primary');
+disabled = input(false, { transform: booleanAttribute });
+
+ionicColor = computed(() => {
+  switch (this.variant()) {
+    case 'secondary':
+      return 'default-grey';
+    case 'primary':
+    default:
+      return 'primary';
+  }
+});
+```
+
+Use `computed()` for derived state such as:
+
+- Ionic `color`
+- Ionic `fill`
+- loading visibility
+- host state flags
+
+## Host classes
+
+Host classes should represent the state of the component and drive styling in SCSS.
+
+Example:
+
+```ts
+@HostBinding('class.primary')
+get isPrimary() {
+  return this.variant() === 'primary';
+}
+```
+
+Then in SCSS:
+
+```scss
+:host(.primary) ion-button {
+  /* variant styles */
+}
+```
+
+This keeps state in TypeScript and presentation in SCSS.
+
+## Styling strategy
+
+### 1. Prefer foundations
+
+Always import design tokens from the shared foundations:
+
+```scss
+@use 'foundations/colors' as colors;
+@use 'foundations/sizes' as sizes;
+@use 'foundations/typography' as typography;
+@use 'foundations/shadows' as shadows;
+```
+
+Avoid hardcoded visual values when an equivalent token exists.
+Use `shadows.$shadow-elevation-1`, `shadows.$shadow-elevation-2`, or
+`shadows.$shadow-elevation-3` for the three design-system elevation levels.
+
+| Elevation | Token                         | Value                                                                         |
+| --------- | ----------------------------- | ----------------------------------------------------------------------------- |
+| 1         | `shadows.$shadow-elevation-1` | `0 0 15px 0 rgba(51, 51, 51, 0.15)`                                           |
+| 2         | `shadows.$shadow-elevation-2` | `0 0 15px 0 rgba(51, 51, 51, 0.30)`                                           |
+| 3         | `shadows.$shadow-elevation-3` | `0 15px 30px -10px rgba(51, 51, 51, 0.30), 0 0 15px 0 rgba(51, 51, 51, 0.15)` |
+
+### 2. Use `root.shadow-root` for Ionic color mapping
+
+When wrapping Ionic components, include the shared Ionic token mapping on the host:
+
+```scss
+@use 'foundations/root' as root;
+
+:host {
+  @include root.shadow-root;
+}
+```
+
+This allows Ionic components inside the shadow root to resolve the expected color tokens.
+
+### 3. Use Ionic APIs before deep styling
+
+When wrapping `ion-button`, `ion-input`, and similar components, prefer:
+
+- `[color]`
+- `[fill]`
+- `[size]`
+- CSS custom properties supported by the Ionic component
+- `::part(...)` when Ionic explicitly exposes a part
+
+Avoid depending on internal Ionic implementation details that are not part of the public API.
+
+## Shadow DOM boundaries
+
+`ShadowDom` protects the component from consumer overrides, but it also imposes boundaries.
+
+Inside `ui-button.scss`, you can style:
+
+- `:host`
+- the `ion-button` element declared in your template
+- slotted nodes that you pass into the wrapped component
+- exposed `::part(...)` targets
+
+You cannot style arbitrary internal nodes inside Ionic shadow DOM unless Ionic exposes them through `part`.
+
+Example:
+
+- valid: `ion-button::part(native) { ... }`
+- valid: `ion-button > [slot='start'] { ... }`
+- invalid: `ion-button::part(native) .button-inner { ... }`
+
+## Slots
+
+When an Ionic component contains named slots such as `start` or `end`, you usually cannot style the internal `<slot>` element itself.
+
+Instead, style the node assigned to that slot:
+
+```scss
+ion-button > [slot='start'] {
+  margin-inline-end: #{sizes.$size-80};
+}
+
+### ./README.md
+# BePower UI Kit
+
+[![Quality gate status](https://sonarcloud.io/api/project_badges/measure?project=BePower_ui-kit&metric=alert_status&token=affaccf10d2a93c9969767e9c53063e30ef8e5d2)](https://sonarcloud.io/summary/new_code?id=BePower_ui-kit)
+
+Angular and Ionic component library implementing the BePower design system. Components are
+standalone, use native Shadow DOM encapsulation, and expose shared foundations for colors,
+typography, spacing, sizes, and shadows.
+
+- [Library and consumer documentation](./projects/ui-kit/README.md)
+- [Component documentation](./projects/ui-kit/docs/ui-elements.md)
+- [Interactive Storybook](https://app-ui-kit.bepower.tech)
+
+## Requirements
+
+- Node.js `v24.17.0`, defined in [`.nvmrc`](./.nvmrc)
+- npm `11.13.0`, defined by the `packageManager` field in `package.json`
+
+GitHub Actions also reads `.nvmrc`, so local development and CI use the same Node.js version.
+
+## Setup
+
+```bash
+nvm use
+npm ci
+```
+
+## Storybook
+
+Run the interactive component documentation locally:
+
+```bash
+npm run storybook
+```
+
+Storybook imports the library sources directly and does not require a build of `dist/ui-kit`.
+
+Generate the static Storybook website with:
+
+```bash
+npm run storybook:build
+```
+
+The output is written to `storybook-static/ui-kit`.
+
+## Unit tests
+
+Run the complete Vitest suite once:
+
+```bash
+npm test
+```
+
+Additional commands:
+
+```bash
+npm run test:watch
+npm run test:coverage
+npm run test:typecheck
+```
+
+The tests run directly against the library sources in memory and do not build or modify
+`dist/ui-kit`. Coverage reports are generated in `coverage/`; the configured thresholds require
+100% statements, branches, functions, and lines for the measured runtime code.
+
+## Library development
+
+Build the publishable package:
+
+```bash
+npm run build
+```
+
+The package is written to `dist/ui-kit`.
+
+Use watch mode when a local consumer is linked to the generated package:
+
+```bash
+npm run watch
+```
+
+Watch mode continuously rebuilds `dist/ui-kit`, so it should not be run at the same time as tasks
+that expect the linked output to remain unchanged.
+
+## Icons
+
+Source SVG files are stored in `icons/`. Import or update the generated TypeScript icon registry
+with:
+
+```bash
+npm run icons:import
+```
+
+See the [icon importing guide](./projects/ui-kit/src/lib/components/icon/IMPORTING_ICONS.md) for
+file naming and variant conventions.
+
+## Quality analysis
+
+Pull requests run unit tests, generate the LCOV report, and execute the SonarQube Cloud scanner
+through [the test and coverage workflow](./.github/workflows/test-and-coverage.yml).
+
+The CI scanner reads `sonar-project.properties`, which defines the source scope, analysis
+exclusions, and the LCOV report generated in `coverage/lcov.info`. Automatic Analysis must remain
+disabled in SonarQube Cloud while this workflow is active.
+
+## Publishing
+
+Build the library, then publish the generated package:
+
+```bash
+npm run build
+npm publish ./dist/ui-kit
+```
+
+Keep the leading `./` in the package path; otherwise npm may interpret `dist/ui-kit` as a remote
+package reference.
+
+## Continuous integration
+
+- Pull requests and pushes to `main` run tests, coverage, and SonarQube Cloud checks.
+- Pushes to `main` build and deploy Storybook to GitHub Pages.
+./package-lock.json:1999:      "version": "7.21.0-placeholder-for-preset-env.2",
+./package-lock.json:2000:      "resolved": "https://registry.npmjs.org/@babel/plugin-proposal-private-property-in-object/-/plugin-proposal-private-property-in-object-7.21.0-placeholder-for-preset-env.2.tgz",
+./package-lock.json:2989:        "@babel/plugin-proposal-private-property-in-object": "7.21.0-placeholder-for-preset-env.2",
+./package-lock.json:3381:        "@babel/plugin-proposal-private-property-in-object": "7.21.0-placeholder-for-preset-env.2",
