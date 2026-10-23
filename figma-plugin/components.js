@@ -4,11 +4,13 @@ async function renderComponents({
   component,
   variants,
   bindFill,
+  bindStroke,
   textStyles,
   iconSets,
   buttonSet,
   checkpoint,
   exposeText: expose,
+  exposeProperty,
 }) {
   const n = DATA.numbers;
   const tag = 'bepower-source';
@@ -95,6 +97,7 @@ async function renderComponents({
     const set = variants(nodes, `components/${id}`, title, 0);
     set.description = `${DATA.components[id].source}\n${note}`;
     library.push({ id, title, set, note });
+    return set;
   }
   function icon(parent, role, name, fill, size) {
     const set = iconSets.find((item) => item.name === `UIIcon / ${name}`);
@@ -471,6 +474,127 @@ async function renderComponents({
     pages,
     'Tutti i background × header none/white/green/tab/step × hasFooter. Viewport campione 360×640. header=none corrisponde a hasHeader=false; gli altri a hasHeader=true + headerType. Content e CTA sono slot consumer dimostrativi. Non simula condensedHeader, translucent, safe area, navigazione, azioni header o elevazione da scroll. Titolo accessibile richiesto nel codice.',
   );
+  const inputStates = [
+    { id: 'default', name: 'Default', value: 'Placeholder text' },
+    { id: 'typing', name: 'Typing', value: '|' },
+    { id: 'filled', name: 'Compilato', value: 'Filled' },
+    { id: 'disabled', name: 'Disabled', value: 'Placeholder text' },
+    { id: 'error', name: 'Error', value: 'Filled' },
+  ];
+  const inputFields = [];
+  for (const state of inputStates) {
+    const node = master(`input-field/${state.id}`, `state=${state.name}`);
+    node.counterAxisSizingMode = 'FIXED';
+    node.resize(327, node.height);
+    node.itemSpacing = n['size-80'];
+
+    const label = await text(node, 'Label', 'Label', 'label-m', 327);
+    bindFill(
+      label,
+      state.id === 'error'
+        ? 'color-error-ruby-red'
+        : state.id === 'disabled'
+          ? 'color-grey-default-grey-72'
+          : 'color-grey-default-grey',
+    );
+
+    const field = frame(node, 'Field', 'HORIZONTAL');
+    fixed(field, 327, 42);
+    field.primaryAxisAlignItems = 'MIN';
+    field.counterAxisAlignItems = 'CENTER';
+    field.paddingLeft = field.paddingRight = n['size-160'];
+    field.paddingTop = field.paddingBottom = n['size-80'];
+    field.itemSpacing = n['size-80'];
+    field.cornerRadius = n['size-80'];
+    field.strokeWeight = state.id === 'typing' ? n['size-20'] : n['size-10'];
+    bindFill(
+      field,
+      state.id === 'error'
+        ? 'color-error-lavender-blush'
+        : state.id === 'disabled'
+          ? 'color-grey-light-grey'
+          : 'color-background-white',
+    );
+    bindStroke(
+      field,
+      state.id === 'error'
+        ? 'color-error-allert-red'
+        : state.id === 'disabled'
+          ? 'color-grey-default-grey-72'
+          : 'color-grey-default-grey',
+    );
+
+    const left = icon(field, 'Left icon', 'heart', 'no-fill', 24);
+    left.visible = false;
+    const value = await text(field, 'Text', state.value, 'p-m');
+    value.layoutGrow = 1;
+    value.layoutAlign = 'STRETCH';
+    bindFill(
+      value,
+      state.id === 'error'
+        ? 'color-error-ruby-red'
+        : state.id === 'disabled' || state.id === 'default'
+          ? 'color-grey-default-grey-72'
+          : 'color-grey-default-grey',
+    );
+    const right = icon(field, 'Right icon', 'heart', 'no-fill', 24);
+    right.visible = false;
+
+    const bottom = await text(node, 'Bottom text', 'Bottom text here', 'p-s', 327);
+    bottom.visible = false;
+    bindFill(bottom, state.id === 'error' ? 'color-error-ruby-red' : 'color-grey-default-grey-72');
+    inputFields.push(node);
+  }
+  const inputSet = register(
+    'input-field',
+    'UIInputField',
+    inputFields,
+    'Stati Default/Typing/Compilato/Disabled/Error dal riferimento Foundation. Nel consumer Angular focus e contenuto determinano Typing/Compilato; disabled ed errorText/invalid determinano gli altri stati. Label, testo inferiore e icone sono configurabili; il codice usa un input nativo e supporta Angular Forms.',
+  );
+  for (let index = 0; index < inputFields.length; index++) {
+    const node = inputFields[index];
+    const state = inputStates[index];
+    const label = child(node, 'Label', 'TEXT');
+    const field = child(node, 'Field', 'FRAME');
+    const value = child(field, 'Text', 'TEXT');
+    const bottom = child(node, 'Bottom text', 'TEXT');
+    const left = field.children.find((item) => item.getPluginData('bepower-role') === 'Left icon');
+    const right = field.children.find(
+      (item) => item.getPluginData('bepower-role') === 'Right icon',
+    );
+    expose(inputSet, label, 'Label', 'Label');
+    expose(
+      inputSet,
+      value,
+      ['default', 'disabled'].includes(state.id) ? 'Placeholder' : 'Value',
+      value.characters,
+    );
+    expose(inputSet, bottom, 'Bottom text value', 'Bottom text here');
+    exposeProperty(inputSet, label, 'Title', 'BOOLEAN', true, 'visible');
+    exposeProperty(inputSet, value, 'Placeholder text', 'BOOLEAN', true, 'visible');
+    exposeProperty(inputSet, bottom, 'Bottom text', 'BOOLEAN', false, 'visible');
+    exposeProperty(inputSet, left, 'Left icon', 'BOOLEAN', false, 'visible');
+    exposeProperty(inputSet, right, 'Right icon', 'BOOLEAN', false, 'visible');
+    const leftMaster = await left.getMainComponentAsync();
+    const rightMaster = await right.getMainComponentAsync();
+    exposeProperty(
+      inputSet,
+      left,
+      'Left icon choice',
+      'INSTANCE_SWAP',
+      leftMaster.id,
+      'mainComponent',
+    );
+    exposeProperty(
+      inputSet,
+      right,
+      'Right icon choice',
+      'INSTANCE_SWAP',
+      rightMaster.id,
+      'mainComponent',
+    );
+  }
+
   const covered = new Set(['button', 'icon', ...library.map((item) => item.id)]);
   for (const id of Object.keys(DATA.components)) {
     if (!covered.has(id)) throw new Error(`Exported component has no Figma adapter: ${id}`);

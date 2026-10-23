@@ -146,6 +146,11 @@ async function run() {
       figma.variables.setBoundVariableForPaint(paint(name)[0], 'color', colorVariables[name]),
     ];
   }
+  function bindStroke(node, name) {
+    node.strokes = [
+      figma.variables.setBoundVariableForPaint(paint(name)[0], 'color', colorVariables[name]),
+    ];
+  }
   function exposeProperty(master, node, name, type, value, field) {
     // Slot content is freely editable and cannot be bound to its parent's properties.
     for (let parent = node.parent; parent; parent = parent.parent) {
@@ -279,11 +284,13 @@ async function run() {
     component,
     variants,
     bindFill,
+    bindStroke,
     textStyles,
     iconSets,
     buttonSet,
     checkpoint,
     exposeText,
+    exposeProperty,
   });
   progress('Configurazione della gerarchia e dei contenuti sostituibili…');
   const composition = await configureComposition({

@@ -3,6 +3,7 @@ export * from './bottom-sheet/ui-bottom-sheet';
 export * from './icon/ui-icon';
 export * from './page/ui-page';
 export * from './p/ui-p';
+export * from './input-field/ui-input-field';
 export * from './progress-bar/ui-progress-bar';
 export * from './text/ui-text';
 export * from './title/ui-title';

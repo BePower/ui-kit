@@ -16,6 +16,7 @@ const { buildId } = JSON.parse(
 
 // Small in-memory Plugin API double. It checks lifecycle/identity, not Figma rendering.
 function environment({ nativeSlots = true } = {}) {
+  let pluginRunning = false;
   let sequence = 0;
   const stats = { findOneCalls: 0, yields: 0 };
   const makeId = () => `test:${++sequence}`;
@@ -38,6 +39,17 @@ function environment({ nativeSlots = true } = {}) {
     get children() {
       return [...this._children];
     }
+    get mainComponent() {
+      if (pluginRunning) {
+        throw new Error(
+          'Cannot call mainComponent with documentAccess: dynamic-page. Use getMainComponentAsync.',
+        );
+      }
+      return this._mainComponent;
+    }
+    set mainComponent(component) {
+      this._mainComponent = component;
+    }
     get componentPropertyReferences() {
       return this._componentPropertyReferences;
     }
@@ -56,7 +68,7 @@ function environment({ nativeSlots = true } = {}) {
         let parent = this.parent;
         while (parent && !['COMPONENT', 'INSTANCE'].includes(parent.type)) parent = parent.parent;
         assert.ok(parent, 'slots must belong to a component or instance');
-        const master = parent.type === 'INSTANCE' ? parent.mainComponent : parent;
+        const master = parent.type === 'INSTANCE' ? parent._mainComponent : parent;
         const owner = master.parent?.type === 'COMPONENT_SET' ? master.parent : master;
         assert.equal(owner.componentPropertyDefinitions[refs.slotContentId]?.type, 'SLOT');
         this.type = 'SLOT';
@@ -156,14 +168,14 @@ function environment({ nativeSlots = true } = {}) {
     createInstance() {
       assert.equal(this.type, 'COMPONENT');
       const instance = new Node('INSTANCE');
-      instance.mainComponent = this;
+      instance._mainComponent = this;
       instance.width = this.width;
       instance.height = this.height;
       instance.layoutMode = this.layoutMode;
       function copy(source, parent) {
         const clone =
           source.type === 'INSTANCE'
-            ? source.mainComponent.createInstance()
+            ? source._mainComponent.createInstance()
             : new Node(source.type);
         clone.name = source.name;
         clone.data = { ...source.data };
@@ -185,17 +197,17 @@ function environment({ nativeSlots = true } = {}) {
     }
     async getMainComponentAsync() {
       assert.equal(this.type, 'INSTANCE');
-      return this.mainComponent;
+      return this._mainComponent;
     }
     swapComponent(component) {
       assert.equal(this.type, 'INSTANCE');
       assert.equal(component.type, 'COMPONENT');
-      this.mainComponent = component;
+      this._mainComponent = component;
       this.layoutMode = component.layoutMode;
     }
     get componentProperties() {
       assert.equal(this.type, 'INSTANCE');
-      const source = this.mainComponent;
+      const source = this._mainComponent;
       const owner = source.parent?.type === 'COMPONENT_SET' ? source.parent : source;
       return Object.fromEntries(
         Object.entries(owner.componentPropertyDefinitions).map(([key, definition]) => [
@@ -310,15 +322,22 @@ function environment({ nativeSlots = true } = {}) {
   }
   async function run() {
     return new Promise((resolve, reject) => {
+      pluginRunning = true;
       figma.closePlugin = (message) => {
+        pluginRunning = false;
         closes.push(message);
         reject(new Error('Plugin closed before persistent status was delivered'));
       };
       figma.ui.postMessage = (message) => {
         messages.push(message);
-        if (message.state === 'complete')
+        if (message.state === 'complete') {
+          pluginRunning = false;
           resolve(`BePower ${message.buildId} · ${message.message}`);
-        if (message.state === 'error') reject(new Error(message.message));
+        }
+        if (message.state === 'error') {
+          pluginRunning = false;
+          reject(new Error(message.message));
+        }
       };
       vm.runInNewContext(
         source,
@@ -356,7 +375,7 @@ test('generated data retains repository mappings', () => {
     Object.keys(data.icons).sort(),
     [...data.components.icon.inputs.name.values].sort(),
   );
-  assert.equal(Object.keys(data.components).length, 11);
+  assert.equal(Object.keys(data.components).length, 12);
   assert.equal(data.components.row.inputs.gap.default, "'none'");
   assert.equal(data.components.title.inputs.size.default, "'l'");
   assert.deepEqual(data.components.icon.inputs.size.values, ['16', '24', '32', '36', '40', '48']);
@@ -405,6 +424,50 @@ test('catalog generation preserves master IDs, properties and external content o
   assert.equal(tagged('components/col').children.length, 14);
   assert.equal(tagged('components/p').children.length, 3);
   assert.equal(tagged('components/progress-bar').children.length, 5);
+  const inputSet = tagged('components/input-field');
+  assert.equal(inputSet.children.length, 5);
+  assert.deepEqual(
+    inputSet.children.map((node) => node.getPluginData('bepower-source')),
+    [
+      'input-field/default',
+      'input-field/typing',
+      'input-field/filled',
+      'input-field/disabled',
+      'input-field/error',
+    ],
+  );
+  const inputDefault = tagged('input-field/default');
+  const inputField = inputDefault.children.find(
+    (node) => node.getPluginData('bepower-role') === 'Field',
+  );
+  assert.equal(inputDefault.width, 327);
+  assert.equal(inputField.width, 327);
+  assert.equal(inputField.height, 42);
+  assert.equal(inputField.cornerRadius, 8);
+  assert.equal(inputField.strokeWeight, 1);
+  assert.ok(inputField.fills[0].boundVariables.color.id);
+  assert.ok(inputField.strokes[0].boundVariables.color.id);
+  const inputPropertyTypes = Object.entries(inputSet.componentPropertyDefinitions).map(
+    ([name, definition]) => [name.split('#')[0], definition.type],
+  );
+  for (const expected of [
+    ['Label', 'TEXT'],
+    ['Placeholder', 'TEXT'],
+    ['Value', 'TEXT'],
+    ['Bottom text value', 'TEXT'],
+    ['Title', 'BOOLEAN'],
+    ['Placeholder text', 'BOOLEAN'],
+    ['Bottom text', 'BOOLEAN'],
+    ['Left icon', 'BOOLEAN'],
+    ['Right icon', 'BOOLEAN'],
+    ['Left icon choice', 'INSTANCE_SWAP'],
+    ['Right icon choice', 'INSTANCE_SWAP'],
+  ]) {
+    assert.ok(
+      inputPropertyTypes.some(([name, type]) => name === expected[0] && type === expected[1]),
+      `input exposes ${expected[0]} as ${expected[1]}`,
+    );
+  }
   for (const [setId, defaultId] of [
     ['icons', 'icon/arrow/fill'],
     ['components/title', 'title/l'],
@@ -413,7 +476,7 @@ test('catalog generation preserves master IDs, properties and external content o
   ]) {
     assert.equal(tagged(setId).children[0].getPluginData('bepower-source'), defaultId);
   }
-  assert.equal(masters.length, iconCount + 130);
+  assert.equal(masters.length, iconCount + 135);
   const masterIds = masters.map((node) => node.id);
   const label = tagged('button/primary/default').findOne((node) => node.type === 'TEXT');
   const property = label.componentPropertyReferences.characters;
@@ -439,6 +502,7 @@ test('catalog generation preserves master IDs, properties and external content o
     '_Button',
     '_Col',
     '_Grid',
+    '_InputField',
     '_P',
     '_Page',
     '_ProgressBar',
@@ -588,7 +652,7 @@ test('run reports distinguish creation from updates and identify the executed bu
   const env = environment();
   const first = await env.run();
   assert.ok(first.includes(buildId));
-  assert.match(first, /0 master aggiornati · 580 creati/);
+  assert.match(first, /0 master aggiornati · 585 creati/);
   assert.match(first, /nuovo bundle/);
   const ids = env.document
     .findAll((node) => node.type === 'COMPONENT')
@@ -596,13 +660,13 @@ test('run reports distinguish creation from updates and identify the executed bu
     .sort();
   const second = await env.run();
   assert.ok(second.includes(buildId));
-  assert.match(second, /580 master aggiornati · 0 creati/);
+  assert.match(second, /585 master aggiornati · 0 creati/);
   assert.match(second, /stesso bundle/);
   assert.equal(env.document.getPluginData('bepower-last-build'), buildId);
   assert.deepEqual(JSON.parse(env.document.getPluginData('bepower-last-report')), {
     buildId,
     created: 0,
-    updated: 580,
+    updated: 585,
   });
   assert.deepEqual(
     env.document

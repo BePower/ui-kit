@@ -1,0 +1,95 @@
+@use 'foundations/colors' as colors;
+@use 'foundations/root' as root;
+@use 'foundations/sizes' as sizes;
+@use 'foundations/typography' as typography;
+
+:host {
+  @include root.shadow-root;
+  display: block;
+  color: colors.$color-grey-default-grey;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: sizes.$size-80;
+  inline-size: 100%;
+}
+
+.title {
+  @include typography.label-m;
+  color: colors.$color-grey-default-grey;
+}
+
+.control {
+  align-items: center;
+  background: colors.$color-background-white;
+  border: sizes.$size-10 solid colors.$color-grey-default-grey;
+  border-radius: sizes.$size-80;
+  box-sizing: border-box;
+  color: colors.$color-grey-default-grey;
+  display: flex;
+  gap: sizes.$size-80;
+  block-size: 2.625rem;
+  padding: sizes.$size-80 sizes.$size-160;
+  inline-size: 100%;
+}
+
+input {
+  @include typography.p-m;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: colors.$color-grey-default-grey;
+  flex: 1 1 auto;
+  font-family: inherit;
+  min-inline-size: 0;
+  outline: 0;
+  padding: 0;
+  inline-size: 100%;
+}
+
+input::placeholder {
+  color: colors.$color-grey-default-grey-72;
+  opacity: 1;
+}
+
+.message {
+  @include typography.p-s;
+  color: colors.$color-grey-default-grey-72;
+}
+
+:host(.focused) .control {
+  border-width: sizes.$size-20;
+}
+
+:host(.disabled) .title,
+:host(.disabled) .message,
+:host(.disabled) input,
+:host(.disabled) input::placeholder {
+  color: colors.$color-grey-default-grey-72;
+}
+
+:host(.disabled) .control {
+  background: colors.$color-grey-light-grey;
+  border-color: colors.$color-grey-default-grey-72;
+  color: colors.$color-grey-default-grey-72;
+}
+
+:host(.error) .title,
+:host(.error) .message,
+:host(.error) input,
+:host(.error) input::placeholder {
+  color: colors.$color-error-ruby-red;
+}
+
+:host(.error) .control {
+  background: colors.$color-error-lavender-blush;
+  border-color: colors.$color-error-allert-red;
+  color: colors.$color-error-ruby-red;
+}
+
+::slotted([slot='left']),
+::slotted([slot='right']) {
+  flex: 0 0 auto;
+}
