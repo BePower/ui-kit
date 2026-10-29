@@ -194,6 +194,38 @@ async function renderComponents({
       }
     }
   }
+  const pictograms = [];
+  const statusPictograms = new Set(['positive', 'negative', 'info']);
+  for (const name of DATA.components.pictogram.inputs.name.values) {
+    const svg = DATA.pictograms[name];
+    if (!svg) throw new Error(`UIPictogram source missing: ${name}`);
+    const family = statusPictograms.has(name) ? 'Status' : 'Contextual';
+    const usage =
+      family === 'Status'
+        ? 'Esito o condizione oggettiva del sistema.'
+        : 'Contenuto, funzionalità o contesto della schermata.';
+    for (const size of values('pictogram', 'size')) {
+      const renderedSize = cssNumber('pictogram', `img.size-${size}`, 'width');
+      const node = master(`pictogram/${name}/${size}`, `name=${name}, size=${size}`);
+      node.description = `${family} · ${usage} Decorativo: accompagna sempre un testo.`;
+      node.layoutMode = 'NONE';
+      fixed(node, renderedSize, renderedSize);
+      const vector = figma.createNodeFromSvg(svg);
+      vector.rescale(renderedSize / vector.width);
+      vector.x = vector.y = 0;
+      node.children.forEach((item) => item.remove());
+      node.appendChild(vector);
+      pictograms.push(node);
+      await checkpoint();
+    }
+  }
+  register(
+    'pictogram',
+    'UIPictogram',
+    pictograms,
+    'Pittogrammi decorativi. Contextual per il contesto della schermata; Status per esiti oggettivi. Feedback non disponibile. Guida completa nella pagina _Pictogram.',
+  );
+
   const titles = [];
   for (const size of values('title', 'size')) {
     const node = master(`title/${size}`, `size=${size}`);

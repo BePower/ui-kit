@@ -243,6 +243,72 @@ async function createCatalog({
         'p-s',
       );
     }
+    if (item.id === 'pictogram') {
+      const guide = await section(
+        documentation,
+        'Come scegliere il pittogramma',
+        'Parti dal significato, non dalla forma o dal colore.',
+      );
+      const families = [
+        {
+          title: 'Contextual',
+          question: 'Di cosa parla questa schermata?',
+          body: 'Rafforza contenuto, funzionalità o contesto. Esempi: email verificata, avvio ricarica, nessuna ricarica attiva.',
+          source: 'pictogram/email-verificata/m',
+        },
+        {
+          title: 'Status',
+          question: 'Cosa è successo?',
+          body: 'Comunica un esito o una condizione oggettiva e verificabile. Usa positive, negative o info.',
+          source: 'pictogram/positive/m',
+        },
+        {
+          title: 'Feedback · non disponibile',
+          question: 'Come valuta l’utente l’esperienza?',
+          body: 'Rappresenta una scelta soggettiva esplicita. Non introdurre sostituti locali finché questa famiglia non viene approvata.',
+        },
+      ];
+      for (const family of families) {
+        const card = stack(guide, `Guideline / ${family.title}`, 'HORIZONTAL');
+        card.primaryAxisSizingMode = 'FIXED';
+        card.resize(width, Math.max(card.height, 1));
+        card.layoutAlign = 'STRETCH';
+        card.counterAxisAlignItems = 'CENTER';
+        card.itemSpacing = space['spacing-xs'];
+        card.paddingTop = card.paddingBottom = space['spacing-xs'];
+        card.paddingLeft = card.paddingRight = space['spacing-xs'];
+        card.cornerRadius = space['size-80'];
+        bindFill(card, 'color-background-grey');
+        if (family.source) {
+          const source = item.set.children.find(
+            (node) => node.getPluginData(tag) === family.source,
+          );
+          if (!source) throw new Error(`Pictogram guideline source missing: ${family.source}`);
+          card.appendChild(source.createInstance());
+        }
+        const copy = stack(card, `${family.title} / Testo`);
+        copy.layoutGrow = 1;
+        const copyWidth = width - space['spacing-xs'] * 2 - (family.source ? 112 : 0);
+        await text(copy, family.title, 'title-m', copyWidth);
+        await text(copy, family.question, 'label-l', copyWidth);
+        await text(copy, family.body, 'p-m', copyWidth);
+      }
+      const decision = await section(
+        documentation,
+        'Regola veloce',
+        'Contesto della schermata → Contextual · Dato o esito del sistema → Status · Valutazione esplicita dell’utente → Feedback.',
+      );
+      await text(
+        decision,
+        'DO · Accompagna sempre il pittogramma con un testo: il componente è decorativo.',
+        'p-m',
+      );
+      await text(
+        decision,
+        'DON’T · Non usare volti Happy, Neutral o Sad per rappresentare automaticamente successi o errori tecnici.',
+        'p-m',
+      );
+    }
     const examples = await section(documentation, 'Esempi come istanze');
     for (const master of item.set.children.filter((node) => node.type === 'COMPONENT')) {
       await text(examples, master.name, 'label-m');

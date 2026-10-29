@@ -1,3 +1,25 @@
-export type PictogramName = 'placeholder';
+export type PictogramName =
+  | 'accesso-biometrico'
+  | 'activity'
+  | 'avvio-ricarica'
+  | 'battery-25'
+  | 'battery-50'
+  | 'battery-75'
+  | 'battery-over-75'
+  | 'e-truck'
+  | 'email-verificata'
+  | 'favoriti'
+  | 'gps'
+  | 'info'
+  | 'invita-amico'
+  | 'loyalty'
+  | 'metodo-pagamento'
+  | 'negative'
+  | 'nessuna-ricarica'
+  | 'notifica'
+  | 'positive'
+  | 'profilo-aggiornato'
+  | 'riprendi-registrazione'
+  | 'wallet';
 
-export type PictogramSize = '48' | '64' | '96' | '128';
+export type PictogramSize = 's' | 'm' | 'l';

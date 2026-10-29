@@ -23,7 +23,7 @@ import { pictogramMap } from './pictogram-map';
 })
 export class UIPictogram {
   name = input.required<PictogramName>();
-  size = input<PictogramSize>('64');
+  size = input<PictogramSize>('m');
   pictogramSrc = signal<string | null>(null);
   showPictogram = signal(false);
 

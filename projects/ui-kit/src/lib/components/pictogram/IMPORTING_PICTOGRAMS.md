@@ -19,7 +19,7 @@ Use lowercase kebab-case with no variant suffix:
 Examples:
 
 ```text
-placeholder.svg
+wallet.svg
 empty-state.svg
 payment-success.svg
 ```

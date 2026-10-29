@@ -8,7 +8,7 @@ import { collectInventory } from './figma-inventory.mjs';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const lib = `${root}projects/ui-kit/src/lib`;
 const read = (path) => readFile(`${root}${path}`, 'utf8');
-const data = { colors: {}, numbers: {}, typography: {}, button: {}, icons: {} };
+const data = { colors: {}, numbers: {}, typography: {}, button: {}, icons: {}, pictograms: {} };
 
 // Ask Sass to evaluate its own modules, rather than reimplementing Sass resolution.
 sass.compileString(

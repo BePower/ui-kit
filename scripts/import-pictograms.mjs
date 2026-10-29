@@ -43,7 +43,9 @@ function generatePictogramMap(pictograms) {
       const propertyName = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(name) ? name : `'${name}'`;
       const exportName = pictogramExportName(name);
       return `  ${propertyName}: () =>
-    import('./pictograms/${name}').then(({ ${exportName} }) => ${exportName}),`;
+    import('./pictograms/${name}').then(
+      ({ ${exportName} }) => ${exportName},
+    ),`;
     })
     .join('\n');
 
@@ -56,14 +58,12 @@ ${entries}
 }
 
 function generatePictogramInterface(pictograms) {
-  const names =
-    pictograms.length === 1
-      ? `'${pictograms[0].name}'`
-      : `\n${pictograms.map(({ name }) => `  | '${name}'`).join('\n')}`;
+  const names = pictograms.map(({ name }) => `  | '${name}'`).join('\n');
 
-  return `export type PictogramName = ${names};
+  return `export type PictogramName =
+${names};
 
-export type PictogramSize = '48' | '64' | '96' | '128';
+export type PictogramSize = 's' | 'm' | 'l';
 `;
 }
 
@@ -143,13 +143,20 @@ async function main() {
     return;
   }
 
+  const { format, resolveConfig } = await import('prettier');
+  const prettierOptions = {
+    ...(await resolveConfig(pictogramMapPath)),
+    parser: 'typescript',
+  };
+  const formatTypeScript = (source) => format(source, prettierOptions);
+
   await rm(stagingDirectory, { recursive: true, force: true });
   await mkdir(stagingDirectory, { recursive: true });
   await Promise.all(
-    pictograms.map((pictogram) =>
+    pictograms.map(async (pictogram) =>
       writeFile(
         resolve(stagingDirectory, `${pictogram.name}.ts`),
-        generatePictogramModule(pictogram),
+        await formatTypeScript(generatePictogramModule(pictogram)),
       ),
     ),
   );
@@ -157,9 +164,15 @@ async function main() {
   await rm(generatedPictogramDirectory, { recursive: true, force: true });
   await rename(stagingDirectory, generatedPictogramDirectory);
   await mkdir(interfacesDirectory, { recursive: true });
-  await writeFile(pictogramMapPath, generatePictogramMap(pictograms));
-  await writeFile(pictogramMapInterfacePath, generatePictogramMapInterface());
-  await writeFile(pictogramInterfacePath, generatePictogramInterface(pictograms));
+  await writeFile(pictogramMapPath, await formatTypeScript(generatePictogramMap(pictograms)));
+  await writeFile(
+    pictogramMapInterfacePath,
+    await formatTypeScript(generatePictogramMapInterface()),
+  );
+  await writeFile(
+    pictogramInterfacePath,
+    await formatTypeScript(generatePictogramInterface(pictograms)),
+  );
 
   console.log(`Imported ${pictograms.length} SVG pictograms.`);
 }

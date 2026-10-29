@@ -375,7 +375,18 @@ test('generated data retains repository mappings', () => {
     Object.keys(data.icons).sort(),
     [...data.components.icon.inputs.name.values].sort(),
   );
-  assert.equal(Object.keys(data.components).length, 12);
+  const pictogramSvgs = readdirSync(new URL('../pictograms', import.meta.url)).filter((file) =>
+    file.endsWith('.svg'),
+  );
+  assert.equal(Object.keys(data.pictograms).length, pictogramSvgs.length);
+  assert.deepEqual(
+    Object.keys(data.pictograms).sort(),
+    [...data.components.pictogram.inputs.name.values].sort(),
+  );
+  assert.ok(Object.values(data.pictograms).every((svg) => /<svg/.test(svg)));
+  assert.equal(Object.keys(data.components).length, 13);
+  assert.deepEqual(data.components.pictogram.inputs.size.values, ['s', 'm', 'l']);
+  assert.equal(data.components.pictogram.inputs.size.default, "'m'");
   assert.equal(data.components.row.inputs.gap.default, "'none'");
   assert.equal(data.components.title.inputs.size.default, "'l'");
   assert.deepEqual(data.components.icon.inputs.size.values, ['16', '24', '32', '36', '40', '48']);
@@ -410,6 +421,21 @@ test('catalog generation preserves master IDs, properties and external content o
       }
     }
   }
+  const pictogramSizes = { s: 40, m: 80, l: 160 };
+  for (const [name, svg] of Object.entries(data.pictograms)) {
+    for (const [size, renderedSize] of Object.entries(pictogramSizes)) {
+      const master = tagged(`pictogram/${name}/${size}`);
+      assert.ok(master, `${name} / ${size}`);
+      assert.equal(master.width, renderedSize);
+      assert.equal(master.height, renderedSize);
+      assert.equal(master.children[0].width, renderedSize);
+      assert.equal(master.children[0].height, renderedSize);
+      const filled = master.findOne((node) => node.type === 'VECTOR' && node.fills.length);
+      assert.ok(filled, `${name} / ${size} retains authored fills`);
+      assert.equal(filled.fills[0].boundVariables, undefined);
+    }
+    assert.match(svg, /(?:fill|stroke)="#[0-9A-Fa-f]{6}"/);
+  }
   for (const id of Object.keys(data.components).filter((id) => !['button', 'icon'].includes(id))) {
     assert.ok(tagged(`components/${id}`), `exports native master set for ${id}`);
     assert.ok(tagged(`catalog/${id}`), `documents ${id}`);
@@ -424,6 +450,37 @@ test('catalog generation preserves master IDs, properties and external content o
   assert.equal(tagged('components/col').children.length, 14);
   assert.equal(tagged('components/p').children.length, 3);
   assert.equal(tagged('components/progress-bar').children.length, 5);
+  const pictogramSet = tagged('components/pictogram');
+  assert.equal(pictogramSet.children.length, 66);
+  assert.match(pictogramSet.description, /Contextual per il contesto/);
+  assert.match(pictogramSet.description, /Status per esiti oggettivi/);
+  assert.match(pictogramSet.description, /Guida completa nella pagina _Pictogram/);
+  assert.ok(pictogramSet.description.length < 260, 'set description stays scannable in Details');
+  assert.match(tagged('pictogram/positive/m').description, /^Status ·/);
+  assert.match(tagged('pictogram/wallet/m').description, /^Contextual ·/);
+  assert.match(tagged('pictogram/wallet/m').description, /Decorativo: accompagna sempre un testo/);
+  const pictogramCatalog = tagged('catalog/pictogram');
+  const guidelineCards = pictogramCatalog.findAll((node) => node.name?.startsWith('Guideline / '));
+  assert.deepEqual(
+    guidelineCards.map((node) => node.name),
+    ['Guideline / Contextual', 'Guideline / Status', 'Guideline / Feedback · non disponibile'],
+  );
+  assert.equal(
+    guidelineCards.filter((node) => node.findOne((child) => child.type === 'INSTANCE')).length,
+    2,
+  );
+  const pictogramDocumentation = pictogramCatalog
+    .findAll((node) => node.type === 'TEXT')
+    .map((node) => node.characters);
+  for (const expected of [
+    'Di cosa parla questa schermata?',
+    'Cosa è successo?',
+    'Come valuta l’utente l’esperienza?',
+    'DO · Accompagna sempre il pittogramma con un testo: il componente è decorativo.',
+    'DON’T · Non usare volti Happy, Neutral o Sad per rappresentare automaticamente successi o errori tecnici.',
+  ]) {
+    assert.ok(pictogramDocumentation.includes(expected), `documents guideline: ${expected}`);
+  }
   const inputSet = tagged('components/input-field');
   assert.equal(inputSet.children.length, 5);
   assert.deepEqual(
@@ -484,10 +541,11 @@ test('catalog generation preserves master IDs, properties and external content o
     ['components/title', 'title/l'],
     ['components/row', 'row/none'],
     ['components/grid', 'grid/false/xs'],
+    ['components/pictogram', `pictogram/${data.components.pictogram.inputs.name.values[0]}/m`],
   ]) {
     assert.equal(tagged(setId).children[0].getPluginData('bepower-source'), defaultId);
   }
-  assert.equal(masters.length, iconCount + 135);
+  assert.equal(masters.length, iconCount + 201);
   const masterIds = masters.map((node) => node.id);
   const button = tagged('button/primary/default');
   assert.equal(button.primaryAxisSizingMode, 'FIXED');
@@ -520,6 +578,7 @@ test('catalog generation preserves master IDs, properties and external content o
     '_InputField',
     '_P',
     '_Page',
+    '_Pictogram',
     '_ProgressBar',
     '_Row',
     '_Text',
@@ -667,7 +726,7 @@ test('run reports distinguish creation from updates and identify the executed bu
   const env = environment();
   const first = await env.run();
   assert.ok(first.includes(buildId));
-  assert.match(first, /0 master aggiornati · 585 creati/);
+  assert.match(first, /0 master aggiornati · 651 creati/);
   assert.match(first, /nuovo bundle/);
   const ids = env.document
     .findAll((node) => node.type === 'COMPONENT')
@@ -675,13 +734,13 @@ test('run reports distinguish creation from updates and identify the executed bu
     .sort();
   const second = await env.run();
   assert.ok(second.includes(buildId));
-  assert.match(second, /585 master aggiornati · 0 creati/);
+  assert.match(second, /651 master aggiornati · 0 creati/);
   assert.match(second, /stesso bundle/);
   assert.equal(env.document.getPluginData('bepower-last-build'), buildId);
   assert.deepEqual(JSON.parse(env.document.getPluginData('bepower-last-report')), {
     buildId,
     created: 0,
-    updated: 585,
+    updated: 651,
   });
   assert.deepEqual(
     env.document

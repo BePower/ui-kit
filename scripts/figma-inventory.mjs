@@ -103,5 +103,19 @@ export async function collectInventory(root, read) {
       'Icon sources and registry differ. Run npm run icons:import before generating Figma.',
     );
   }
-  return { components, styles, icons };
+  const pictograms = {};
+  const pictogramFiles = new Set(await readdir(root + 'pictograms'));
+  const pictogramNames = components.pictogram?.inputs.name.values ?? [];
+  for (const name of pictogramNames) {
+    const filename = `${name}.svg`;
+    if (!pictogramFiles.has(filename)) throw new Error(`Registry SVG missing: ${filename}`);
+    pictograms[name] = await read(`pictograms/${filename}`);
+  }
+  const pictogramSvgCount = [...pictogramFiles].filter((file) => file.endsWith('.svg')).length;
+  if (pictogramSvgCount !== Object.keys(pictograms).length) {
+    throw new Error(
+      'Pictogram sources and registry differ. Run npm run pictograms:import before generating Figma.',
+    );
+  }
+  return { components, styles, icons, pictograms };
 }

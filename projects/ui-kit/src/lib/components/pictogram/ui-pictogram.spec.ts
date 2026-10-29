@@ -2,13 +2,13 @@ import { TestBed } from '@angular/core/testing';
 import { configureComponent, deferred, setInputs, shadow } from '../../../../../../testing/helpers';
 
 const loaders = vi.hoisted(() => ({
-  placeholder: vi.fn<() => Promise<string>>(),
+  wallet: vi.fn<() => Promise<string>>(),
   alternate: vi.fn<() => Promise<string>>(),
 }));
 
 vi.mock('./pictogram-map', () => ({
   pictogramMap: {
-    placeholder: loaders.placeholder,
+    wallet: loaders.wallet,
     alternate: loaders.alternate,
   },
 }));
@@ -22,9 +22,9 @@ async function flush(): Promise<void> {
 
 describe('UIPictogram', () => {
   beforeEach(() => {
-    loaders.placeholder.mockReset();
+    loaders.wallet.mockReset();
     loaders.alternate.mockReset();
-    loaders.placeholder.mockResolvedValue('data:image/svg+xml,placeholder');
+    loaders.wallet.mockResolvedValue('data:image/svg+xml,wallet');
     loaders.alternate.mockResolvedValue('data:image/svg+xml,alternate');
   });
 
@@ -36,10 +36,10 @@ describe('UIPictogram', () => {
 
   it('loads the requested asset and remains decorative', async () => {
     const pending = deferred<string>();
-    loaders.placeholder.mockReturnValueOnce(pending.promise);
+    loaders.wallet.mockReturnValueOnce(pending.promise);
     configureComponent(UIPictogram);
     const fixture = TestBed.createComponent(UIPictogram);
-    setInputs(fixture, { name: 'placeholder', size: '96' });
+    setInputs(fixture, { name: 'wallet', size: 'm' });
     fixture.detectChanges();
     expect(shadow(fixture).querySelector('img')).toBeNull();
     pending.resolve('data:image/svg+xml,pictogram');
@@ -47,28 +47,40 @@ describe('UIPictogram', () => {
     fixture.detectChanges();
     const image = shadow(fixture).querySelector('img')!;
     expect(image.src).toBe('data:image/svg+xml,pictogram');
-    expect(image.classList).toContain('size-96');
+    expect(image.classList).toContain('size-m');
     expect(image.alt).toBe('');
     expect(image.getAttribute('aria-hidden')).toBe('true');
   });
 
-  it('uses size 64 by default', async () => {
+  it('uses size m by default', async () => {
     configureComponent(UIPictogram);
     const fixture = TestBed.createComponent(UIPictogram);
-    setInputs(fixture, { name: 'placeholder' });
+    setInputs(fixture, { name: 'wallet' });
     fixture.detectChanges();
     await flush();
     fixture.detectChanges();
-    expect(shadow(fixture).querySelector('img')?.classList).toContain('size-64');
+    expect(shadow(fixture).querySelector('img')?.classList).toContain('size-m');
+  });
+
+  it.each(['s', 'm', 'l'] as const)('applies semantic size %s to the same asset', async (size) => {
+    configureComponent(UIPictogram);
+    const fixture = TestBed.createComponent(UIPictogram);
+    setInputs(fixture, { name: 'wallet', size });
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+    const image = shadow(fixture).querySelector('img')!;
+    expect(image.classList).toContain(`size-${size}`);
+    expect(image.src).toBe('data:image/svg+xml,wallet');
   });
 
   it('ignores a stale async response after the name changes', async () => {
     const first = deferred<string>();
-    loaders.placeholder.mockReturnValueOnce(first.promise);
+    loaders.wallet.mockReturnValueOnce(first.promise);
     loaders.alternate.mockResolvedValueOnce('data:image/svg+xml,current');
     configureComponent(UIPictogram);
     const fixture = TestBed.createComponent(UIPictogram);
-    setInputs(fixture, { name: 'placeholder' });
+    setInputs(fixture, { name: 'wallet' });
     fixture.detectChanges();
     setInputs(fixture, { name: 'alternate' });
     fixture.detectChanges();
@@ -93,15 +105,15 @@ describe('UIPictogram', () => {
 
   it('reports loader failures and keeps the pictogram hidden', async () => {
     const failure = new Error('load failed');
-    loaders.placeholder.mockRejectedValueOnce(failure);
+    loaders.wallet.mockRejectedValueOnce(failure);
     const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     configureComponent(UIPictogram);
     const fixture = TestBed.createComponent(UIPictogram);
-    setInputs(fixture, { name: 'placeholder' });
+    setInputs(fixture, { name: 'wallet' });
     fixture.detectChanges();
     await flush();
     expect(error).toHaveBeenCalledWith(
-      '[UI PICTOGRAM] - failed to load pictogram, placeholder',
+      '[UI PICTOGRAM] - failed to load pictogram, wallet',
       failure,
     );
     expect(shadow(fixture).querySelector('img')).toBeNull();
@@ -109,11 +121,11 @@ describe('UIPictogram', () => {
 
   it('does not report a rejected request after the component is destroyed', async () => {
     const pending = deferred<string>();
-    loaders.placeholder.mockReturnValueOnce(pending.promise);
+    loaders.wallet.mockReturnValueOnce(pending.promise);
     const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     configureComponent(UIPictogram);
     const fixture = TestBed.createComponent(UIPictogram);
-    setInputs(fixture, { name: 'placeholder' });
+    setInputs(fixture, { name: 'wallet' });
     fixture.detectChanges();
     fixture.destroy();
     pending.reject(new Error('late'));

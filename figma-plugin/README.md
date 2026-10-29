@@ -48,7 +48,7 @@ Inoltre `figma-plugin/dist` è ignorata da Git: aggiornare i soli sorgenti non r
 6. Si apre subito la finestra **BePower · Aggiornamento**, con ID del bundle e fase corrente.
    A fine esecuzione mostra master aggiornati e creati e **resta aperta** finché la chiudi
    con la X di Figma. Gli errori rimangono leggibili nella stessa finestra. Con il catalogo
-   attuale già completo, un secondo avvio deve indicare **580 aggiornati, 0 creati**.
+   attuale già completo, un secondo avvio deve indicare **651 aggiornati, 0 creati**.
    Nuovi componenti aggiunti ai sorgenti possono legittimamente aumentare il numero dei creati.
 
 Non rimuovere pagine, master o variabili per aggiornare. La rimozione rompe i collegamenti
@@ -221,6 +221,7 @@ di componenti in Dev Mode. Non occorre rigenerare il plugin per questo messaggio
 | Dimensioni e spaziature | `foundations/sizes.scss`, `spacing.scss`               | Variabili FLOAT, rem convertiti con la base 16px del repository                               |
 | Tipografia              | mixin senza parametri in `foundations/typography.scss` | Stili testo, line-height e decorazioni                                                        |
 | UIIcon                  | `icon-map.ts`, `icons/*.svg`, input size               | 50 set, 75 SVG × 6 size = 450 componenti vettoriali                                           |
+| UIPictogram             | `pictogram-map.ts`, `pictograms/*.svg`, input size     | 1 set, 22 SVG × 3 size semantiche = 66 componenti; colori originali preservati                |
 | UIButton                | TypeScript, Sass e mixin tipografici                   | 20 varianti: 3 variant × default/icon/min-icon × 2 stati; inline solo secondary × 2 stati     |
 | UIBottomSheet           | TypeScript e Sass                                      | 4 combinazioni showCloseButton × hasFooter, proprietà Content                                 |
 | UIPage                  | TypeScript e Sass                                      | 50 combinazioni: 5 background × 5 header (incluso none) × 2 footer, proprietà Title e Content |
@@ -232,8 +233,8 @@ di componenti in Dev Mode. Non occorre rigenerare il plugin per questo messaggio
 | UIRow                   | input gap e token spacing                              | 10 gap, top/bottom inizialmente none                                                          |
 | UICol                   | contratto Ionic size                                   | Span 1–12, equal e auto; 14 campioni                                                          |
 
-Totale attuale: **579 master in 60 set**, corrispondenti agli **11 componenti** del barrel,
-più **un componente standalone di esempio** `Composition / Content` (580 master totali).
+Totale attuale: **650 master in 62 set**, corrispondenti ai **13 componenti** del barrel,
+più **un componente standalone di esempio** `Composition / Content` (**651 master totali**).
 Il numero dei componenti Angular non coincide con quello dei master Figma: ogni variante
 è un master nel proprio set.
 
@@ -249,6 +250,14 @@ prodotto cartesiano di varianti. Come nell'importer Angular, i path pieni ricevo
 semantico, mentre fill=none e attributi stroke vengono preservati.
 Le icone sono distribuite in cinque colonne sulla canvas e il catalogo mostra i campioni
 a 24px. I master originali arrow a 24px e il loro set conservano gli identificativi.
+
+### Pittogrammi
+
+`UIPictogram` è un unico component set con assi **name** e **size** (`s`, `m`, `l`). Le size
+sono ricavate dal CSS del componente e corrispondono a 40/80/160px. Il plugin importa una sola
+sorgente SVG per nome e la ridimensiona nei master Figma, senza duplicare asset per taglia né
+sostituire i colori originali con variabili. Il generatore verifica che il tipo `PictogramName`,
+il registry e gli SVG in `pictograms/` siano allineati.
 
 Sass valuta i token e i mixin originali: i valori non vengono mantenuti in una seconda palette.
 Il bottone primario usa **yellow-eni**, non il verde: è il mapping Ionic definito dal repository.

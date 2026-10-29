@@ -9,23 +9,18 @@
 img {
   display: block;
 
-  &.size-48 {
-    width: #{sizes.$size-480};
-    height: #{sizes.$size-480};
+  &.size-s {
+    width: #{sizes.$size-400};
+    height: #{sizes.$size-400};
   }
 
-  &.size-64 {
-    width: #{sizes.$size-640};
-    height: #{sizes.$size-640};
+  &.size-m {
+    width: #{sizes.$size-800};
+    height: #{sizes.$size-800};
   }
 
-  &.size-96 {
-    width: #{sizes.$size-960};
-    height: #{sizes.$size-960};
-  }
-
-  &.size-128 {
-    width: #{sizes.$size-1280};
-    height: #{sizes.$size-1280};
+  &.size-l {
+    width: #{sizes.$size-1600};
+    height: #{sizes.$size-1600};
   }
 }
