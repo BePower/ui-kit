@@ -5,7 +5,11 @@
 
 :host {
   @include root.shadow-root;
+  box-sizing: border-box;
   display: block;
+  inline-size: 100%;
+  max-inline-size: 100%;
+  min-inline-size: 0;
   color: colors.$color-grey-default-grey;
 }
 

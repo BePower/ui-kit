@@ -271,8 +271,12 @@ async function run() {
       label.lineHeight = { unit: 'PIXELS', value: type.lineHeight };
       label.textDecoration = type.underline ? 'UNDERLINE' : 'NONE';
       label.characters = 'Continua';
+      label.textAutoResize = 'WIDTH_AND_HEIGHT';
       bindFill(label, 'color-grey-default-grey');
       exposeText(node, label, 'Label', 'Continua');
+      node.minWidth = label.width + node.paddingLeft + node.paddingRight;
+      node.resize(Math.max(node.width, node.minWidth), DATA.button.height);
+      node.primaryAxisSizingMode = 'FIXED';
       buttons.push(node);
       await checkpoint();
     }

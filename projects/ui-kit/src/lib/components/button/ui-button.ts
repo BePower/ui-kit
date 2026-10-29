@@ -49,6 +49,7 @@ export type UIButtonSize = 'default' | 'icon' | 'min-icon' | 'inline';
         [disabled]="disabled() || _isLoading()"
         [color]="ionicColor()"
         [fill]="ionicFill()"
+        [expand]="expand() ? 'block' : undefined"
         [attr.aria-label]="ariaLabel()"
         [attr.aria-hidden]="ariaHidden() ? 'true' : null"
         [attr.tabindex]="ariaHidden() ? -1 : null"

@@ -70,7 +70,7 @@ let nextId = 0;
 export class UIInputField implements ControlValueAccessor, OnInit {
   label = input<string>();
   placeholder = input('');
-  helperText = input<string>();
+  bottomText = input<string>();
   errorText = input<string>();
   invalid = input(false, { transform: booleanAttribute });
   disabled = input(false, { transform: booleanAttribute });
@@ -95,7 +95,7 @@ export class UIInputField implements ControlValueAccessor, OnInit {
 
   readonly isDisabled = computed(() => this.disabled() || this.formDisabled());
   readonly hasError = computed(() => this.invalid() || Boolean(this.errorText()));
-  readonly message = computed(() => this.errorText() || this.helperText());
+  readonly message = computed(() => this.errorText() || this.bottomText());
 
   ngOnInit(): void {
     if (!this.label()?.trim() && !this.ariaLabel()?.trim() && !this.ariaLabelledby()?.trim()) {

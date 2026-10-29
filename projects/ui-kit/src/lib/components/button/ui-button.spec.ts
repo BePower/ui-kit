@@ -52,12 +52,15 @@ describe('UIButton', () => {
 
   it.each(['icon', 'min-icon'])('exposes the %s size and expand classes', (size) => {
     const fixture = render(UIButton, { ariaLabel: 'Action', size, expand: '' });
+    const button = shadow(fixture).querySelector('ion-button')!;
     expect(fixture.nativeElement.classList.contains(size)).toBe(true);
     expect(fixture.nativeElement.classList.contains('expand')).toBe(true);
+    expect(button.expand).toBe('block');
     setInputs(fixture, { size: 'default', expand: 'false' });
     fixture.detectChanges();
     expect(fixture.nativeElement.classList.contains(size)).toBe(false);
     expect(fixture.nativeElement.classList.contains('expand')).toBe(false);
+    expect(button.expand).toBeUndefined();
   });
 
   it.each([undefined, '', '   '])('rejects an unlabelled regular button (%j)', (ariaLabel) => {

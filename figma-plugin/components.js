@@ -489,6 +489,7 @@ async function renderComponents({
     node.itemSpacing = n['size-80'];
 
     const label = await text(node, 'Label', 'Label', 'label-m', 327);
+    label.layoutAlign = 'STRETCH';
     bindFill(
       label,
       state.id === 'error'
@@ -500,6 +501,7 @@ async function renderComponents({
 
     const field = frame(node, 'Field', 'HORIZONTAL');
     fixed(field, 327, 42);
+    field.layoutAlign = 'STRETCH';
     field.primaryAxisAlignItems = 'MIN';
     field.counterAxisAlignItems = 'CENTER';
     field.paddingLeft = field.paddingRight = n['size-160'];
@@ -541,8 +543,16 @@ async function renderComponents({
     right.visible = false;
 
     const bottom = await text(node, 'Bottom text', 'Bottom text here', 'p-s', 327);
+    bottom.layoutAlign = 'STRETCH';
     bottom.visible = false;
     bindFill(bottom, state.id === 'error' ? 'color-error-ruby-red' : 'color-grey-default-grey-72');
+    node.minWidth =
+      field.paddingLeft +
+      field.paddingRight +
+      left.width +
+      right.width +
+      field.itemSpacing * 2 +
+      n['size-10'];
     inputFields.push(node);
   }
   const inputSet = register(

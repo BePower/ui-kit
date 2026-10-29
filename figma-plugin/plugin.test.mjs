@@ -437,11 +437,22 @@ test('catalog generation preserves master IDs, properties and external content o
     ],
   );
   const inputDefault = tagged('input-field/default');
+  const inputLabel = inputDefault.children.find(
+    (node) => node.getPluginData('bepower-role') === 'Label',
+  );
   const inputField = inputDefault.children.find(
     (node) => node.getPluginData('bepower-role') === 'Field',
   );
+  const inputBottom = inputDefault.children.find(
+    (node) => node.getPluginData('bepower-role') === 'Bottom text',
+  );
   assert.equal(inputDefault.width, 327);
+  assert.equal(inputDefault.counterAxisSizingMode, 'FIXED');
+  assert.equal(inputDefault.minWidth, 97);
+  assert.equal(inputLabel.layoutAlign, 'STRETCH');
   assert.equal(inputField.width, 327);
+  assert.equal(inputField.layoutAlign, 'STRETCH');
+  assert.equal(inputBottom.layoutAlign, 'STRETCH');
   assert.equal(inputField.height, 42);
   assert.equal(inputField.cornerRadius, 8);
   assert.equal(inputField.strokeWeight, 1);
@@ -478,7 +489,11 @@ test('catalog generation preserves master IDs, properties and external content o
   }
   assert.equal(masters.length, iconCount + 135);
   const masterIds = masters.map((node) => node.id);
-  const label = tagged('button/primary/default').findOne((node) => node.type === 'TEXT');
+  const button = tagged('button/primary/default');
+  assert.equal(button.primaryAxisSizingMode, 'FIXED');
+  assert.equal(button.minWidth, button.children.find((node) => node.name === 'Label').width + 176);
+  assert.ok(button.width >= button.minWidth);
+  const label = button.findOne((node) => node.type === 'TEXT');
   const property = label.componentPropertyReferences.characters;
   const board = tagged('foundations-board');
   const catalog = tagged('component-catalog');

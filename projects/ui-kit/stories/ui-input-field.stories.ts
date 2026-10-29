@@ -12,7 +12,7 @@ const meta = {
   args: {
     label: 'Label',
     placeholder: 'Placeholder text',
-    helperText: 'Bottom text here',
+    bottomText: 'Bottom text here',
     disabled: false,
     invalid: false,
     readonly: false,
@@ -22,10 +22,10 @@ const meta = {
     props: args,
     template: `
       <ui-input-field
-        style="display: block; inline-size: 327px"
+        style="display: block; inline-size: 100%"
         [label]="label"
         [placeholder]="placeholder"
-        [helperText]="helperText"
+        [bottomText]="bottomText"
         [errorText]="errorText"
         [disabled]="disabled"
         [invalid]="invalid"
@@ -58,10 +58,10 @@ export const WithIcons: Story = {
     props: args,
     template: `
       <ui-input-field
-        style="display: block; inline-size: 327px"
+        style="display: block; inline-size: 100%"
         label="Label"
         placeholder="Placeholder text"
-        helperText="Bottom text here"
+        bottomText="Bottom text here"
       >
         <ui-icon slot="left" name="lens" fill="no-fill" size="24"></ui-icon>
         <ui-icon slot="right" name="info" fill="no-fill" size="24"></ui-icon>

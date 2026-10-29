@@ -262,8 +262,9 @@ I riempimenti dei componenti sono collegati alle variabili colore.
   di adattamento da aggiornare se cambia l'API della libreria.
 - Tutti i componenti hanno una rappresentazione nativa, non ogni possibile combinazione
   di input. Colori e geometrie modificabili non vengono sempre moltiplicati in varianti.
-  Per UIButton mancano loading animato, focus, pressed, hover ed expand come assi di variante.
-  Icon/min-icon mostrano plus come contenuto consumer di esempio.
+  Per UIButton mancano loading animato, focus, pressed e hover come assi di variante.
+  I master standard sono ridimensionabili e supportano Fill container con una larghezza minima
+  derivata da contenuto e padding; icon/min-icon restano intrinsecamente compatti.
 - UITitle, UIText e UIP espongono proprietà testo. `inherit` di UIText è mostrato in un
   contesto p-m: non esiste ereditarietà DOM in Figma. Start/end sono campioni LTR.
 - Le shell di UIPage e UIBottomSheet sono campioni statici su viewport 360×640.
@@ -289,6 +290,11 @@ I riempimenti dei componenti sono collegati alle variabili colore.
 - Il plugin non legge né modifica il file Foundation esistente tramite API remote.
   La prima esecuzione e la pubblicazione devono essere effettuate in Figma dall'utente.
 - Nessuna sincronizzazione automatica, rete, credenziale o backend.
+
+`UIInputField` mantiene una larghezza iniziale di 327px nel catalogo, ma il master e i suoi
+livelli Label, Field e Bottom text seguono la larghezza dell'istanza tramite auto layout/stretch.
+La larghezza minima conserva entrambi gli inset laterali, gli slot icona e i gap. Nel consumer
+Angular il nome canonico è `bottomText`; `helperText` resta solo come alias deprecato.
 
 `dist/tokens.json` permette di ispezionare i dati generati. Tutto `dist/` è rigenerabile e
 non va modificato manualmente né versionato.
