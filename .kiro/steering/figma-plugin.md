@@ -2,58 +2,59 @@
 inclusion: fileMatch
 fileMatchPattern: '{figma-plugin/**,scripts/*figma*}'
 name: figma-plugin
-description: Regole per il plugin Figma di generazione DS e i suoi script di build/inventory
+description: Rules for the Figma DS-generation plugin and its build/inventory scripts
 ---
 
-# Plugin Figma — generazione libreria nativa (bepower-ui-kit)
+# Figma plugin — native library generation (bepower-ui-kit)
 
-Carico queste regole solo quando tocco il plugin o i suoi script di build. Il mandato generale
-sta in `ds-orchestrator.md`.
+I load these rules only when I touch the plugin or its build scripts. The general mandate lives
+in `ds-orchestrator.md`.
 
-## Principio: i sorgenti sono l'unica fonte di verità
+## Principle: the sources are the single source of truth
 
-`scripts/build-figma-plugin.mjs` + `scripts/figma-inventory.mjs` **derivano** tutto dai sorgenti
-della libreria, non da liste parallele:
+`scripts/build-figma-plugin.mjs` + `scripts/figma-inventory.mjs` **derive** everything from the
+library sources, not from parallel lists:
 
-- **Token colore/numerici**: valutati da Sass via `meta.module-variables` su `foundations/colors`,
-  `foundations/sizes`, `foundations/spacing`. I `rem` sono convertiti in px (`* 16`).
-- **Tipografia**: ogni `@mixin` di `foundations/typography.scss` compilato per estrarre size,
+- **Color/numeric tokens**: evaluated by Sass via `meta.module-variables` on `foundations/colors`,
+  `foundations/sizes`, `foundations/spacing`. `rem` values are converted to px (`* 16`).
+- **Typography**: every `@mixin` of `foundations/typography.scss` is compiled to extract size,
   line-height, weight, underline, uppercase.
-- **Mapping del bottone**: letto da `ui-button.scss`; `required()` **lancia** se il pattern non
-  matcha più. Se tocco lo SCSS del bottone e cambio quei nomi di proprietà, aggiorno il pattern.
-- **Input dei componenti**: estratti via TypeScript type checker dal barrel
-  `components/index.ts` (solo `input()` / `input.required`, con union di literal come `values`).
-- **Icone/pittogrammi**: da `icon-map.ts` + SVG in `icons/` e dai `values` di `pictogram.name` +
-  SVG in `pictograms/`. Guardie: se registry e sorgenti divergono il build **fallisce** chiedendo
-  `npm run icons:import` / `npm run pictograms:import`.
+- **Button mapping**: read from `ui-button.scss`; `required()` **throws** if the pattern no longer
+  matches. If I touch the button SCSS and change those property names, I update the pattern.
+- **Component inputs**: extracted via the TypeScript type checker from the barrel
+  `components/index.ts` (only `input()` / `input.required`, with literal unions as `values`).
+- **Icons/pictograms**: from `icon-map.ts` + SVGs in `icons/` and from the `values` of
+  `pictogram.name` + SVGs in `pictograms/`. Guards: if the registry and the sources diverge the
+  build **fails** asking for `npm run icons:import` / `npm run pictograms:import`.
 
-**Conseguenza operativa**: non aggiungo dati a mano nel bundle. Per esporre un nuovo token/variant
-in Figma, lo aggiungo al **sorgente** (foundations, input del componente, registry) e rigenero.
+**Operational consequence**: I do not add data by hand into the bundle. To expose a new
+token/variant in Figma, I add it to the **source** (foundations, component input, registry) and
+regenerate.
 
-## Build e artefatti
+## Build and artifacts
 
-- Build dalla root workspace: `node scripts/build-figma-plugin.mjs`. Scrive `figma-plugin/dist/`
-  (`code.js`, `manifest.json`, `build-info.json`, `tokens.json`).
-- `figma-plugin/dist/` è **ignorata da Git**: modificare i soli sorgenti non rigenera il bundle.
-- Target di transpile **ES2017** (sandbox Figma): niente optional chaining/object spread nel
-  bundle distribuito. `status.html` è versionato e contiene il marker `/* TOKENS */`.
-- Manifest: `id` fisso `bepower-ui-kit-repository-pilot`, `networkAccess.allowedDomains: ['none']`.
-  **Non cambio l'id**: i dati privati che identificano i nodi sono legati al plugin; cambiarlo
-  rompe il riconoscimento dei master.
+- Build from the workspace root: `node scripts/build-figma-plugin.mjs`. It writes
+  `figma-plugin/dist/` (`code.js`, `manifest.json`, `build-info.json`, `tokens.json`).
+- `figma-plugin/dist/` is **gitignored**: changing only the sources does not regenerate the bundle.
+- Transpile target **ES2017** (Figma sandbox): no optional chaining/object spread in the
+  distributed bundle. `status.html` is versioned and contains the marker `/* TOKENS */`.
+- Manifest: fixed `id` `bepower-ui-kit-repository-pilot`, `networkAccess.allowedDomains: ['none']`.
+  **I do not change the id**: the private data identifying the nodes is bound to the plugin;
+  changing it breaks master recognition.
 
-## Regole non negoziabili
+## Non-negotiable rules
 
-- Non rimuovo pagine/master/variabili per "aggiornare": romperebbe i collegamenti delle istanze.
-  Il generatore aggiorna sul posto (atteso: "651 aggiornati, 0 creati" a catalogo invariato).
-- Non modifico `figma-plugin/dist` a mano: è output generato. Edito i sorgenti
-  (`components.js`, `composition.js`, `catalog.js`, `plugin.js`, `status.html`) e rigenero.
-- Font dichiarato: famiglia da `foundations/base.scss` (`--ion-font-family`); il plugin non usa
-  font sostitutivi. Se manca, il build lancia.
-- `figma-plugin/plugin.test.mjs` copre il generatore: lo eseguo dopo modifiche al plugin.
-- Pubblicazione libreria in Figma: manuale, lato designer. Io indico la procedura, non la eseguo.
+- I do not remove pages/masters/variables to "update": it would break the instance links.
+  The generator updates in place (expected: "651 updated, 0 created" with the catalog unchanged).
+- I do not edit `figma-plugin/dist` by hand: it is generated output. I edit the sources
+  (`components.js`, `composition.js`, `catalog.js`, `plugin.js`, `status.html`) and regenerate.
+- Declared font: family from `foundations/base.scss` (`--ion-font-family`); the plugin does not
+  use substitute fonts. If it is missing, the build throws.
+- `figma-plugin/plugin.test.mjs` covers the generator: I run it after changes to the plugin.
+- Library publishing in Figma: manual, designer-side. I indicate the procedure, I do not run it.
 
-## Direzione del flusso
+## Direction of the flow
 
-Repo → Figma (il plugin genera nativi Figma dai sorgenti). Il plugin **non** legge il Code Layer
-e **non** modifica i componenti Angular. La direzione Figma → componente è orchestrazione, non
-compito del plugin.
+Repo -> Figma (the plugin generates Figma natives from the sources). The plugin does **not** read
+the Code Layer and does **not** modify the Angular components. The Figma -> component direction is
+orchestration, not a plugin task.
