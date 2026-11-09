@@ -1,0 +1,90 @@
+name: Build Figma plugin
+run-name: Build Figma plugin
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  # Manual on-demand build: run it from the Actions tab (or `gh workflow run`) on any
+  # branch to get a fresh bundle artifact without opening a PR. The import into Figma
+  # Desktop stays a manual, local step either way.
+  workflow_dispatch:
+
+# Repo -> Figma: this workflow regenerates the native Figma plugin bundle from the
+# library sources and publishes it as a downloadable artifact so a designer can import
+# and test it in Figma Desktop. figma-plugin/dist/ is gitignored, so it is never
+# committed -- the artifact is the only output. The import/publish step stays manual,
+# on the designer's side, as the plugin requires (networkAccess: ['none']).
+jobs:
+  build_figma_plugin:
+    name: Build Figma plugin
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+
+      - name: Install dependencies
+        run: npm ci
+        env:
+          GITHUB_TOKEN: ${{ secrets.BEP_GITHUB_TOKEN }}
+
+      # Guard: the generator must pass before we publish a bundle. It verifies
+      # inventory, coverage, variants, two consecutive runs and id stability.
+      - name: Verify plugin generator
+        run: node --test figma-plugin/plugin.test.mjs
+
+      # Deterministic build from sources. Prints "BePower build <id>"; the same id
+      # lands in figma-plugin/dist/build-info.json.
+      - name: Build plugin bundle
+        run: node scripts/build-figma-plugin.mjs
+
+      - name: Read build id
+        id: build_info
+        shell: bash
+        run: |
+          build_id="$(node -p "require('./figma-plugin/dist/build-info.json').buildId")"
+          echo "build_id=${build_id}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload plugin bundle
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: figma-plugin-${{ steps.build_info.outputs.build_id }}
+          path: figma-plugin/dist/
+          if-no-files-found: error
+          retention-days: 14
+
+      # Only on a PR event is there an issue to comment on. On a manual
+      # workflow_dispatch run the bundle is still uploaded as an artifact; the
+      # operator reads the build id from the run summary instead.
+      - name: Comment download link on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const buildId = ${{ toJSON(steps.build_info.outputs.build_id) }};
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const marker = '<!-- figma-plugin-bundle -->';
+            const body = [
+              marker,
+              `### 🧩 Figma plugin bundle pronto`,
+              '',
+              `**Build id:** \`${buildId}\``,
+              '',
+              `Scarica l'artifact **\`figma-plugin-${buildId}\`** dalla [run di questa PR](${runUrl}) (sezione *Artifacts*), estrailo, e in Figma Desktop (modalità Design, non Dev Mode) apri Plugins → Development → Import plugin from manifest → \`manifest.json\`. L'import e la pubblicazione della libreria restano manuali, lato designer.`,
+            ].join('\n');
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const { data: comments } = await github.rest.issues.listComments({ owner, repo, issue_number });
+            const existing = comments.find((c) => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }

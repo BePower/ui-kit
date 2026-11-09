@@ -6,9 +6,13 @@
 
 :host {
   @include root.shadow-root;
-  display: contents;
+  display: inline-block;
+  max-inline-size: 100%;
+  min-inline-size: 0;
   ion-button {
+    box-sizing: border-box;
     margin: 0;
+    max-inline-size: 100%;
     min-height: 48px;
     --padding-start: #{sizes.$size-880};
     --padding-end: #{sizes.$size-880};
@@ -38,8 +42,13 @@
   @include typography.button-text-link;
 }
 
+:host(:not(.icon):not(.inline).expand) {
+  display: block;
+  inline-size: 100%;
+}
+
 :host(:not(.icon):not(.inline).expand) ion-button {
-  width: 100%;
+  inline-size: 100%;
 }
 
 :host(.icon) ion-button {

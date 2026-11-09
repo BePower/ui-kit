@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+npm run storybook:build
+[[ -d "storybook-static/ui-kit" ]] || {
+  echo "Expected build output at storybook-static/ui-kit" >&2
+  exit 1
+}
+figma make deploy-preview --build-dir "storybook-static/ui-kit"

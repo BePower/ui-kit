@@ -1,0 +1,26 @@
+@use 'foundations/sizes' as sizes;
+
+:host {
+  display: inline-flex;
+  flex: none;
+  line-height: 0;
+}
+
+img {
+  display: block;
+
+  &.size-s {
+    width: #{sizes.$size-400};
+    height: #{sizes.$size-400};
+  }
+
+  &.size-m {
+    width: #{sizes.$size-800};
+    height: #{sizes.$size-800};
+  }
+
+  &.size-l {
+    width: #{sizes.$size-1600};
+    height: #{sizes.$size-1600};
+  }
+}
