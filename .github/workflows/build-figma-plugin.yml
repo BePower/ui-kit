@@ -3,6 +3,10 @@ run-name: Build Figma plugin
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  # Manual on-demand build: run it from the Actions tab (or `gh workflow run`) on any
+  # branch to get a fresh bundle artifact without opening a PR. The import into Figma
+  # Desktop stays a manual, local step either way.
+  workflow_dispatch:
 
 # Repo -> Figma: this workflow regenerates the native Figma plugin bundle from the
 # library sources and publishes it as a downloadable artifact so a designer can import
@@ -56,7 +60,11 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      # Only on a PR event is there an issue to comment on. On a manual
+      # workflow_dispatch run the bundle is still uploaded as an artifact; the
+      # operator reads the build id from the run summary instead.
       - name: Comment download link on PR
+        if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |

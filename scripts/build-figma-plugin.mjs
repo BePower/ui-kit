@@ -8,6 +8,11 @@ import { collectInventory } from './figma-inventory.mjs';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const lib = `${root}projects/ui-kit/src/lib`;
 const read = (path) => readFile(`${root}${path}`, 'utf8');
+// Single source of truth for the release version: the published library's package.json.
+// The same version tags the Figma plugin bundle, so the plugin and the npm package move
+// together. A missing/empty version fails the build rather than shipping an untagged bundle.
+const version = JSON.parse(await read('projects/ui-kit/package.json')).version;
+if (!version) throw new Error('Missing @bepower/ui-kit version in projects/ui-kit/package.json');
 const data = { colors: {}, numbers: {}, typography: {}, button: {}, icons: {}, pictograms: {} };
 
 // Ask Sass to evaluate its own modules, rather than reimplementing Sass resolution.
@@ -147,15 +152,25 @@ if (errors.length) {
 const body = compiled.outputText;
 const buildId = createHash('sha256').update(body).digest('hex').slice(0, 12);
 await writeFile(`${output}/code.js`, `const BUILD_ID = ${JSON.stringify(buildId)};\n${body}`);
-await writeFile(`${output}/build-info.json`, JSON.stringify({ buildId, main: 'code.js' }, null, 2));
+await writeFile(
+  `${output}/build-info.json`,
+  JSON.stringify({ version, buildId, main: 'code.js' }, null, 2),
+);
+// The id and name are the ones Figma assigned to the org-published plugin
+// ("Plenitude On The Road Design System", id 1701629443273972387). They remain
+// overridable via env (FIGMA_PLUGIN_ID / FIGMA_PLUGIN_NAME) for a different target.
+// The pilot masters are not in production use, so no in-place migration is required —
+// see figma-plugin/PUBLISHING.md.
 await writeFile(
   `${output}/manifest.json`,
   JSON.stringify(
     {
-      name: 'BePower UI Kit · repository pilot',
-      id: 'bepower-ui-kit-repository-pilot',
+      name: `${process.env.FIGMA_PLUGIN_NAME || 'Plenitude On The Road Design System'} v${version}`,
+      id: process.env.FIGMA_PLUGIN_ID || '1701629443273972387',
       api: '1.0.0',
       main: 'code.js',
+      capabilities: [],
+      enableProposedApi: false,
       editorType: ['figma'],
       documentAccess: 'dynamic-page',
       networkAccess: { allowedDomains: ['none'] },
@@ -166,5 +181,5 @@ await writeFile(
 );
 await writeFile(`${output}/tokens.json`, JSON.stringify(data, null, 2));
 console.log(
-  `BePower build ${buildId} generated in figma-plugin/dist. Import the manifest from this same local directory in Figma Desktop.`,
+  `BePower build ${buildId} (v${version}) generated in figma-plugin/dist. Import the manifest from this same local directory in Figma Desktop.`,
 );

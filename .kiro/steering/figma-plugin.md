@@ -38,9 +38,12 @@ regenerate.
 - `figma-plugin/dist/` is **gitignored**: changing only the sources does not regenerate the bundle.
 - Transpile target **ES2017** (Figma sandbox): no optional chaining/object spread in the
   distributed bundle. `status.html` is versioned and contains the marker `/* TOKENS */`.
-- Manifest: fixed `id` `bepower-ui-kit-repository-pilot`, `networkAccess.allowedDomains: ['none']`.
-  **I do not change the id**: the private data identifying the nodes is bound to the plugin;
-  changing it breaks master recognition.
+- Manifest: `id` from `FIGMA_PLUGIN_ID` (default placeholder `bepower-ui-kit-repository-pilot`),
+  `networkAccess.allowedDomains: ['none']`. For internal org publishing Figma assigns its own id;
+  the pilot masters are not in production use, so moving to the assigned id needs no in-place
+  migration. Once Figma assigns the real id, set it as the default. On an already-populated
+  **production** library the id still binds the node data — I would not change it there without
+  design-lead sign-off. See `figma-plugin/PUBLISHING.md`.
 
 ## Non-negotiable rules
 

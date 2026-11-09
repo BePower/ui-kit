@@ -75,9 +75,27 @@ the real visual verification in Figma Desktop.
 - Font: family from `foundations/base.scss` (`--ion-font-family`, Source Sans 3); the plugin does
   not use substitute fonts — if it is missing, the build throws.
 
-## 5. Designer-side procedure (I INDICATE it, I do not run it)
+## 5. Delivery model: Development vs org-published
 
-Import and publishing happen in Figma Desktop, designer-side (see `figma-plugin/README.md`):
+There are two ways the designer gets the plugin, and they use **different ids**:
+
+- **Development (local import)**: `node scripts/build-figma-plugin.mjs` emits the historical
+  id `bepower-ui-kit-repository-pilot`; the designer imports `figma-plugin/dist/manifest.json`
+  from the local filesystem. This is the default and is unchanged.
+- **Org-published**: the plugin is published internally to the Figma organization (opened from
+  the Plugins/Tools list, no filesystem import, no Figma review). Figma assigns its own id; the
+  build reads it from `FIGMA_PLUGIN_ID` (default = the historical id, so the Development flow is
+  untouched). An **org admin** publishes it. See `figma-plugin/PUBLISHING.md`.
+
+**On the id**: the org-published plugin uses the id Figma assigns (`FIGMA_PLUGIN_ID`). The pilot
+masters are not in production use, so moving to the assigned id needs no in-place migration — the
+catalog may be regenerated from scratch on the org library file. Once Figma assigns the real id,
+set it as the default in `scripts/build-figma-plugin.mjs`.
+
+## 6. Designer-side procedure (I INDICATE it, I do not run it)
+
+Import and publishing happen in Figma Desktop, designer-side (see `figma-plugin/README.md` for
+local import, `figma-plugin/PUBLISHING.md` for internal org publishing):
 
 1. Figma Desktop, library file, **Design** mode (not Dev Mode), edit permissions.
 2. Source Sans 3 Regular + SemiBold available in Figma.
