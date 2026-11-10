@@ -6,6 +6,7 @@ export * from './page/ui-page';
 export * from './p/ui-p';
 export * from './input-field/ui-input-field';
 export * from './radio-card/ui-radio-card';
+export * from './radio-card/ui-radio-card-group';
 export * from './progress-bar/ui-progress-bar';
 export * from './text/ui-text';
 export * from './title/ui-title';

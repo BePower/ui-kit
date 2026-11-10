@@ -2,7 +2,8 @@ import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { configureComponent, render, setInputs } from '../../../../../../testing/helpers';
-import { UIRadioCard, UIRadioCardGroup } from './ui-radio-card';
+import { UIRadioCard } from './ui-radio-card';
+import { UIRadioCardGroup } from './ui-radio-card-group';
 
 @Component({
   imports: [ReactiveFormsModule, UIRadioCard, UIRadioCardGroup],

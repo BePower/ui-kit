@@ -1,7 +1,8 @@
 import { type Meta, moduleMetadata, type StoryObj } from '@storybook/angular-vite';
 import { userEvent } from 'storybook/test';
 
-import { UIRadioCard, UIRadioCardGroup } from '../src/lib/components/radio-card/ui-radio-card';
+import { UIRadioCard } from '../src/lib/components/radio-card/ui-radio-card';
+import { UIRadioCardGroup } from '../src/lib/components/radio-card/ui-radio-card-group';
 
 const meta = {
   title: 'Components/Radio Card',
