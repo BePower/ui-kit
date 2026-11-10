@@ -76,6 +76,8 @@ When I receive a Figma node/component to convert:
   a11y addon). I load it when I create/modify a component or verify a visible UI change.
 - `regenerate-figma-plugin`: plugin bundle regeneration (repo -> Figma) and designer-side
   publishing procedure. I load it when I realign Figma or touch the plugin/its scripts.
+- `prepare-pull-request`: PR workflow (branch/push, exact `CU-... (#N)` title convention, CI
+  evidence, ClickUp bidirectional link). I load it when I open or update a PR for the repository.
 
 **External skills (installed in the home directory, not duplicated in the repo)**:
 
