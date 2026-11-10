@@ -16,6 +16,7 @@ Angular UI library for BePower design system components.
 - [UIPage](./docs/components/ui-page.md)
 - [UIP](./docs/components/ui-p.md)
 - [UIProgressBar](./docs/components/ui-progress-bar.md)
+- [UIRadioCard](./docs/components/ui-radio-card.md)
 - [UIRow](./docs/components/ui-row.md)
 - [UIText](./docs/components/ui-text.md)
 - [UITitle](./docs/components/ui-title.md)
@@ -52,7 +53,8 @@ npm install @bepower/ui-kit
 ## Using the library in Angular components
 
 The library exposes standalone components, including `UIButton`, `UICol`, `UIGrid`, `UIIcon`,
-`UIPictogram`, `UIPage`, `UIP`, `UIRow`, `UIText`, and `UITitle`.
+`UIInputField`, `UIPictogram`, `UIPage`, `UIP`, `UIProgressBar`, `UIRadioCard`,
+`UIRadioCardGroup`, `UIRow`, `UIText`, and `UITitle`.
 
 Example:
 

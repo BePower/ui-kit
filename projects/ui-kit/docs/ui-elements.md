@@ -207,6 +207,15 @@ Example:
 - valid: `ion-button > [slot='start'] { ... }`
 - invalid: `ion-button::part(native) .button-inner { ... }`
 
+## Radio-group encapsulation exception
+
+`ui-radio-card` and `ui-radio-card-group` intentionally use `ViewEncapsulation.Emulated`. Ionic 8
+finds grouped radios with `ion-radio-group.querySelectorAll('ion-radio')`, while each `ion-radio`
+resolves its parent with `closest('ion-radio-group')`. Putting every radio behind its own Shadow DOM
+boundary would break Ionic's native single-selection, arrow-key navigation and roving tab index.
+Emulated encapsulation keeps component styles scoped while preserving one real Ionic DOM tree.
+Do not generalize this exception to components that do not have the same DOM-discovery constraint.
+
 ## Slots
 
 When an Ionic component contains named slots such as `start` or `end`, you usually cannot style the internal `<slot>` element itself.

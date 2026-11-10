@@ -506,6 +506,136 @@ async function renderComponents({
     pages,
     'Tutti i background × header none/white/green/tab/step × hasFooter. Viewport campione 360×640. header=none corrisponde a hasHeader=false; gli altri a hasHeader=true + headerType. Content e CTA sono slot consumer dimostrativi. Non simula condensedHeader, translucent, safe area, navigazione, azioni header o elevazione da scroll. Titolo accessibile richiesto nel codice.',
   );
+
+  const radioCardStates = [
+    { id: 'default', name: 'Default' },
+    { id: 'selected', name: 'Selected' },
+    { id: 'error', name: 'Error' },
+    { id: 'disabled', name: 'Disabled' },
+    { id: 'focus', name: 'Focus' },
+  ];
+  const radioCards = [];
+  for (const state of radioCardStates) {
+    const node = master(`radio-card/${state.id}`, `State=${state.name}`);
+    fixed(node, 327, 98);
+    node.layoutMode = 'HORIZONTAL';
+    node.primaryAxisAlignItems = 'MIN';
+    node.counterAxisAlignItems = 'CENTER';
+    node.paddingLeft = node.paddingRight = n['size-160'];
+    node.paddingTop = node.paddingBottom = n['size-160'];
+    node.itemSpacing = n['size-160'];
+    node.cornerRadius = n['size-160'];
+    node.strokeAlign = 'INSIDE';
+    node.strokeWeight = ['selected', 'error'].includes(state.id) ? n['size-20'] : n['size-10'];
+    bindFill(node, state.id === 'disabled' ? 'color-background-grey' : 'color-background-white');
+    bindStroke(
+      node,
+      state.id === 'selected'
+        ? 'color-primary-e-mobility-green'
+        : state.id === 'error'
+          ? 'color-error-allert-red'
+          : 'color-grey-default-grey',
+    );
+
+    const radioArea = frame(node, 'Radio', 'HORIZONTAL');
+    fixed(radioArea, n['size-240'], n['size-240']);
+    radioArea.primaryAxisAlignItems = 'CENTER';
+    radioArea.counterAxisAlignItems = 'CENTER';
+
+    const circle = frame(radioArea, 'Radio circle');
+    fixed(circle, n['size-180'], n['size-180']);
+    circle.layoutMode = 'NONE';
+    circle.cornerRadius = n['size-180'] / 2;
+    circle.strokeAlign = 'INSIDE';
+    circle.strokeWeight = n['size-15'];
+    bindFill(
+      circle,
+      state.id === 'error'
+        ? 'color-error-lavender-blush'
+        : state.id === 'disabled'
+          ? 'color-background-grey'
+          : 'color-background-white',
+    );
+    bindStroke(
+      circle,
+      state.id === 'selected'
+        ? 'color-primary-e-mobility-green'
+        : state.id === 'error'
+          ? 'color-error-allert-red'
+          : state.id === 'disabled'
+            ? 'color-grey-default-grey-72'
+            : 'color-grey-default-grey',
+    );
+
+    const dot = frame(circle, 'Selected dot');
+    fixed(dot, n['size-120'], n['size-120']);
+    dot.layoutMode = 'NONE';
+    dot.x = dot.y = (n['size-180'] - n['size-120']) / 2;
+    dot.cornerRadius = n['size-120'] / 2;
+    dot.visible = state.id === 'selected';
+    bindFill(dot, 'color-primary-e-mobility-green');
+
+    const copy = frame(node, 'Copy');
+    copy.counterAxisSizingMode = 'FIXED';
+    copy.resize(255, copy.height);
+    copy.itemSpacing = n['size-40'];
+    const title = await text(copy, 'Title', "Titolo dell'opzione", 'title-s', 255);
+    const description = await text(
+      copy,
+      'Description',
+      'Una breve descrizione che spiega cosa comporta questa scelta',
+      'p-s',
+      255,
+    );
+    title.layoutAlign = description.layoutAlign = 'STRETCH';
+    bindFill(
+      title,
+      state.id === 'error'
+        ? 'color-error-ruby-red'
+        : state.id === 'disabled'
+          ? 'color-grey-default-grey-72'
+          : 'color-grey-default-grey',
+    );
+    bindFill(
+      description,
+      state.id === 'error' ? 'color-error-ruby-red' : 'color-grey-default-grey-72',
+    );
+
+    const focusRing = frame(node, 'Focus ring');
+    fixed(focusRing, 335, 106);
+    focusRing.layoutMode = 'NONE';
+    focusRing.layoutPositioning = 'ABSOLUTE';
+    focusRing.x = focusRing.y = -n['size-40'];
+    focusRing.cornerRadius = n['size-200'];
+    focusRing.strokeAlign = 'INSIDE';
+    focusRing.strokeWeight = n['size-20'];
+    focusRing.fills = [];
+    focusRing.visible = state.id === 'focus';
+    bindStroke(focusRing, 'color-grey-default-grey');
+
+    radioCards.push(node);
+  }
+  const radioCardSet = register(
+    'radio-card',
+    'UIRadioCard',
+    radioCards,
+    'Stati Default/Selected/Error/Disabled/Focus dal riferimento Foundation. In Angular focus, selezione ed errore sono dimensioni indipendenti; ion-radio-group gestisce selezione singola, frecce, Space e roving tabindex. Title e Description sono configurabili.',
+  );
+  for (const node of radioCards) {
+    expose(
+      radioCardSet,
+      child(node, 'Copy', 'FRAME').children.find((item) => item.name === 'Title'),
+      'Title',
+      "Titolo dell'opzione",
+    );
+    expose(
+      radioCardSet,
+      child(node, 'Copy', 'FRAME').children.find((item) => item.name === 'Description'),
+      'Description',
+      'Una breve descrizione che spiega cosa comporta questa scelta',
+    );
+  }
+
   const inputStates = [
     { id: 'default', name: 'Default', value: 'Placeholder text' },
     { id: 'typing', name: 'Typing', value: '|' },

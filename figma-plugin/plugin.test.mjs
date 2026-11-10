@@ -384,7 +384,7 @@ test('generated data retains repository mappings', () => {
     [...data.components.pictogram.inputs.name.values].sort(),
   );
   assert.ok(Object.values(data.pictograms).every((svg) => /<svg/.test(svg)));
-  assert.equal(Object.keys(data.components).length, 13);
+  assert.equal(Object.keys(data.components).length, 14);
   assert.deepEqual(data.components.pictogram.inputs.size.values, ['s', 'm', 'l']);
   assert.equal(data.components.pictogram.inputs.size.default, "'m'");
   assert.equal(data.components.row.inputs.gap.default, "'none'");
@@ -450,6 +450,47 @@ test('catalog generation preserves master IDs, properties and external content o
   assert.equal(tagged('components/col').children.length, 14);
   assert.equal(tagged('components/p').children.length, 3);
   assert.equal(tagged('components/progress-bar').children.length, 5);
+  const radioCardSet = tagged('components/radio-card');
+  assert.equal(radioCardSet.children.length, 5);
+  assert.deepEqual(
+    radioCardSet.children.map((node) => node.getPluginData('bepower-source')),
+    [
+      'radio-card/default',
+      'radio-card/selected',
+      'radio-card/error',
+      'radio-card/disabled',
+      'radio-card/focus',
+    ],
+  );
+  const radioDefault = tagged('radio-card/default');
+  const radioSelected = tagged('radio-card/selected');
+  const radioFocus = tagged('radio-card/focus');
+  assert.equal(radioDefault.width, 327);
+  assert.equal(radioDefault.height, 98);
+  assert.equal(radioDefault.cornerRadius, 16);
+  assert.equal(radioDefault.paddingLeft, 16);
+  assert.equal(radioDefault.itemSpacing, 16);
+  assert.equal(radioDefault.strokeWeight, 1);
+  assert.equal(radioSelected.strokeWeight, 2);
+  const radioCircle = radioDefault.findOne(
+    (node) => node.getPluginData('bepower-role') === 'Radio circle',
+  );
+  assert.equal(radioCircle.width, 18);
+  assert.equal(radioCircle.height, 18);
+  assert.equal(radioCircle.strokeWeight, 1.5);
+  const selectedDot = radioSelected.findOne(
+    (node) => node.getPluginData('bepower-role') === 'Selected dot',
+  );
+  assert.equal(selectedDot.visible, true);
+  assert.equal(selectedDot.width, 12);
+  const focusRing = radioFocus.findOne(
+    (node) => node.getPluginData('bepower-role') === 'Focus ring',
+  );
+  assert.equal(focusRing.visible, true);
+  assert.equal(focusRing.width, 335);
+  assert.equal(focusRing.height, 106);
+  assert.equal(focusRing.x, -4);
+  assert.equal(focusRing.cornerRadius, 20);
   const pictogramSet = tagged('components/pictogram');
   assert.equal(pictogramSet.children.length, 66);
   assert.match(pictogramSet.description, /Contextual per il contesto/);
@@ -545,7 +586,7 @@ test('catalog generation preserves master IDs, properties and external content o
   ]) {
     assert.equal(tagged(setId).children[0].getPluginData('bepower-source'), defaultId);
   }
-  assert.equal(masters.length, iconCount + 201);
+  assert.equal(masters.length, iconCount + 206);
   const masterIds = masters.map((node) => node.id);
   const button = tagged('button/primary/default');
   assert.equal(button.primaryAxisSizingMode, 'FIXED');
@@ -580,6 +621,7 @@ test('catalog generation preserves master IDs, properties and external content o
     '_Page',
     '_Pictogram',
     '_ProgressBar',
+    '_RadioCard',
     '_Row',
     '_Text',
     '_Title',
@@ -726,7 +768,7 @@ test('run reports distinguish creation from updates and identify the executed bu
   const env = environment();
   const first = await env.run();
   assert.ok(first.includes(buildId));
-  assert.match(first, /0 master aggiornati · 651 creati/);
+  assert.match(first, /0 master aggiornati · 656 creati/);
   assert.match(first, /nuovo bundle/);
   const ids = env.document
     .findAll((node) => node.type === 'COMPONENT')
@@ -734,13 +776,13 @@ test('run reports distinguish creation from updates and identify the executed bu
     .sort();
   const second = await env.run();
   assert.ok(second.includes(buildId));
-  assert.match(second, /651 master aggiornati · 0 creati/);
+  assert.match(second, /656 master aggiornati · 0 creati/);
   assert.match(second, /stesso bundle/);
   assert.equal(env.document.getPluginData('bepower-last-build'), buildId);
   assert.deepEqual(JSON.parse(env.document.getPluginData('bepower-last-report')), {
     buildId,
     created: 0,
-    updated: 651,
+    updated: 656,
   });
   assert.deepEqual(
     env.document

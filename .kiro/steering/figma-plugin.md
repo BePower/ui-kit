@@ -48,7 +48,7 @@ regenerate.
 ## Non-negotiable rules
 
 - I do not remove pages/masters/variables to "update": it would break the instance links.
-  The generator updates in place (expected: "651 updated, 0 created" with the catalog unchanged).
+  The generator updates in place (expected: "656 updated, 0 created" with the catalog unchanged).
 - I do not edit `figma-plugin/dist` by hand: it is generated output. I edit the sources
   (`components.js`, `composition.js`, `catalog.js`, `plugin.js`, `status.html`) and regenerate.
 - Declared font: family from `foundations/base.scss` (`--ion-font-family`); the plugin does not

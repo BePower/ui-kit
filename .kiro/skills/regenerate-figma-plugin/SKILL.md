@@ -67,25 +67,26 @@ the real visual verification in Figma Desktop.
 
 - **Do not edit `figma-plugin/dist` by hand**: it is generated output. Edit the sources
   (`components.js`, `composition.js`, `catalog.js`, `plugin.js`, `status.html`) and regenerate.
-- **Do not change the manifest `id`** (`bepower-ui-kit-repository-pilot`): the private data that
-  identifies the nodes is bound to the plugin; changing it breaks master recognition.
-  `networkAccess.allowedDomains: ['none']` stays unchanged.
+- **Do not change the manifest `id`** (`1701629443273972387`): Figma assigned it to the
+  internally published "Plenitude On The Road Design System" plugin. Existing node data and future
+  updates bind to this id. `networkAccess.allowedDomains: ['none']` stays unchanged.
 - **Do not remove pages/masters/variables** to "update": it would break the instance links. The
   generator updates in place.
 - Font: family from `foundations/base.scss` (`--ion-font-family`, Source Sans 3); the plugin does
   not use substitute fonts — if it is missing, the build throws.
 
-## 5. Delivery model: Development vs org-published
+## 5. Delivery model
 
-There are two ways the designer gets the plugin, and they use **different ids**:
+The plugin is published internally to the Figma organization as
+**Plenitude On The Road Design System** (`id: 1701629443273972387`). The default build emits that
+same id and the version read from `projects/ui-kit/package.json`; `FIGMA_PLUGIN_ID` and
+`FIGMA_PLUGIN_NAME` remain optional overrides for an explicitly different target.
 
-- **Development (local import)**: `node scripts/build-figma-plugin.mjs` emits the historical
-  id `bepower-ui-kit-repository-pilot`; the designer imports `figma-plugin/dist/manifest.json`
-  from the local filesystem. This is the default and is unchanged.
-- **Org-published**: the plugin is published internally to the Figma organization (opened from
-  the Plugins/Tools list, no filesystem import, no Figma review). Figma assigns its own id; the
-  build reads it from `FIGMA_PLUGIN_ID` (default = the historical id, so the Development flow is
-  untouched). An **org admin** publishes it. See `figma-plugin/PUBLISHING.md`.
+- **PR verification**: CI builds `figma-plugin/dist/` and uploads it as a downloadable artifact for
+  the designer to test before approval.
+- **Org-published release**: an org admin publishes the approved bundle from Figma Desktop. The
+  plugin then appears in the organization Plugins/Tools list without a filesystem import or
+  Community review. See `figma-plugin/PUBLISHING.md`.
 
 **On the id**: the org-published plugin uses the id Figma assigns (`FIGMA_PLUGIN_ID`). The pilot
 masters are not in production use, so moving to the assigned id needs no in-place migration — the
@@ -101,7 +102,7 @@ local import, `figma-plugin/PUBLISHING.md` for internal org publishing):
 2. Source Sans 3 Regular + SemiBold available in Figma.
 3. Plugins → Development → Import plugin from manifest → `figma-plugin/dist/manifest.json`.
 4. Run **BePower UI Kit · repository pilot**; the update window stays open and shows the counts.
-5. **Expected with the catalog unchanged: "651 updated, 0 created"**. A new component/variant in
+5. **Expected with the catalog unchanged: "656 updated, 0 created"**. A new component/variant in
    the sources legitimately increases the "created".
 6. Verify samples, variable links and text styles, then **publish the library manually**. Publishing
    depends on plan and permissions: I indicate the procedure, I do not run it.

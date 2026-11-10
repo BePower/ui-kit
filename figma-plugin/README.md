@@ -48,7 +48,7 @@ Inoltre `figma-plugin/dist` è ignorata da Git: aggiornare i soli sorgenti non r
 6. Si apre subito la finestra **BePower · Aggiornamento**, con ID del bundle e fase corrente.
    A fine esecuzione mostra master aggiornati e creati e **resta aperta** finché la chiudi
    con la X di Figma. Gli errori rimangono leggibili nella stessa finestra. Con il catalogo
-   attuale già completo, un secondo avvio deve indicare **651 aggiornati, 0 creati**.
+   attuale già completo, un secondo avvio deve indicare **656 aggiornati, 0 creati**.
    Nuovi componenti aggiunti ai sorgenti possono legittimamente aumentare il numero dei creati.
 
 Non rimuovere pagine, master o variabili per aggiornare. La rimozione rompe i collegamenti
@@ -151,6 +151,7 @@ _Grid
 _P
 _Page
 _ProgressBar
+_RadioCard
 _Row
 _Text
 _Title
@@ -226,6 +227,7 @@ di componenti in Dev Mode. Non occorre rigenerare il plugin per questo messaggio
 | UIBottomSheet           | TypeScript e Sass                                      | 4 combinazioni showCloseButton × hasFooter, proprietà Content                                 |
 | UIPage                  | TypeScript e Sass                                      | 50 combinazioni: 5 background × 5 header (incluso none) × 2 footer, proprietà Title e Content |
 | UIProgressBar           | TypeScript e Sass                                      | 5 campioni statici: 0, 0.25, 0.5, 0.75, 1                                                     |
+| UIRadioCard             | TypeScript, Sass e specifiche Figma                    | 5 stati: Default, Selected, Error, Disabled, Focus; proprietà Title e Description             |
 | UITitle                 | input size e mixin title                               | 4 size, proprietà Text                                                                        |
 | UIText                  | input variant e mixin tipografici                      | 7 variant, proprietà Text                                                                     |
 | UIP                     | Sass p-m e align                                       | 3 allineamenti, proprietà Text                                                                |
@@ -233,8 +235,8 @@ di componenti in Dev Mode. Non occorre rigenerare il plugin per questo messaggio
 | UIRow                   | input gap e token spacing                              | 10 gap, top/bottom inizialmente none                                                          |
 | UICol                   | contratto Ionic size                                   | Span 1–12, equal e auto; 14 campioni                                                          |
 
-Totale attuale: **650 master in 62 set**, corrispondenti ai **13 componenti** del barrel,
-più **un componente standalone di esempio** `Composition / Content` (**651 master totali**).
+Totale attuale: **655 master in 63 set**, corrispondenti ai **14 componenti** del barrel,
+più **un componente standalone di esempio** `Composition / Content` (**656 master totali**).
 Il numero dei componenti Angular non coincide con quello dei master Figma: ogni variante
 è un master nel proprio set.
 

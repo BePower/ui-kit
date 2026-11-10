@@ -1,0 +1,158 @@
+@use '@ionic/angular/css/core.css';
+
+@use 'foundations/colors' as colors;
+@use 'foundations/sizes' as sizes;
+@use 'foundations/typography' as typography;
+@use 'foundations/root' as root;
+
+:host {
+  @include root.shadow-root;
+  display: block;
+  inline-size: 100%;
+  max-inline-size: 100%;
+  min-inline-size: 0;
+}
+
+ion-radio {
+  --color: #{colors.$color-grey-default-grey};
+  --color-checked: #{colors.$color-primary-e-mobility-green};
+  box-sizing: border-box;
+  position: relative;
+  display: block;
+  inline-size: 100%;
+  min-inline-size: 0;
+  padding: #{sizes.$size-160};
+  border-radius: #{sizes.$size-160};
+  background: #{colors.$color-background-white};
+  color: #{colors.$color-grey-default-grey};
+  cursor: pointer;
+  overflow: visible;
+}
+
+ion-radio::before,
+ion-radio::after {
+  position: absolute;
+  pointer-events: none;
+  content: '';
+}
+
+ion-radio::before {
+  inset: 0;
+  border: #{sizes.$size-10} solid #{colors.$color-grey-default-grey};
+  border-radius: #{sizes.$size-160};
+}
+
+ion-radio:focus-visible::after {
+  inset: calc(-1 * #{sizes.$size-40});
+  border: #{sizes.$size-20} solid #{colors.$color-grey-default-grey};
+  border-radius: #{sizes.$size-200};
+}
+
+ion-radio::part(label) {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  overflow: visible;
+  white-space: normal;
+}
+
+ion-radio::part(container) {
+  box-sizing: border-box;
+  flex: 0 0 #{sizes.$size-180};
+  inline-size: #{sizes.$size-180};
+  block-size: #{sizes.$size-180};
+  margin: calc((#{sizes.$size-240} - #{sizes.$size-180}) / 2);
+  border: #{sizes.$size-15} solid #{colors.$color-grey-default-grey};
+  border-radius: 50%;
+  background: transparent;
+}
+
+ion-radio::part(mark) {
+  inline-size: #{sizes.$size-120};
+  block-size: #{sizes.$size-120};
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  transform: none;
+}
+
+ion-radio.radio-checked::before {
+  border-width: #{sizes.$size-20};
+  border-color: #{colors.$color-primary-e-mobility-green};
+}
+
+ion-radio.radio-checked::part(container) {
+  border-color: #{colors.$color-primary-e-mobility-green};
+}
+
+ion-radio.radio-checked::part(mark) {
+  background: #{colors.$color-primary-e-mobility-green};
+}
+
+ion-radio.error::before {
+  border-width: #{sizes.$size-20};
+  border-color: #{colors.$color-error-allert-red};
+}
+
+ion-radio.error::part(container) {
+  border-color: #{colors.$color-error-allert-red};
+  background: #{colors.$color-error-lavender-blush};
+}
+
+ion-radio.error.radio-checked::part(mark) {
+  background: #{colors.$color-error-allert-red};
+}
+
+ion-radio.error .title,
+ion-radio.error .description,
+ion-radio.error .error-message {
+  color: #{colors.$color-error-ruby-red};
+}
+
+ion-radio.radio-disabled {
+  background: #{colors.$color-background-grey};
+  color: #{colors.$color-grey-default-grey-72};
+  cursor: default;
+  opacity: 1;
+}
+
+ion-radio.radio-disabled::before {
+  border-width: #{sizes.$size-10};
+  border-color: #{colors.$color-grey-default-grey};
+}
+
+ion-radio.radio-disabled::part(container) {
+  border-color: #{colors.$color-grey-default-grey-72};
+  background: #{colors.$color-background-grey};
+}
+
+ion-radio.radio-disabled::part(mark) {
+  background: #{colors.$color-grey-default-grey-72};
+}
+
+ion-radio.radio-disabled .title,
+ion-radio.radio-disabled .description,
+ion-radio.radio-disabled .error-message {
+  color: #{colors.$color-grey-default-grey-72};
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+  gap: #{sizes.$size-40};
+  text-align: start;
+  white-space: normal;
+}
+
+.title {
+  @include typography.title-s;
+  color: #{colors.$color-grey-default-grey};
+  overflow-wrap: anywhere;
+}
+
+.description,
+.error-message {
+  @include typography.p-s;
+  color: #{colors.$color-grey-default-grey-72};
+  overflow-wrap: anywhere;
+}
