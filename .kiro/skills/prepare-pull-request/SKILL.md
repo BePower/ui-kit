@@ -156,3 +156,9 @@ Report:
 
 A PR is ready for review only when the title matches the regex, the branch is pushed, the ClickUp
 link is present, and the validation status is honestly reported.
+
+## Versioning safeguard
+
+Bump `projects/ui-kit/package.json` **once per pull request**. All components, plugin updates, and
+other changes included in the same PR share that version. Do not bump the package for each new
+component, Figma rebuild, or follow-up commit in the same PR.

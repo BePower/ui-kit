@@ -178,9 +178,14 @@ async function run() {
   }
   function variants(nodes, id, name, x) {
     let set = managed.get(`COMPONENT_SET:${id}`);
-    if (!set) set = figma.combineAsVariants(nodes, page);
+    const isNew = !set;
+    if (isNew) set = figma.combineAsVariants(nodes, page);
     managed.set(`COMPONENT_SET:${id}`, set);
-    nodes.forEach((node, index) => set.insertChild(index, node));
+    if (!isNew) {
+      nodes.forEach((node, index) => {
+        if (node.parent !== set) set.insertChild(index, node);
+      });
+    }
     set.setPluginData(key, id);
     set.name = name;
     set.x = x;
@@ -285,6 +290,8 @@ async function run() {
   progress('Aggiornamento componenti e shell…');
   await checkpoint(true);
   const library = await renderComponents({
+    page,
+    getComponentSet: (id) => managed.get(`COMPONENT_SET:${id}`),
     component,
     variants,
     bindFill,

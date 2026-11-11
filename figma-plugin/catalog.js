@@ -109,16 +109,21 @@ async function createCatalog({
   const componentsHeader = managedPage('components-header', '---- 🧩 COMPONENTS ----');
   const compositionPage = managedPage('composition-page', '_Composition');
   page.name = '_Button';
-  const componentPages = new Map(
-    library.map((item) => [
-      item.id,
-      managedPage(
-        `component-page/${item.id}`,
-        `_${item.title.slice(2).replace('BottomSheet', 'Bottomsheet')}`,
-      ),
-    ]),
-  );
-  const allComponentPages = [page, ...componentPages.values()].sort((a, b) =>
+  const componentPages = new Map();
+  for (const item of library) {
+    const pageKey = item.dataId || item.id;
+    if (!componentPages.has(pageKey)) {
+      componentPages.set(
+        pageKey,
+        managedPage(
+          `component-page/${pageKey}`,
+          `_${item.title.slice(2).replace('BottomSheet', 'Bottomsheet')}`,
+        ),
+      );
+    }
+    componentPages.set(item.id, componentPages.get(pageKey));
+  }
+  const allComponentPages = [page, ...new Set(componentPages.values())].sort((a, b) =>
     a.name.localeCompare(b.name),
   );
   const ordered = [
@@ -227,16 +232,20 @@ async function createCatalog({
     'Components',
     'Tutti i componenti esportati da @bepower/ui-kit hanno una pagina dedicata. Le icone sono in Foundations / _Icons. Alert non è presente nel repository e non viene inventato.',
   );
+  const componentOffsets = new Map();
   for (const item of library) {
+    const dataId = item.dataId || item.id;
     const target = componentPages.get(item.id);
+    const offset = componentOffsets.get(target) || 0;
     if (item.set.parent !== target) target.appendChild(item.set);
-    item.set.x = item.set.y = 0;
+    item.set.x = 0;
+    item.set.y = offset;
     const documentation = root(target, `catalog/${item.id}`, `${item.title} / Catalogo`);
-    documentation.y = item.set.height + gutter;
+    documentation.y = offset + item.set.height + gutter;
     await heading(documentation, 'BEPOWER / COMPONENT LIBRARY', item.title, item.note);
-    await text(documentation, `Origine: ${DATA.components[item.id].source}`, 'p-s');
+    await text(documentation, `Origine: ${DATA.components[dataId].source}`, 'p-s');
     await text(documentation, 'Input Angular (estratti dal codice)', 'title-l');
-    for (const [name, input] of Object.entries(DATA.components[item.id].inputs)) {
+    for (const [name, input] of Object.entries(DATA.components[dataId].inputs)) {
       await text(
         documentation,
         `${name}: ${input.type} · default ${input.default}${input.required ? ' · required' : ''}`,
@@ -309,12 +318,14 @@ async function createCatalog({
         'p-m',
       );
     }
+    if (item.id === 'radio-card') continue;
     const examples = await section(documentation, 'Esempi come istanze');
     for (const master of item.set.children.filter((node) => node.type === 'COMPONENT')) {
       await text(examples, master.name, 'label-m');
       examples.appendChild(master.createInstance());
     }
     await text(componentsIntro, `${target.name} · ${item.set.children.length} varianti`, 'p-m');
+    componentOffsets.set(target, documentation.y + documentation.height + gutter);
   }
   await text(
     componentsIntro,

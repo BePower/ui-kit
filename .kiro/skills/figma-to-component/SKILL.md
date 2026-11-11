@@ -111,3 +111,11 @@ requested.
 - [ ] Coverage 100% + typecheck pass; package/Storybook build if relevant.
 - [ ] README/UI Elements Guide updated for the new public component.
 - [ ] PR on a feature branch with a complete description.
+
+## Design variants versus consumer composition
+
+Do not automatically turn every consumer content combination into a Figma component-set variant.
+A Figma variant must be approved by the design lead and must keep a compatible layer/property
+structure across the set. Optional consumer content such as title-only or description-only may be
+an Angular API/story composition without adding Figma masters. If native Figma coverage is required,
+prefer separate component sets on one catalog page when the layer hierarchy differs.

@@ -102,7 +102,7 @@ local import, `figma-plugin/PUBLISHING.md` for internal org publishing):
 2. Source Sans 3 Regular + SemiBold available in Figma.
 3. Plugins → Development → Import plugin from manifest → `figma-plugin/dist/manifest.json`.
 4. Run **BePower UI Kit · repository pilot**; the update window stays open and shows the counts.
-5. **Expected with the catalog unchanged: "656 updated, 0 created"**. A new component/variant in
+5. **Expected with the catalog unchanged: "676 updated, 0 created"**. A new component/variant in
    the sources legitimately increases the "created".
 6. Verify samples, variable links and text styles, then **publish the library manually**. Publishing
    depends on plan and permissions: I indicate the procedure, I do not run it.
@@ -114,3 +114,28 @@ local import, `figma-plugin/PUBLISHING.md` for internal org publishing):
 - [ ] `node --test figma-plugin/plugin.test.mjs` green (if I modified the plugin).
 - [ ] `dist/` not edited by hand; manifest id unchanged.
 - [ ] Import/publishing procedure indicated to the designer with the expected counts.
+
+## Failure modes and safeguards
+
+- **A source change is not a Figma update.** `figma-plugin/dist/` is gitignored and a published
+  organization plugin does not reload local files. After every source change, build the bundle,
+  re-import the manifest for local testing, or publish the approved bundle through Figma Desktop.
+- **Variant property names are case-sensitive.** Keep existing axes exactly (`State`, not `state`)
+  and use consistent names such as `Content=Title only, State=Default`. A casing mismatch creates
+  an invalid component set and makes `get_componentPropertyDefinitions` fail.
+- **`combineAsVariants` consumes its children.** It already inserts fresh components into the new
+  set. Do not call `insertChild` again for those same nodes. Only reorder nodes in an existing set,
+  and only when the node is not already a child of that set.
+- **All grouped nodes must be on the same page.** Before `combineAsVariants` or `insertChild`,
+  normalize every node to the generation page. Nodes may have been moved to a catalog page by a
+  previous run; do not pass mixed-page nodes to Figma.
+- **Do not mix incompatible content hierarchies in one component set.** Title-only,
+  description-only, and title+description variants can make a set invalid when layers or text
+  properties differ. Prefer separate component sets on one catalog page unless every variant has
+  the same layer structure and property references.
+- **A failed run can leave stale nodes.** Errors such as `Component set has existing errors` or
+  `node with id ... does not exist` can come from a partially updated Figma document. Do not delete
+  pages/masters manually. Test recovery in a fresh file; if migration is required, move only
+  verifiably existing nodes and preserve the original plugin IDs.
+- **Keep the version stable within a PR.** Read the package version from
+  `projects/ui-kit/package.json`; bump it once per PR, not once per component or plugin iteration.

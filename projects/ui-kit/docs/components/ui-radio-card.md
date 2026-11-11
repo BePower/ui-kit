@@ -32,6 +32,16 @@ import { UIRadioCard, UIRadioCardGroup } from '@bepower/ui-kit';
 disabled-option skipping and roving tab index behavior. Clicking anywhere on a card selects its
 radio.
 
+`ui-radio-card` supports three content variants:
+
+- title + description (the Figma reference composition);
+- title only;
+- description only, which becomes the accessible name.
+
+At least one of `title` or `description` is required. If both are present, the description is
+linked through `aria-describedby`; when only the description is present, it supplies the accessible
+name and is not redundantly referenced as descriptive text.
+
 ## `ui-radio-card` inputs
 
 ### `value`
@@ -42,16 +52,17 @@ Type: `string`.
 
 ### `title`
 
-Required visible title and accessible name of the radio option. Blank values are rejected.
+Optional visible title and accessible name when present. At least one of `title` or `description`
+must be provided.
 
-Type: `string`.
+Type: `string | undefined`. Default: `undefined`.
 
 ### `description`
 
-Required visible description. It is linked to the Ionic radio through `aria-describedby` rather
-than being duplicated into its accessible name. Blank values are rejected.
+Optional visible description. If `title` is absent, the description becomes the accessible name.
+When both are present, it is linked through `aria-describedby`.
 
-Type: `string`.
+Type: `string | undefined`. Default: `undefined`.
 
 ### `disabled`
 

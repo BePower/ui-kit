@@ -48,7 +48,7 @@ regenerate.
 ## Non-negotiable rules
 
 - I do not remove pages/masters/variables to "update": it would break the instance links.
-  The generator updates in place (expected: "656 updated, 0 created" with the catalog unchanged).
+  The generator updates in place (expected: "676 updated, 0 created" with the catalog unchanged).
 - I do not edit `figma-plugin/dist` by hand: it is generated output. I edit the sources
   (`components.js`, `composition.js`, `catalog.js`, `plugin.js`, `status.html`) and regenerate.
 - Declared font: family from `foundations/base.scss` (`--ion-font-family`); the plugin does not
@@ -61,3 +61,21 @@ regenerate.
 Repo -> Figma (the plugin generates Figma natives from the sources). The plugin does **not** read
 the Code Layer and does **not** modify the Angular components. The Figma -> component direction is
 orchestration, not a plugin task.
+
+## Failure safeguards learned from Figma updates
+
+- Rebuild and re-import/publish after source changes; Figma does not consume a newer local bundle
+  automatically.
+- Variant property names are case-sensitive: preserve `State` exactly, and use matching axes such
+  as `Content=Title only, State=Default`. Mixed casing can invalidate the component set.
+- `combineAsVariants` already owns/inserts new nodes. Never insert those same nodes a second time;
+  only insert into an existing set when the node is not already its child.
+- Normalize every node onto the same generation page before grouping. Previous catalog pages can
+  contain nodes from older runs, and mixed-page grouping fails with `Grouped nodes must be in the
+same page as the parent`.
+- Different content hierarchies should use separate component sets on one page unless every variant
+  has identical layers and property references. This avoids `Component set has existing errors`.
+- A failed Figma run may leave stale node IDs. Never delete generated assets manually; validate
+  recovery in a fresh file and preserve existing plugin IDs.
+- The library version comes from `projects/ui-kit/package.json` and is bumped once per PR, not for
+  every component or bundle iteration.

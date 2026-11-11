@@ -26,12 +26,16 @@ let nextCardId = 0;
       [value]="value()"
       [disabled]="isDisabled()"
       [class.error]="hasError()"
-      [attr.aria-label]="title()"
+      [attr.aria-label]="accessibleName()"
       [attr.aria-describedby]="describedBy()"
     >
       <span class="content">
-        <span class="title">{{ title() }}</span>
-        <span class="description" [id]="descriptionId">{{ description() }}</span>
+        @if (title()) {
+          <span class="title">{{ title() }}</span>
+        }
+        @if (description()) {
+          <span class="description" [id]="descriptionId">{{ description() }}</span>
+        }
         @if (errorText()) {
           <span class="error-message" [id]="errorId" role="alert">{{ errorText() }}</span>
         }
@@ -44,8 +48,8 @@ let nextCardId = 0;
 })
 export class UIRadioCard implements OnInit {
   value = input.required<string>();
-  title = input.required<string>();
-  description = input.required<string>();
+  title = input<string>();
+  description = input<string>();
   disabled = input(false, { transform: booleanAttribute });
   invalid = input(false, { transform: booleanAttribute });
   errorText = input<string>();
@@ -61,19 +65,32 @@ export class UIRadioCard implements OnInit {
   readonly hasError = computed(
     () => this.invalid() || this.groupInvalid() || Boolean(this.errorText()),
   );
+  readonly accessibleName = computed(
+    () => this.title()?.trim() || this.description()?.trim() || '',
+  );
   readonly describedBy = computed(() =>
-    [this.descriptionId, this.errorText() ? this.errorId : null].filter(Boolean).join(' '),
+    [
+      this.title() && this.description() ? this.descriptionId : null,
+      this.errorText() ? this.errorId : null,
+    ]
+      .filter(Boolean)
+      .join(' '),
   );
 
   ngOnInit(): void {
     if (!this.value().trim()) {
       throw new Error('[UIRadioCard] value is required and cannot be blank.');
     }
-    if (!this.title().trim()) {
-      throw new Error('[UIRadioCard] title is required and cannot be blank.');
+    const title = this.title()?.trim();
+    const description = this.description()?.trim();
+    if (!title && !description) {
+      throw new Error('[UIRadioCard] title or description is required.');
     }
-    if (!this.description().trim()) {
-      throw new Error('[UIRadioCard] description is required and cannot be blank.');
+    if (this.title() !== undefined && !title) {
+      throw new Error('[UIRadioCard] title cannot be blank when provided.');
+    }
+    if (this.description() !== undefined && !description) {
+      throw new Error('[UIRadioCard] description cannot be blank when provided.');
     }
   }
 

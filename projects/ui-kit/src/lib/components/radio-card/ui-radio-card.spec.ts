@@ -58,6 +58,30 @@ describe('UIRadioCard', () => {
     description: 'Finish charging sooner',
   };
 
+  it('supports a title-only content variant', () => {
+    const fixture = render(UIRadioCard, { value: 'fast', title: 'Fast charge' });
+    const radio = fixture.nativeElement.querySelector('ion-radio')!;
+
+    expect(fixture.nativeElement.querySelector('.title')?.textContent).toContain('Fast charge');
+    expect(fixture.nativeElement.querySelector('.description')).toBeNull();
+    expect(radio.getAttribute('aria-label')).toBe('Fast charge');
+    expect(radio.getAttribute('aria-describedby')).toBe('');
+  });
+
+  it('supports a description-only content variant', () => {
+    const fixture = render(UIRadioCard, {
+      value: 'fast',
+      description: 'Finish charging sooner',
+    });
+    const radio = fixture.nativeElement.querySelector('ion-radio')!;
+    const description = fixture.nativeElement.querySelector('.description')!;
+
+    expect(fixture.nativeElement.querySelector('.title')).toBeNull();
+    expect(radio.getAttribute('aria-label')).toBe('Finish charging sooner');
+    expect(radio.getAttribute('aria-describedby')).toBe('');
+    expect(description.textContent).toContain('Finish charging sooner');
+  });
+
   it('renders one accessible Ionic radio with title and description', () => {
     const fixture = render(UIRadioCard, inputs);
     const radio = fixture.nativeElement.querySelector('ion-radio') as HTMLIonRadioElement;
@@ -109,14 +133,21 @@ describe('UIRadioCard', () => {
   });
 
   it.each([
-    [{ value: ' ', title: 'Title', description: 'Description' }, 'value'],
-    [{ value: 'value', title: '\t', description: 'Description' }, 'title'],
-    [{ value: 'value', title: 'Title', description: '' }, 'description'],
-  ])('rejects blank required content: %s', (invalidInputs, field) => {
+    [{ value: ' ', title: 'Title', description: 'Description' }, 'value is required'],
+    [
+      { value: 'value', title: undefined, description: undefined },
+      'title or description is required',
+    ],
+    [{ value: 'value', title: '  ', description: 'Description' }, 'title cannot be blank'],
+    [{ value: 'value', title: 'Title', description: '\t' }, 'description cannot be blank'],
+  ])('rejects invalid content: %s', (invalidInputs, message) => {
     configureComponent(UIRadioCard);
     const fixture = TestBed.createComponent(UIRadioCard);
     setInputs(fixture, invalidInputs);
-    expect(() => fixture.detectChanges()).toThrow(`[UIRadioCard] ${field} is required`);
+    if (message === 'title or description is required') {
+      expect(fixture.componentInstance.accessibleName()).toBe('');
+    }
+    expect(() => fixture.detectChanges()).toThrow(`[UIRadioCard] ${message}`);
   });
 
   it('keeps description IDs unique across instances', () => {

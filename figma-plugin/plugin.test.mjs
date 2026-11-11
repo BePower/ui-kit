@@ -384,7 +384,7 @@ test('generated data retains repository mappings', () => {
     [...data.components.pictogram.inputs.name.values].sort(),
   );
   assert.ok(Object.values(data.pictograms).every((svg) => /<svg/.test(svg)));
-  assert.equal(Object.keys(data.components).length, 14);
+  assert.equal(Object.keys(data.components).length, 15);
   assert.deepEqual(data.components.pictogram.inputs.size.values, ['s', 'm', 'l']);
   assert.equal(data.components.pictogram.inputs.size.default, "'m'");
   assert.equal(data.components.row.inputs.gap.default, "'none'");
@@ -438,7 +438,7 @@ test('catalog generation preserves master IDs, properties and external content o
   }
   for (const id of Object.keys(data.components).filter((id) => !['button', 'icon'].includes(id))) {
     assert.ok(tagged(`components/${id}`), `exports native master set for ${id}`);
-    assert.ok(tagged(`catalog/${id}`), `documents ${id}`);
+    if (id !== 'radio-card') assert.ok(tagged(`catalog/${id}`), `documents ${id}`);
   }
   assert.equal(tagged('buttons').children.length, 20);
   assert.equal(tagged('components/page').children.length, 50);
@@ -462,6 +462,8 @@ test('catalog generation preserves master IDs, properties and external content o
       'radio-card/focus',
     ],
   );
+  assert.equal(tagged('components/radio-card/title-only').children.length, 5);
+  assert.equal(tagged('components/radio-card/description-only').children.length, 5);
   const radioDefault = tagged('radio-card/default');
   const radioSelected = tagged('radio-card/selected');
   const radioFocus = tagged('radio-card/focus');
@@ -490,7 +492,72 @@ test('catalog generation preserves master IDs, properties and external content o
   assert.equal(focusRing.width, 335);
   assert.equal(focusRing.height, 106);
   assert.equal(focusRing.x, -4);
-  assert.equal(focusRing.cornerRadius, 20);
+  const radioTitleOnly = tagged('radio-card/title-only/default');
+  const radioDescriptionOnly = tagged('radio-card/description-only/default');
+  assert.equal(radioTitleOnly.height, 58);
+  assert.equal(radioDescriptionOnly.height, 68);
+  assert.ok(radioTitleOnly.findOne((node) => node.name === 'Title'));
+  assert.equal(
+    radioTitleOnly.findOne((node) => node.name === 'Description'),
+    null,
+  );
+  assert.equal(
+    radioDescriptionOnly.findOne((node) => node.name === 'Title'),
+    null,
+  );
+  assert.ok(radioDescriptionOnly.findOne((node) => node.name === 'Description'));
+  const radioButtonSet = tagged('components/radio-button');
+  assert.equal(radioButtonSet.children.length, 10);
+  const radioButtonSimple = tagged('radio-button/simple-default');
+  const radioButtonDescription = tagged('radio-button/description-default');
+  const radioButtonSelected = tagged('radio-button/simple-selected');
+  const radioButtonFocus = tagged('radio-button/description-focus');
+  assert.equal(radioButtonSimple.width, 210);
+  assert.equal(radioButtonSimple.height, 24);
+  assert.equal(radioButtonDescription.width, 232);
+  assert.equal(radioButtonDescription.height, 60);
+  assert.equal(radioButtonSimple.itemSpacing, 8);
+  assert.equal(
+    radioButtonSelected.findOne((node) => node.getPluginData('bepower-role') === 'Selected dot')
+      .visible,
+    true,
+  );
+  const radioButtonRing = radioButtonFocus.findOne(
+    (node) => node.getPluginData('bepower-role') === 'Focus ring',
+  );
+  assert.equal(radioButtonRing.width, 240);
+  assert.equal(radioButtonRing.height, 68);
+  assert.equal(radioButtonRing.x, -4);
+  assert.equal(radioButtonRing.cornerRadius, 4);
+  const radioButtonSimpleCopy = radioButtonSimple.findOne(
+    (node) => node.getPluginData('bepower-role') === 'Copy',
+  );
+  const radioButtonDescriptionCopy = radioButtonDescription.findOne(
+    (node) => node.getPluginData('bepower-role') === 'Copy',
+  );
+  assert.equal(radioButtonSimpleCopy.width, 178);
+  assert.equal(radioButtonSimpleCopy.height, 24);
+  assert.equal(radioButtonSimpleCopy.findAll((node) => node.type === 'TEXT').length, 1);
+  assert.equal(radioButtonDescriptionCopy.width, 200);
+  assert.equal(radioButtonDescriptionCopy.height, 60);
+  assert.equal(radioButtonDescriptionCopy.findAll((node) => node.type === 'TEXT').length, 2);
+  assert.ok(radioButtonSimple.findOne((node) => node.type === 'TEXT' && node.name === 'Label'));
+  assert.ok(
+    radioButtonDescription.findOne((node) => node.type === 'TEXT' && node.name === 'Title'),
+  );
+  assert.ok(
+    radioButtonDescription.findOne((node) => node.type === 'TEXT' && node.name === 'Description'),
+  );
+  assert.ok(
+    Object.keys(radioButtonSet.componentPropertyDefinitions).some((name) =>
+      name.startsWith('Label#'),
+    ),
+  );
+  assert.ok(
+    Object.keys(radioButtonSet.componentPropertyDefinitions).some((name) =>
+      name.startsWith('Description#'),
+    ),
+  );
   const pictogramSet = tagged('components/pictogram');
   assert.equal(pictogramSet.children.length, 66);
   assert.match(pictogramSet.description, /Contextual per il contesto/);
@@ -586,7 +653,7 @@ test('catalog generation preserves master IDs, properties and external content o
   ]) {
     assert.equal(tagged(setId).children[0].getPluginData('bepower-source'), defaultId);
   }
-  assert.equal(masters.length, iconCount + 206);
+  assert.equal(masters.length, iconCount + 216);
   const masterIds = masters.map((node) => node.id);
   const button = tagged('button/primary/default');
   assert.equal(button.primaryAxisSizingMode, 'FIXED');
@@ -621,7 +688,10 @@ test('catalog generation preserves master IDs, properties and external content o
     '_Page',
     '_Pictogram',
     '_ProgressBar',
+    '_RadioButton',
     '_RadioCard',
+    '_RadioCard / Description only',
+    '_RadioCard / Title only',
     '_Row',
     '_Text',
     '_Title',
@@ -768,7 +838,7 @@ test('run reports distinguish creation from updates and identify the executed bu
   const env = environment();
   const first = await env.run();
   assert.ok(first.includes(buildId));
-  assert.match(first, /0 master aggiornati · 656 creati/);
+  assert.match(first, /0 master aggiornati · 676 creati/);
   assert.match(first, /nuovo bundle/);
   const ids = env.document
     .findAll((node) => node.type === 'COMPONENT')
@@ -776,13 +846,13 @@ test('run reports distinguish creation from updates and identify the executed bu
     .sort();
   const second = await env.run();
   assert.ok(second.includes(buildId));
-  assert.match(second, /656 master aggiornati · 0 creati/);
+  assert.match(second, /676 master aggiornati · 0 creati/);
   assert.match(second, /stesso bundle/);
   assert.equal(env.document.getPluginData('bepower-last-build'), buildId);
   assert.deepEqual(JSON.parse(env.document.getPluginData('bepower-last-report')), {
     buildId,
     created: 0,
-    updated: 656,
+    updated: 676,
   });
   assert.deepEqual(
     env.document

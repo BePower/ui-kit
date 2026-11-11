@@ -67,6 +67,20 @@ export const NarrowViewport: Story = {
   parameters: { viewport: { defaultViewport: 'iphone12mini' } },
 };
 
+export const TitleOnly: Story = {
+  args: {
+    title: "Titolo dell'opzione",
+    description: undefined,
+  },
+};
+
+export const DescriptionOnly: Story = {
+  args: {
+    title: undefined,
+    description: 'Una descrizione che spiega questa scelta',
+  },
+};
+
 export const Selected: Story = {
   render: (args) => ({
     props: { ...args, selectedValue: args.value },
