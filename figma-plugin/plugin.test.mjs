@@ -1015,6 +1015,13 @@ test('compatible bundle and persistent panel safely render diagnostic messages',
     .filter(ts.isVariableStatement)
     .flatMap((node) => node.declarationList.declarations)
     .find((node) => node.name.getText(parsed) === 'STATUS_HTML').initializer.text;
+  // figcd reads both manifest paths unconditionally when uploading the bundle.
+  const bundleDirectory = new URL('dist/', import.meta.url);
+  const manifest = JSON.parse(readFileSync(new URL('manifest.json', bundleDirectory), 'utf8'));
+  assert.equal(typeof manifest.main, 'string', 'publisher requires a main file');
+  assert.equal(typeof manifest.ui, 'string', 'publisher requires a UI file');
+  assert.equal(readFileSync(new URL(manifest.main, bundleDirectory), 'utf8'), source);
+  assert.equal(readFileSync(new URL(manifest.ui, bundleDirectory), 'utf8'), html);
   const dom = new JSDOM(html, { runScripts: 'dangerously' });
   dom.window.dispatchEvent(
     new dom.window.MessageEvent('message', {

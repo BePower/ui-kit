@@ -152,9 +152,8 @@ jobs:
           const fs = require('node:fs');
           const manifest = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
           if (!manifest.id) throw new Error('Missing published Figma plugin id in manifest.json');
-          // UI is optional: this plugin embeds its HTML in code.js.
+          // figcd 0.0.16 requires both paths, even when the runtime embeds its UI.
           for (const field of ['main', 'ui']) {
-            if (field === 'ui' && manifest.ui === undefined) continue;
             if (typeof manifest[field] !== 'string' || !fs.statSync(manifest[field], { throwIfNoEntry: false })?.isFile()) {
               throw new Error(`Missing ${field} file referenced by manifest: ${manifest[field]}`);
             }
