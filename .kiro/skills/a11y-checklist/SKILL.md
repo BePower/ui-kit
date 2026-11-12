@@ -12,7 +12,8 @@ in AGENTS.md and `docs/ui-elements.md`.
 
 Guiding principle: unit tests do **not** establish visual rendering or screen-reader use. This
 checklist is verified with the Storybook a11y addon, with keyboard testing, and for visible
-changes with `web-verify` / `browser-recording`.
+changes with available browser tools (`web-verify` / `browser-recording` if installed).
+A screenshot of the generated Figma component does not verify Angular/Ionic accessibility.
 
 ## 1. Accessible name
 
@@ -42,7 +43,9 @@ changes with `web-verify` / `browser-recording`.
 
 ## 4. States
 
-- **Disabled**: not focusable/operable, state communicated beyond color alone
+- **Disabled**: activation blocked; verify focusability against the control’s native semantics
+  and documented contract (`aria-disabled` alone does not remove a control from tab order).
+  State communicated beyond color alone
   (`aria-disabled` / native attribute), consistent host state class.
 - **Loading / isLoading**: state announced (e.g. `aria-busy`), interaction inhibited where needed.
 - Error/validation states (e.g. `ui-input-field`): message linked to the field
@@ -52,8 +55,9 @@ changes with `web-verify` / `browser-recording`.
 
 - Colors from the **foundations tokens**, never literals. Do not rely on color alone for
   information (pair it with an icon/text/ARIA state).
-- Real contrast must be verified visually: the a11y addon flags, but full WCAG certification
-  requires manual testing with assistive technologies and is outside the unit tests.
+- Measure foreground/background contrast in the rendered states; visual inspection alone does
+  not establish the contrast ratio. Addon findings and manual assistive-technology checks are
+  complementary; unit tests do not establish WCAG conformance.
 
 ## 6. Layout and viewport
 
@@ -69,9 +73,12 @@ changes with `web-verify` / `browser-recording`.
 - Interactive verification: `npm run storybook` (from the root). Static validation:
   `npm run storybook:build`.
 
+Current `.storybook/preview.ts` uses `a11y.test: 'todo'`; a green Storybook build does not
+prove the a11y checks passed. Inspect the actual findings.
+
 ## 8. Evidence for visible changes
 
-For a visible UI change capture evidence with `web-verify` / `browser-recording` (screenshots for
+For a visible UI change capture evidence with available browser tools (screenshots for
 static states, video/GIF for motion and multi-step interactions). In the report state what you
 verified and what you **could not** verify (e.g. real screen reader).
 

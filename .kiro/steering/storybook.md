@@ -45,5 +45,8 @@ I load these rules only when I touch `stories/**` or `.storybook/**`. The genera
 
 - Interactive: `npm run storybook`.
 - Static validation: `npm run storybook:build` (output in `storybook-static/ui-kit`).
-- For a visible UI change I then use `web-verify` / `browser-recording` to capture evidence.
+- For a visible UI change, capture browser evidence with available tools (`web-verify` /
+  `browser-recording` if installed). If unavailable, report the visual check as outstanding.
+- Current `preview.ts` sets `a11y.test: 'todo'`. A successful static build is not a passing
+  accessibility gate: inspect addon findings and perform the relevant keyboard/native checks.
 - I report which checks I ran; unit tests prove neither the visual rendering nor the screen reader.

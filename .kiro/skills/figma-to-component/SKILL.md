@@ -25,11 +25,15 @@ Do not overwrite pending changes or untracked files.
 
 ## 1. Read the design
 
-With the Figma skill loaded (`figma-design-to-code`) and the Figma MCP tools:
+When connected Figma tools are available, load the required design-to-code skill before using them:
 
 - `get_metadata` / `get_design_context` — node structure, variants, annotations, states.
 - `get_variable_defs` — variables/tokens used in the node.
 - `get_screenshot` — visual reference.
+
+If tools are unavailable, work from supplied screenshots/specifications and repository sources.
+Ask for missing design details only when they affect the implementation; report native inspection
+as unavailable rather than implying it occurred.
 
 Map every Figma token onto an **existing foundation** of the kit
 (`src/lib/foundations/{colors,sizes,spacing,typography,shadows}`). **Do not introduce literal
@@ -42,7 +46,9 @@ behavior (accessible name, focus, keyboard).
 ## 2. Propose the public API BEFORE the code
 
 When the consumer contract is at stake (inputs, defaults, outputs, slots, exported types, a11y),
-**propose the API and wait for confirmation** — it is a tech lead/design lead decision, not yours.
+identify unresolved decisions for tech lead/design lead. Ask before implementing an ambiguous or
+breaking contract; proceed when the user already specified or approved it. Do not require a new
+approval for routine implementation of an agreed API.
 Propose:
 
 - Selector name `ui-<name>` and class `UI<Name>`.
@@ -73,8 +79,9 @@ from the standalone entry point, `root.shadow-root` on the host for Ionic color 
 TypeScript, presentation in SCSS. No business logic or application API calls.
 
 Also update the component barrel (`src/lib/components/index.ts`): it is what defines the coverage
-of the Figma plugin — a new export without an adapter makes the plugin build **fail**, it is not
-ignored.
+of the Figma plugin. Its native generator rejects an exported component without an adapter
+when it runs (and the generator test exercises this); inventory extraction alone is not adapter
+coverage. If native support is in scope, update the adapter and its regression tests.
 
 Update the library README and the UI Elements Guide when you add a public component.
 
@@ -89,12 +96,14 @@ Update the library README and the UI Elements Guide when you add a public compon
 Coverage: **100%** thresholds on the measured runtime (`vitest.config.mts`). Do not lower the
 thresholds or add exclusions to hide missing tests. Report **exactly** which checks you ran and
 what you could not verify (unit tests prove neither visual rendering nor screen reader; for a
-visible UI change use `web-verify` / `browser-recording`).
+visible UI change use available browser tools and report unavailable checks).
 
 ## 5. Open the PR
 
-Feature branch, **never a direct push to `main`**. Concise title (< 70 chars). Description: what
-changes, consumer impact (breaking changes highlighted), checks run, limits. Steer the review.
+When PR submission is requested, follow [prepare-pull-request](../prepare-pull-request/SKILL.md),
+including the repository title convention and linking procedure. Use a feature branch, never a
+direct push to `main`. Describe consumer impact, validation and limitations. Do not push just
+because this implementation skill was loaded; internal PRs can trigger plugin publication.
 
 ## 6. Realign Figma (only if requested)
 
@@ -105,17 +114,18 @@ requested.
 ## Handoff checklist
 
 - [ ] Tokens mapped onto foundations, no literal where a token exists.
-- [ ] Public API proposed and confirmed before the code (if consumer contract at stake).
+- [ ] Public API matches the authorized contract; unresolved breaking decisions confirmed.
 - [ ] Component + SCSS + spec + story + docs + export in `public-api.ts` + barrel.
 - [ ] A11y verified (see `a11y-checklist` skill).
 - [ ] Coverage 100% + typecheck pass; package/Storybook build if relevant.
 - [ ] README/UI Elements Guide updated for the new public component.
-- [ ] PR on a feature branch with a complete description.
+- [ ] If requested, PR on a feature branch with the repository title convention and complete description.
 
 ## Design variants versus consumer composition
 
 Do not automatically turn every consumer content combination into a Figma component-set variant.
-A Figma variant must be approved by the design lead and must keep a compatible layer/property
-structure across the set. Optional consumer content such as title-only or description-only may be
-an Angular API/story composition without adding Figma masters. If native Figma coverage is required,
+Use the agreed design contract for Figma variants and preserve a compatible layer/property
+structure across the set. A user request to expose existing Angular inputs can already supply
+that decision; do not demand redundant approval. Optional consumer content such as title-only or
+description-only may be an Angular API/story composition without adding Figma masters. If native Figma coverage is required,
 prefer separate component sets on one catalog page when the layer hierarchy differs.

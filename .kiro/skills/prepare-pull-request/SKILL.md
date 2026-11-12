@@ -19,7 +19,8 @@ and the design-to-code review flow connected.
   CU-<ClickUpId>_<short-description>
   ```
 
-- Confirm the branch is pushed and the working tree is clean before opening the PR.
+- Review which commits and files belong to the PR. Push the intended commits before opening it;
+  do not commit, discard or block on unrelated local changes just to obtain a clean working tree.
 - Do not create a commit unless the user authorized committing. Do not push directly to `main`.
 
 ## 2. Required PR title convention
@@ -60,14 +61,18 @@ npm run build
 npm run storybook:build
 ```
 
-For plugin changes also run:
+For plugin source changes also run (the test command itself builds the bundle; rebuild separately
+if sources change afterwards or delivery requires a fresh artifact):
 
 ```bash
 node --test figma-plugin/plugin.test.mjs
 node scripts/build-figma-plugin.mjs
 ```
 
-Run Prettier on every touched source, story, documentation, steering, and workflow file, then:
+For documentation-only changes, check formatting and local links rather than running unrelated
+runtime builds. Validate changed workflow syntax and decision paths separately.
+
+Run Prettier on touched source, story, documentation, steering, and workflow files, then:
 
 ```bash
 git diff --check
@@ -92,12 +97,14 @@ If GitHub CLI reports SAML/SSO enforcement:
 2. Open the organization SSO authorization link printed by GitHub.
 3. Re-run `gh repo view` and `gh pr list` after authorization.
 
-If `GITHUB_TOKEN` is set in the shell and takes precedence over stored `gh` credentials, do not
-print it. Use the user's terminal to authenticate safely, for example:
+If an environment token takes precedence over stored credentials, inspect authentication status
+without printing secrets. Use the normal interactive `gh auth login`/SSO flow in the user's
+terminal; do not copy tokens into commands or logs.
 
-```bash
-printf '%s\n' "$GITHUB_TOKEN" | env -u GITHUB_TOKEN -u GH_TOKEN gh auth login --with-token
-```
+Internal PR pushes may automatically publish the Figma plugin when its build hash changes.
+Review `.github/workflows/build-figma-plugin.yml`; a publication is not native Figma validation
+or publication of the generated design library. Preserve fork/Dependabot exclusions and deploy
+success tracking when changing CI.
 
 ## 5. Create and update the PR
 
@@ -159,6 +166,8 @@ link is present, and the validation status is honestly reported.
 
 ## Versioning safeguard
 
-Bump `projects/ui-kit/package.json` **once per pull request**. All components, plugin updates, and
-other changes included in the same PR share that version. Do not bump the package for each new
+When a version bump is part of the authorized release task, bump `projects/ui-kit/package.json`
+**once per pull request**. Check whether the PR already contains the bump; documentation-only
+maintenance or a plugin rebuild does not by itself authorize a release/version change.
+All components, plugin updates, and other changes included in the same PR share that version. Do not bump the package for each new
 component, Figma rebuild, or follow-up commit in the same PR.
