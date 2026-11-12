@@ -830,15 +830,9 @@ async function renderComponents({
       else radioCardDescriptionOnly.push(node);
     }
   }
-  for (const node of [...radioCards, ...radioCardTitleOnly, ...radioCardDescriptionOnly]) {
-    const currentPage =
-      node.parent?.type === 'PAGE'
-        ? node.parent
-        : node.parent?.parent?.type === 'PAGE'
-          ? node.parent.parent
-          : null;
-    if (currentPage !== page) page.appendChild(node);
-  }
+  // Update existing variants in place. Extracting all children would empty and
+  // invalidate their component sets, losing the owner of their property bindings.
+  // The catalog moves each complete set to its destination page afterwards.
   const radioCardNote =
     'Varianti Title + Description, Title only e Description only con stati Default/Selected/Error/Disabled/Focus. In Angular focus, selezione ed errore sono dimensioni indipendenti; ion-radio-group gestisce selezione singola, frecce, Space e roving tabindex.';
   const radioCardSet = register('radio-card', 'UIRadioCard', radioCards, radioCardNote);

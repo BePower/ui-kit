@@ -99,18 +99,34 @@ function environment({ nativeSlots = true } = {}) {
       }
     }
     appendChild(child) {
+      assert.ok(!this.removed && !child.removed, 'cannot append a removed node');
       assert.ok(!(this.type === 'INSTANCE' && this.locked), 'cannot insert outside a native slot');
-      child.remove();
+      child.detachForMove(this);
       this._children.push(child);
       child.parent = this;
       this.promoteProperties(child);
     }
     insertChild(index, child) {
+      assert.ok(!this.removed && !child.removed, 'cannot insert into a removed node');
       assert.ok(!(this.type === 'INSTANCE' && this.locked), 'cannot insert outside a native slot');
-      child.remove();
+      child.detachForMove(this);
       this._children.splice(index, 0, child);
       child.parent = this;
       this.promoteProperties(child);
+    }
+    detachForMove(destination) {
+      const previous = this.parent;
+      this.remove();
+      // Figma does not support an empty component set. Moving its last variant
+      // out invalidates the old set; reordering within the same set does not.
+      if (
+        previous?.type === 'COMPONENT_SET' &&
+        previous !== destination &&
+        !previous.children.length
+      ) {
+        previous.removed = true;
+        previous.remove();
+      }
     }
     remove() {
       if (this.parent) {
@@ -705,6 +721,13 @@ test('catalog generation preserves master IDs, properties and external content o
   }
   assert.equal(masters.length, iconCount + 206 + rowCount + radioButtonSet.children.length);
   const masterIds = masters.map((node) => node.id);
+  const radioSets = ['radio-card', 'radio-card/title-only', 'radio-card/description-only'].map(
+    (id) => tagged(`components/${id}`),
+  );
+  const radioSetIds = radioSets.map((set) => set.id);
+  const radioPropertyKeys = radioSets.map((set) =>
+    Object.keys(set.componentPropertyDefinitions).sort(),
+  );
   const button = tagged('button/primary/default');
   assert.equal(button.primaryAxisSizingMode, 'AUTO');
   assert.equal(button.minWidth, button.children.find((node) => node.name === 'Label').width + 176);
@@ -795,6 +818,18 @@ test('catalog generation preserves master IDs, properties and external content o
   );
   assert.ok(!radioTitleOnly.findOne((node) => node.name === 'Description'));
   assert.ok(!radioDescriptionOnly.findOne((node) => node.name === 'Title'));
+  assert.deepEqual(
+    ['radio-card', 'radio-card/title-only', 'radio-card/description-only'].map(
+      (id) => tagged(`components/${id}`).id,
+    ),
+    radioSetIds,
+    'radio card sets retain their IDs across updates from their catalog page',
+  );
+  assert.ok(radioSets.every((set) => !set.removed));
+  assert.deepEqual(
+    radioSets.map((set) => Object.keys(set.componentPropertyDefinitions).sort()),
+    radioPropertyKeys,
+  );
   assert.deepEqual(
     env.document
       .findAll((node) => node.type === 'COMPONENT')
