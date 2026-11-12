@@ -63,22 +63,30 @@ jobs:
         env:
           BUILD_ID: ${{ steps.build_info.outputs.build_id }}
           DEPLOY_REQUESTED: ${{ inputs.deploy }}
+          PR_DEPLOY_ALLOWED: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' }}
         run: |
           echo "### Figma plugin bundle" >> "$GITHUB_STEP_SUMMARY"
           echo "Build ID: \`${BUILD_ID}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "Artifact: \`figma-plugin-${BUILD_ID}\`" >> "$GITHUB_STEP_SUMMARY"
-          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
+          if [[ "$PR_DEPLOY_ALLOWED" == "true" ]]; then
             echo 'Deployment to Figma runs automatically for same-repository PRs.' >> "$GITHUB_STEP_SUMMARY"
+          elif [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
+            echo 'Build only: deployment and PR comments are skipped for forks and Dependabot.' >> "$GITHUB_STEP_SUMMARY"
           elif [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" && "$DEPLOY_REQUESTED" == "true" ]]; then
             echo 'Manual deployment requested (main only).' >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Comment download link on PR
-        if: github.event_name == 'pull_request'
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.actor != 'dependabot[bot]'
         uses: actions/github-script@v7
+        env:
+          BUILD_ID: ${{ steps.build_info.outputs.build_id }}
         with:
           script: |
-            const buildId = ${{ toJSON(steps.build_info.outputs.build_id) }};
+            const buildId = process.env.BUILD_ID;
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             const marker = '<!-- figma-plugin-bundle -->';
             const body = [
@@ -91,8 +99,8 @@ jobs:
             ].join('\n');
             const { owner, repo } = context.repo;
             const issue_number = context.issue.number;
-            const { data: comments } = await github.rest.issues.listComments({ owner, repo, issue_number });
-            const existing = comments.find((c) => c.body && c.body.includes(marker));
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
+            const existing = comments.find((c) => c.user?.login === 'github-actions[bot]' && c.body?.includes(marker));
             if (existing) {
               await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
             } else {
@@ -106,7 +114,8 @@ jobs:
     # Manual deployments remain available on main when explicitly selected.
     if: >-
       (github.event_name == 'pull_request' &&
-       github.event.pull_request.head.repo.full_name == github.repository) ||
+       github.event.pull_request.head.repo.full_name == github.repository &&
+       github.actor != 'dependabot[bot]') ||
       (github.event_name == 'workflow_dispatch' &&
        inputs.deploy == true && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
@@ -143,8 +152,10 @@ jobs:
           const fs = require('node:fs');
           const manifest = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
           if (!manifest.id) throw new Error('Missing published Figma plugin id in manifest.json');
+          // UI is optional: this plugin embeds its HTML in code.js.
           for (const field of ['main', 'ui']) {
-            if (typeof manifest[field] !== 'string' || !fs.existsSync(manifest[field])) {
+            if (field === 'ui' && manifest.ui === undefined) continue;
+            if (typeof manifest[field] !== 'string' || !fs.statSync(manifest[field], { throwIfNoEntry: false })?.isFile()) {
               throw new Error(`Missing ${field} file referenced by manifest: ${manifest[field]}`);
             }
           }
@@ -173,7 +184,8 @@ jobs:
           FIGMA_WEB_AUTHN_TOKEN: ${{ secrets.FIGMA_WEB_AUTHN_TOKEN }}
           BUILD_ID: ${{ needs.build_figma_plugin.outputs.build_id }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          # pull_request builds use the merge commit checked out by checkout.
+          SOURCE_SHA: ${{ github.sha }}
         shell: bash
         run: |
           if [[ -n "$PR_NUMBER" ]]; then
