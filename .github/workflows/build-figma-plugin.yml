@@ -1,18 +1,19 @@
-name: Build Figma plugin
-run-name: Build Figma plugin
+name: Build and deploy Figma plugin
+run-name: Build and deploy Figma plugin
+
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-  # Manual on-demand build: run it from the Actions tab (or `gh workflow run`) on any
-  # branch to get a fresh bundle artifact without opening a PR. The import into Figma
-  # Desktop stays a manual, local step either way.
-  workflow_dispatch:
 
-# Repo -> Figma: this workflow regenerates the native Figma plugin bundle from the
-# library sources and publishes it as a downloadable artifact so a designer can import
-# and test it in Figma Desktop. figma-plugin/dist/ is gitignored, so it is never
-# committed -- the artifact is the only output. The import/publish step stays manual,
-# on the designer's side, as the plugin requires (networkAccess: ['none']).
+  # Manual build on any branch. Manual deploy remains opt-in on main.
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: 'Publish the built plugin to Figma (main branch only)'
+        type: boolean
+        required: true
+        default: false
+
 jobs:
   build_figma_plugin:
     name: Build Figma plugin
@@ -20,6 +21,8 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+    outputs:
+      build_id: ${{ steps.build_info.outputs.build_id }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -34,13 +37,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.BEP_GITHUB_TOKEN }}
 
-      # Guard: the generator must pass before we publish a bundle. It verifies
-      # inventory, coverage, variants, two consecutive runs and id stability.
       - name: Verify plugin generator
         run: node --test figma-plugin/plugin.test.mjs
 
-      # Deterministic build from sources. Prints "BePower build <id>"; the same id
-      # lands in figma-plugin/dist/build-info.json.
       - name: Build plugin bundle
         run: node scripts/build-figma-plugin.mjs
 
@@ -60,9 +59,20 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      # Only on a PR event is there an issue to comment on. On a manual
-      # workflow_dispatch run the bundle is still uploaded as an artifact; the
-      # operator reads the build id from the run summary instead.
+      - name: Add build summary
+        env:
+          BUILD_ID: ${{ steps.build_info.outputs.build_id }}
+          DEPLOY_REQUESTED: ${{ inputs.deploy }}
+        run: |
+          echo "### Figma plugin bundle" >> "$GITHUB_STEP_SUMMARY"
+          echo "Build ID: \`${BUILD_ID}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Artifact: \`figma-plugin-${BUILD_ID}\`" >> "$GITHUB_STEP_SUMMARY"
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
+            echo 'Deployment to Figma runs automatically for same-repository PRs.' >> "$GITHUB_STEP_SUMMARY"
+          elif [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" && "$DEPLOY_REQUESTED" == "true" ]]; then
+            echo 'Manual deployment requested (main only).' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Comment download link on PR
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
@@ -73,11 +83,11 @@ jobs:
             const marker = '<!-- figma-plugin-bundle -->';
             const body = [
               marker,
-              `### 🧩 Figma plugin bundle pronto`,
+              '### 🧩 Figma plugin bundle pronto',
               '',
               `**Build id:** \`${buildId}\``,
               '',
-              `Scarica l'artifact **\`figma-plugin-${buildId}\`** dalla [run di questa PR](${runUrl}) (sezione *Artifacts*), estrailo, e in Figma Desktop (modalità Design, non Dev Mode) apri Plugins → Development → Import plugin from manifest → \`manifest.json\`. L'import e la pubblicazione della libreria restano manuali, lato designer.`,
+              `Scarica l'artifact **\`figma-plugin-${buildId}\`** dalla [run di questa PR](${runUrl}) (sezione *Artifacts*). Per le PR interne al repository, il job **Deploy plugin to Figma** pubblica automaticamente il bundle dopo il build. Verifica l'esito del job nella stessa run.`,
             ].join('\n');
             const { owner, repo } = context.repo;
             const issue_number = context.issue.number;
@@ -88,3 +98,97 @@ jobs:
             } else {
               await github.rest.issues.createComment({ owner, repo, issue_number, body });
             }
+
+  deploy_figma_plugin:
+    name: Deploy plugin to Figma
+    needs: build_figma_plugin
+    # Deploy automatically for same-repository PRs; do not expose an SSO token to forks.
+    # Manual deployments remain available on main when explicitly selected.
+    if: >-
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.head.repo.full_name == github.repository) ||
+      (github.event_name == 'workflow_dispatch' &&
+       inputs.deploy == true && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # Deliberately no protected environment: PR deployments must run without approval.
+    # Store FIGMA_WEB_AUTHN_TOKEN as a repository Actions secret.
+    concurrency:
+      group: figma-plugin-publication
+      cancel-in-progress: false
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+
+      - name: Download the verified plugin bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: figma-plugin-${{ needs.build_figma_plugin.outputs.build_id }}
+          path: figma-plugin/dist/
+
+      - name: Validate plugin manifest and bundled files
+        working-directory: figma-plugin/dist
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const manifest = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
+          if (!manifest.id) throw new Error('Missing published Figma plugin id in manifest.json');
+          for (const field of ['main', 'ui']) {
+            if (typeof manifest[field] !== 'string' || !fs.existsSync(manifest[field])) {
+              throw new Error(`Missing ${field} file referenced by manifest: ${manifest[field]}`);
+            }
+          }
+          console.log('Manifest and plugin files verified.');
+          NODE
+
+      - name: Check Figma token configured
+        env:
+          FIGMA_WEB_AUTHN_TOKEN: ${{ secrets.FIGMA_WEB_AUTHN_TOKEN }}
+        shell: bash
+        run: |
+          if [[ -z "$FIGMA_WEB_AUTHN_TOKEN" ]]; then
+            echo 'FIGMA_WEB_AUTHN_TOKEN is missing or empty' >&2
+            exit 1
+          fi
+
+      - name: Read current Figma plugin version
+        working-directory: figma-plugin/dist
+        env:
+          FIGMA_WEB_AUTHN_TOKEN: ${{ secrets.FIGMA_WEB_AUTHN_TOKEN }}
+        run: npx --yes figcd@0.0.16 current-version --manifest-file ./manifest.json
+
+      - name: Publish plugin to Figma
+        working-directory: figma-plugin/dist
+        env:
+          FIGMA_WEB_AUTHN_TOKEN: ${{ secrets.FIGMA_WEB_AUTHN_TOKEN }}
+          BUILD_ID: ${{ needs.build_figma_plugin.outputs.build_id }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        shell: bash
+        run: |
+          if [[ -n "$PR_NUMBER" ]]; then
+            notes="PR #${PR_NUMBER} - build ${BUILD_ID} - commit ${SOURCE_SHA}"
+          else
+            notes="Manual build ${BUILD_ID} - commit ${SOURCE_SHA}"
+          fi
+          npx --yes figcd@0.0.16 release \
+            --manifest-file ./manifest.json \
+            --release-notes "$notes"
+
+      - name: Deployment summary
+        env:
+          BUILD_ID: ${{ needs.build_figma_plugin.outputs.build_id }}
+        run: |
+          echo "### Figma deployment completed" >> "$GITHUB_STEP_SUMMARY"
+          echo "Build: \`${BUILD_ID}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Workflow run: \`${GITHUB_RUN_ID}\`" >> "$GITHUB_STEP_SUMMARY"
