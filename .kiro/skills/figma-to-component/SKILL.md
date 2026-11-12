@@ -1,131 +1,36 @@
 ---
 name: figma-to-component
-description: bepower-ui-kit design-to-code flow — convert a Figma node/component defined by tech lead + design lead into a reusable Angular/Ionic component of @bepower/ui-kit (public API, component + SCSS + spec, story, docs, export, PR). Load this skill when you are handed a Figma node to convert or when you must add/modify a public component of the kit.
+description: Implement Figma designs or change public Angular/Ionic components in @bepower/ui-kit, including API, stories, docs and exports.
 ---
 
-# Figma → component (@bepower/ui-kit)
+# Figma → component
 
-The orchestrator's procedure for the **Figma → code** direction. The `@bepower/ui-kit` repo is the
-source of truth; this skill covers converting a decision made in Figma (tech lead + design lead)
-into a reusable component. The library implementation rules live in `projects/ui-kit/AGENTS.md`
-(read it: this skill does NOT duplicate it, it presupposes it).
+1. Read [library rules](../../../projects/ui-kit/AGENTS.md) and their referenced docs, then inspect
+   status, affected implementation, tests and stories. They own component conventions and commands;
+   do not duplicate those rules here.
+2. For Figma input, load the required design-to-code skill before fetching design context,
+   metadata, variables and screenshots. Map design tokens to existing foundations. If native access
+   is unavailable, use supplied specifications/screenshots and identify what remains unverified.
+3. Resolve missing public-contract decisions: inputs/defaults, outputs, slots, exported types and
+   accessibility. Express DS intent, not arbitrary styling controls. Ask only about unresolved or
+   breaking choices; existing task authorization is sufficient.
+4. Update the component TS/SCSS/spec, `stories/ui-<name>.stories.ts`, component documentation and
+   appropriate barrels/`src/public-api.ts`. New components also require library README/UI Elements
+   Guide updates. Paths are relative to `projects/ui-kit`.
+5. Apply [accessibility checks](../a11y-checklist/SKILL.md) and, for shared behavior/refactors,
+   [code-quality guidance](../../steering/code-quality.md). Preserve public Angular/Ionic behavior;
+   the radio-group base is a reference, not a mandatory inheritance pattern.
+6. Follow AGENTS verification: focused regressions, full coverage/typecheck for runtime changes,
+   package compilation for component/API/Sass changes, Storybook build for stories/configuration.
+   Review formatting and diff; report only performed checks and consumer impact.
 
-`ui-button` is the reference implementation: copy the relevant patterns, not unrelated behavior.
+## Figma alignment when requested
 
-## 0. Prerequisites (before touching code)
+Barrel/inventory extraction does not implement native Figma support. Add explicit generator
+adapters for supported new contracts; build success alone does not detect every missing adapter.
+Use [regenerate-figma-plugin](../regenerate-figma-plugin/SKILL.md) and its tests when that scope is
+requested. Optional Angular content need not become Figma variant axes: incompatible content
+hierarchies may require separate sets, preserving existing identities.
 
-Read, in this order:
-
-1. `projects/ui-kit/AGENTS.md` — the library's non-negotiable rules.
-2. `projects/ui-kit/README.md` and `projects/ui-kit/docs/ui-elements.md` — authoring pattern.
-3. The nearest existing component doc in `projects/ui-kit/docs/components/`.
-4. `git status --short` + the implementation, `.spec.ts` and story of the reference component.
-
-Do not overwrite pending changes or untracked files.
-
-## 1. Read the design
-
-When connected Figma tools are available, load the required design-to-code skill before using them:
-
-- `get_metadata` / `get_design_context` — node structure, variants, annotations, states.
-- `get_variable_defs` — variables/tokens used in the node.
-- `get_screenshot` — visual reference.
-
-If tools are unavailable, work from supplied screenshots/specifications and repository sources.
-Ask for missing design details only when they affect the implementation; report native inspection
-as unavailable rather than implying it occurred.
-
-Map every Figma token onto an **existing foundation** of the kit
-(`src/lib/foundations/{colors,sizes,spacing,typography,shadows}`). **Do not introduce literal
-values** when an equivalent token exists. If the design uses a value without a token, it is a
-foundations decision: flag it, do not invent it inline.
-
-Explicitly list: variants, sizes, states (default/disabled/loading/…), slots, expected a11y
-behavior (accessible name, focus, keyboard).
-
-## 2. Propose the public API BEFORE the code
-
-When the consumer contract is at stake (inputs, defaults, outputs, slots, exported types, a11y),
-identify unresolved decisions for tech lead/design lead. Ask before implementing an ambiguous or
-breaking contract; proceed when the user already specified or approved it. Do not require a new
-approval for routine implementation of an agreed API.
-Propose:
-
-- Selector name `ui-<name>` and class `UI<Name>`.
-- Signal inputs with type and default: express **DS intent** (`variant`, `size`, `disabled`,
-  `isLoading`, `expand`), not arbitrary styling hooks.
-- Literal unions for the variants (e.g. `type UIFooVariant = 'primary' | 'secondary'`).
-- Outputs, slots (named `<ng-content>`), exported types, accessible name (required vs optional
-  label — accept the label from the consumer, do not embed application copy).
-
-Identify the **breaking changes** instead of introducing them silently.
-
-## 3. Generate the files
-
-For a component `ui-<name>`:
-
-| File                                                     | Purpose                                       |
-| -------------------------------------------------------- | --------------------------------------------- |
-| `projects/ui-kit/src/lib/components/<name>/ui-<name>.ts` | component                                     |
-| `…/ui-<name>.scss`                                       | styles (foundations tokens only, no literals) |
-| `…/ui-<name>.spec.ts`                                    | tests (Vitest + Angular TestBed + jsdom)      |
-| `projects/ui-kit/stories/ui-<name>.stories.ts`           | story (see storybook skill / steering)        |
-| `projects/ui-kit/docs/components/ui-<name>.md`           | docs page                                     |
-| `projects/ui-kit/src/public-api.ts`                      | export component + types                      |
-
-Implementation rules (from AGENTS.md / ui-elements.md): standalone, `ViewEncapsulation.ShadowDom`,
-`ChangeDetectionStrategy.OnPush`, `input()` / `booleanAttribute` / `computed()`, Ionic primitives
-from the standalone entry point, `root.shadow-root` on the host for Ionic color mapping. State in
-TypeScript, presentation in SCSS. No business logic or application API calls.
-
-Also update the component barrel (`src/lib/components/index.ts`): it is what defines the coverage
-of the Figma plugin. Its native generator rejects an exported component without an adapter
-when it runs (and the generator test exercises this); inventory extraction alone is not adapter
-coverage. If native support is in scope, update the adapter and its regression tests.
-
-Update the library README and the UI Elements Guide when you add a public component.
-
-## 4. Verify (commands from the workspace ROOT, not from projects/ui-kit)
-
-- Focused during development: `npm test -- projects/ui-kit/src/lib/components/<name>/ui-<name>.spec.ts`
-- Before handoff: `npm run test:coverage` + `npm run test:typecheck`.
-- Package API/Sass changes: `npm run build` (compilation validation).
-- Storybook story/config changes: `npm run storybook:build`.
-- Formatting: `./node_modules/.bin/prettier --check <touched files>`.
-
-Coverage: **100%** thresholds on the measured runtime (`vitest.config.mts`). Do not lower the
-thresholds or add exclusions to hide missing tests. Report **exactly** which checks you ran and
-what you could not verify (unit tests prove neither visual rendering nor screen reader; for a
-visible UI change use available browser tools and report unavailable checks).
-
-## 5. Open the PR
-
-When PR submission is requested, follow [prepare-pull-request](../prepare-pull-request/SKILL.md),
-including the repository title convention and linking procedure. Use a feature branch, never a
-direct push to `main`. Describe consumer impact, validation and limitations. Do not push just
-because this implementation skill was loaded; internal PRs can trigger plugin publication.
-
-## 6. Realign Figma (only if requested)
-
-A new component/variant exists in Figma only after the plugin is regenerated: see the
-`regenerate-figma-plugin` skill. It is not automatic and is not part of the conversion unless
-requested.
-
-## Handoff checklist
-
-- [ ] Tokens mapped onto foundations, no literal where a token exists.
-- [ ] Public API matches the authorized contract; unresolved breaking decisions confirmed.
-- [ ] Component + SCSS + spec + story + docs + export in `public-api.ts` + barrel.
-- [ ] A11y verified (see `a11y-checklist` skill).
-- [ ] Coverage 100% + typecheck pass; package/Storybook build if relevant.
-- [ ] README/UI Elements Guide updated for the new public component.
-- [ ] If requested, PR on a feature branch with the repository title convention and complete description.
-
-## Design variants versus consumer composition
-
-Do not automatically turn every consumer content combination into a Figma component-set variant.
-Use the agreed design contract for Figma variants and preserve a compatible layer/property
-structure across the set. A user request to expose existing Angular inputs can already supply
-that decision; do not demand redundant approval. Optional consumer content such as title-only or
-description-only may be an Angular API/story composition without adding Figma masters. If native Figma coverage is required,
-prefer separate component sets on one catalog page when the layer hierarchy differs.
+Use [prepare-pull-request](../prepare-pull-request/SKILL.md) for requested PR work. Ordinary
+implementation does not require pushing or writing to Figma; internal PR pushes can auto-publish.

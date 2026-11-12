@@ -1,94 +1,31 @@
 ---
 name: a11y-checklist
-description: Accessibility (UX/UI) checklist for a @bepower/ui-kit component — accessible name, keyboard, focus, disabled/loading states, viewport, safe area, Storybook a11y addon. Load this skill when you create or modify a component of the kit, when you verify a visible UI change, or when you write/update a story.
+description: Verify accessibility of @bepower/ui-kit components, visible UI changes and stories; document native/browser evidence and limits.
 ---
 
-# Accessibility checklist — @bepower/ui-kit
+# Accessibility checks
 
-The orchestrator's UX/UI area. Accessibility is a **public contract** of the component (see
-`projects/ui-kit/AGENTS.md`, "Styling and accessibility" section), so it is treated like the API:
-you do not break it silently. This skill is the operational checklist; the underlying rules live
-in AGENTS.md and `docs/ui-elements.md`.
+Accessibility is a public contract; follow [library rules](../../../projects/ui-kit/AGENTS.md)
+and the UI Elements Guide. Apply the relevant checks to rendered Angular/Ionic controls:
 
-Guiding principle: unit tests do **not** establish visual rendering or screen-reader use. This
-checklist is verified with the Storybook a11y addon, with keyboard testing, and for visible
-changes with available browser tools (`web-verify` / `browser-recording` if installed).
-A screenshot of the generated Figma component does not verify Angular/Ionic accessibility.
+- **Names:** consumer-provided visible labels, `aria-label` or `aria-labelledby`. Document required
+  icon-only labels and demonstrate them in stories. Hide decorative graphics appropriately;
+  do not introduce application copy or a library translation system.
+- **Semantics:** native buttons/links/inputs and semantic typography. `ui-title` maps `xl/l/m/s`
+  to `h1/h2/h3/h4`; no `display: contents` on typography primitives.
+- **Keyboard/focus:** logical tab order, expected arrow/Enter/Space/Escape behavior, visible focus,
+  no unintended traps. Overlays manage focus on open and restore it on close; Escape where expected.
+- **States:** disabled controls block activation and expose state beyond color. Check focusability
+  against native semantics (`aria-disabled` alone does not remove tab stops). Loading is announced
+  and inhibits interaction as required; validation messages are linked and announced.
+- **Color/layout:** use foundation tokens, non-color signals and measured rendered contrast.
+  Check narrow/wide viewports, long content, scrolling, safe areas and usable touch targets without
+  clipping controls.
+- **Stories:** meaningful disabled/loading/error states and realistic names, following
+  [Storybook steering](../../steering/storybook.md). Inspect actual addon findings: current
+  `a11y.test: 'todo'` means a green static build is not an accessibility gate.
 
-## 1. Accessible name
-
-- Every interactive element has an **accessible name** (visible label, `aria-label`,
-  `aria-labelledby`). Accept the label **from the consumer** (`ariaLabel` input / slot), do not
-  embed application copy nor a library translation system.
-- Icon-only / controls without visible text → accessible name **required**: document it as a
-  requirement in the docs page and provide a realistic `ariaLabel` in the story args.
-- Decorative images/pictograms → `aria-hidden` / empty name, not an invented name
-  (see `ui-pictogram`, `ui-progress-bar` with `ariaHidden`).
-
-## 2. Semantics
-
-- Preserve native headings, paragraphs and interactive elements. `ui-title` maps `xl/l/m/s` onto
-  `h1/h2/h3/h4`; do not alter the semantic hierarchy.
-- **Do not** use `display: contents` on the semantic typography primitives.
-- Use the right native element (button vs link vs input); do not reconstruct roles with `div`.
-
-## 3. Keyboard and focus
-
-- Everything clickable is reachable and operable by **keyboard** (Tab / Enter / Space / Escape
-  where relevant).
-- **Visible focus**: do not remove the outline without a compliant replacement.
-- Overlays (bottom sheet, modals): focus management on open and focus **restoration** on close;
-  `Escape` closes where expected. See `ui-bottom-sheet` + the screen-reader/status-bar services.
-- Logical tab order; no unintended focus trap.
-
-## 4. States
-
-- **Disabled**: activation blocked; verify focusability against the control’s native semantics
-  and documented contract (`aria-disabled` alone does not remove a control from tab order).
-  State communicated beyond color alone
-  (`aria-disabled` / native attribute), consistent host state class.
-- **Loading / isLoading**: state announced (e.g. `aria-busy`), interaction inhibited where needed.
-- Error/validation states (e.g. `ui-input-field`): message linked to the field
-  (`aria-describedby` / bottomText) and announced.
-
-## 5. Contrast and color
-
-- Colors from the **foundations tokens**, never literals. Do not rely on color alone for
-  information (pair it with an icon/text/ARIA state).
-- Measure foreground/background contrast in the rendered states; visual inspection alone does
-  not establish the contrast ratio. Addon findings and manual assistive-technology checks are
-  complementary; unit tests do not establish WCAG conformance.
-
-## 6. Layout and viewport
-
-- Check **narrow and wide** viewports, long content, scrolling, **safe area** where relevant
-  (`ui-page` shell, bottom sheet). The Storybook preview starts from `iphone12mini`.
-- Adequate touch targets; no overflow that cuts off content or controls.
-
-## 7. Storybook test bench
-
-- The `@storybook/addon-a11y` addon is part of the test bench: a story must **hold up** to the
-  a11y check. Expose the meaningful interaction states (disabled, loading, error) as separate
-  stories, not just the default, and provide realistic accessible names in the args.
-- Interactive verification: `npm run storybook` (from the root). Static validation:
-  `npm run storybook:build`.
-
-Current `.storybook/preview.ts` uses `a11y.test: 'todo'`; a green Storybook build does not
-prove the a11y checks passed. Inspect the actual findings.
-
-## 8. Evidence for visible changes
-
-For a visible UI change capture evidence with available browser tools (screenshots for
-static states, video/GIF for motion and multi-step interactions). In the report state what you
-verified and what you **could not** verify (e.g. real screen reader).
-
-## Quick checklist
-
-- [ ] Accessible name present (consumer-provided where needed); icon-only documented.
-- [ ] Native semantics preserved; no `display: contents` on the typography ones.
-- [ ] Full keyboard; visible focus; focus management + restoration for overlays.
-- [ ] Disabled and loading communicated beyond color.
-- [ ] Colors from tokens; information not relying on color alone.
-- [ ] Narrow/wide viewports, long content, safe area verified.
-- [ ] Stories hold up to the a11y addon; meaningful states as separate stories.
-- [ ] Visual evidence captured; limits stated in the report.
+Use available browser tools for screenshots or motion/interaction recordings and perform relevant
+keyboard/assistive-technology checks. Report evidence and outstanding checks explicitly.
+Unit tests, visual inspection alone and Figma screenshots do not establish Angular/Ionic screen-reader
+behavior or WCAG conformance.
