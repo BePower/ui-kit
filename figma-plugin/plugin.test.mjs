@@ -36,6 +36,16 @@ function environment({ nativeSlots = true } = {}) {
       if (!nativeSlots && type === 'COMPONENT') this.createSlot = undefined;
       this.fills = type === 'VECTOR' ? [{ type: 'SOLID', color: { r: 1, g: 0, b: 0 } }] : [];
     }
+    get minWidth() {
+      return this._minWidth ?? null;
+    }
+    set minWidth(value) {
+      assert.ok(
+        value === null || (typeof value === 'number' && Number.isFinite(value) && value > 0),
+        'minWidth must be positive or null to unset',
+      );
+      this._minWidth = value;
+    }
     get children() {
       return [...this._children];
     }
@@ -469,7 +479,7 @@ test('catalog generation preserves master IDs, properties and external content o
         assert.equal(row.layoutAlign, 'STRETCH', 'every variant fills the grid width');
         assert.equal(row.layoutGrow, 0);
         assert.equal(row.width, data.numbers['size-360'] * 10);
-        assert.equal(row.minWidth, 0);
+        assert.equal(row.minWidth, null);
         const columns = row.children.find((node) => node.name === 'Columns');
         assert.equal(columns.type, 'SLOT');
         assert.equal(columns.itemSpacing, data.numbers[`spacing-${gap}`]);
@@ -507,7 +517,7 @@ test('catalog generation preserves master IDs, properties and external content o
   assert.equal(radioDefault.counterAxisSizingMode, 'AUTO');
   const radioCopy = radioDefault.children.find((node) => node.name === 'Copy');
   assert.equal(radioCopy.layoutGrow, 1, 'copy shrinks to the available column width');
-  assert.equal(radioCopy.minWidth, 0);
+  assert.equal(radioCopy.minWidth, null);
   assert.equal(radioCopy.primaryAxisSizingMode, 'AUTO', 'wrapped text grows the card height');
   assert.equal(radioDefault.cornerRadius, 16);
   assert.equal(radioDefault.paddingLeft, 16);

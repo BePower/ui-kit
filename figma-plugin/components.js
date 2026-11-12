@@ -365,7 +365,7 @@ async function renderComponents({
         node.counterAxisSizingMode = 'FIXED';
         node.layoutAlign = 'STRETCH';
         node.layoutGrow = 0;
-        node.minWidth = 0;
+        node.minWidth = null;
         node.resize(width, node.height);
         node.itemSpacing = 0;
         node.paddingTop = n[`spacing-${top}`];
@@ -720,7 +720,7 @@ async function renderComponents({
       fixed(node, 327, cardHeight);
       node.layoutMode = 'HORIZONTAL';
       node.layoutAlign = 'STRETCH';
-      node.minWidth = 0;
+      node.minWidth = null;
       node.counterAxisSizingMode = 'AUTO';
       node.minHeight = cardHeight;
       node.primaryAxisAlignItems = 'MIN';
@@ -783,7 +783,7 @@ async function renderComponents({
       copy.primaryAxisSizingMode = 'AUTO';
       copy.counterAxisSizingMode = 'FIXED';
       copy.layoutGrow = 1;
-      copy.minWidth = 0;
+      copy.minWidth = null;
       copy.resize(255, copyHeight);
       copy.itemSpacing = n['size-40'];
       for (const [role, enabled, value, style] of [

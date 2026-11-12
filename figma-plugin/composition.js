@@ -180,7 +180,7 @@ async function configureComposition({
       'Colonne libere: due solo come esempio iniziale, nessun numero massimo.',
     );
     columns.resize(width, columns.height);
-    columns.minWidth = 0;
+    columns.minWidth = null;
     columns.layoutGrow = 0;
     columns.itemSpacing = gap;
     columns.layoutWrap = 'WRAP';
