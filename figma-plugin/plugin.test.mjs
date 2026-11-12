@@ -18,7 +18,7 @@ const { buildId } = JSON.parse(
 function environment({ nativeSlots = true } = {}) {
   let pluginRunning = false;
   let sequence = 0;
-  const stats = { findOneCalls: 0, yields: 0 };
+  const stats = { findOneCalls: 0, yields: 0, slotDefinitionEdits: 0 };
   const makeId = () => `test:${++sequence}`;
   class Node {
     constructor(type) {
@@ -151,7 +151,10 @@ function environment({ nativeSlots = true } = {}) {
     editComponentProperty(key, patch) {
       const definition = this.componentPropertyDefinitions[key];
       assert.ok(definition);
-      if (definition.type === 'SLOT') assert.ok(!('defaultValue' in patch));
+      if (definition.type === 'SLOT') {
+        stats.slotDefinitionEdits++;
+        assert.ok(!('defaultValue' in patch));
+      }
       Object.assign(definition, patch);
       return key;
     }
@@ -460,9 +463,21 @@ test('catalog generation preserves master IDs, properties and external content o
         assert.equal(row.name, `gap=${gap}, top=${top}, bottom=${bottom}`);
         assert.equal(row.paddingTop, data.numbers[`spacing-${top}`]);
         assert.equal(row.paddingBottom, data.numbers[`spacing-${bottom}`]);
+        assert.equal(row.layoutMode, 'VERTICAL');
+        assert.equal(row.primaryAxisSizingMode, 'AUTO', 'row height hugs content plus padding');
+        assert.equal(row.counterAxisSizingMode, 'FIXED');
+        assert.equal(row.layoutAlign, 'STRETCH', 'every variant fills the grid width');
+        assert.equal(row.layoutGrow, 0);
+        assert.equal(row.width, data.numbers['size-360'] * 10);
+        assert.equal(row.minWidth, 0);
         const columns = row.children.find((node) => node.name === 'Columns');
         assert.equal(columns.type, 'SLOT');
         assert.equal(columns.itemSpacing, data.numbers[`spacing-${gap}`]);
+        assert.equal(columns.layoutAlign, 'STRETCH');
+        assert.equal(columns.width, row.width);
+        assert.equal(columns.primaryAxisSizingMode, 'FIXED');
+        assert.equal(columns.counterAxisSizingMode, 'AUTO');
+        assert.equal(columns.layoutGrow, 0);
       }
     }
   }
@@ -488,6 +503,12 @@ test('catalog generation preserves master IDs, properties and external content o
   const radioFocus = tagged('radio-card/focus');
   assert.equal(radioDefault.width, 327);
   assert.equal(radioDefault.height, 98);
+  assert.equal(radioDefault.layoutAlign, 'STRETCH');
+  assert.equal(radioDefault.counterAxisSizingMode, 'AUTO');
+  const radioCopy = radioDefault.children.find((node) => node.name === 'Copy');
+  assert.equal(radioCopy.layoutGrow, 1, 'copy shrinks to the available column width');
+  assert.equal(radioCopy.minWidth, 0);
+  assert.equal(radioCopy.primaryAxisSizingMode, 'AUTO', 'wrapped text grows the card height');
   assert.equal(radioDefault.cornerRadius, 16);
   assert.equal(radioDefault.paddingLeft, 16);
   assert.equal(radioDefault.itemSpacing, 16);
@@ -1358,6 +1379,58 @@ test('containers expose open native slots; only icon choices use instance swaps'
   await env.run();
   assert.equal(role(col, 'Content slot').id, originalId);
   assert.equal(custom.parent, userSlot);
+});
+
+test('row updates preserve renamed slot bindings, authored defaults and intentionally empty slots', async () => {
+  const env = environment();
+  await env.run();
+  const tagged = (id) =>
+    env.document.findOne((node) => node.getPluginData('bepower-source') === id);
+  const row = tagged('row/xxs');
+  const columns = row.children.find((node) => node.name === 'Columns');
+  const definitions = row.parent.componentPropertyDefinitions;
+  const oldKey = columns.componentPropertyReferences.slotContentId;
+  const newKey = oldKey.replace(/^Columns#/, 'My columns#');
+  definitions[newKey] = definitions[oldKey];
+  delete definitions[oldKey];
+  for (const master of row.parent.children) {
+    const slot = master.children.find((node) => node.name === 'Columns');
+    if (slot.componentPropertyReferences.slotContentId === oldKey) {
+      slot.componentPropertyReferences = { slotContentId: newKey };
+    }
+  }
+  const authored = columns.children[0];
+  authored.swapComponent(tagged('col/6'));
+  authored.resize(123, 91);
+  columns.children[1].remove();
+  const gridSlot = tagged('grid/true/xxs').children.find((node) => node.type === 'SLOT');
+  gridSlot.children.forEach((node) => node.remove());
+  const keys = Object.keys(definitions).sort();
+  const edits = env.stats.slotDefinitionEdits;
+  // Reproduce the old gap-only library before top/bottom variants were added.
+  for (const master of row.parent.children) {
+    const parts = master.getPluginData('bepower-source').split('/');
+    if (parts.length > 2) master.remove();
+    else master.name = `gap=${parts[1]}`;
+  }
+  const ids = [row.id, columns.id, authored.id];
+  await env.run();
+  assert.deepEqual([row.id, columns.id, authored.id], ids);
+  assert.equal(columns.componentPropertyReferences.slotContentId, newKey);
+  assert.deepEqual(Object.keys(definitions).sort(), keys);
+  assert.deepEqual(
+    columns.children.map((node) => node.id),
+    [authored.id],
+  );
+  assert.equal(authored.mainComponent.id, tagged('col/6').id);
+  assert.equal(authored.width, 123);
+  assert.equal(authored.height, 91);
+  assert.equal(gridSlot.children.length, 0, 'empty slot stays empty');
+  assert.equal(
+    env.stats.slotDefinitionEdits,
+    edits,
+    'unchanged slot definitions are not rewritten',
+  );
 });
 
 test('instances accept many rows, columns and page sections without detaching', async () => {

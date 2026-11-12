@@ -377,11 +377,20 @@ per i figli degli slot: Figma vieta questi collegamenti. Per modificare o mostra
 dello slot agisci direttamente sui relativi livelli dell'istanza.
 Il flusso nuovo usa gli slot aperti, non i vecchi campi Content o gli swap di contenitore.
 Le vecchie definizioni swap, se già presenti, non vengono eliminate distruttivamente ma non
-controllano il nuovo contenuto. Le composizioni personali
-devono stare fuori dalle tavole generate; i loro override non vengono cancellati dal plugin.
+controllano il nuovo contenuto. Le composizioni personali devono stare fuori dalle tavole
+generate, che vengono ricostruite a ogni esecuzione.
 
-Al primo aggiornamento dal precedente catalogo sono previsti **579 aggiornati e 1 creato**:
-il nuovo master è Composition / Content. Ai successivi: **580 aggiornati e 0 creati**.
+Gli aggiornamenti riutilizzano il binding SLOT esistente anche se la proprietà è stata
+rinominata. Non riscrivono definizioni invariate, non ricreano placeholder negli slot
+esistenti e non ripristinano colonne o contenuti predefiniti rimossi. I contenuti già
+presenti non vengono sostituiti con il componente di esempio né ridimensionati dal seeding.
+Un binding SLOT esistente non valido interrompe l'aggiornamento invece di essere sostituito.
+
+I test locali verificano queste operazioni e la migrazione delle varianti UIRow, ma il
+simulatore non riproduce la propagazione degli override di Figma. Prima di usare una nuova
+migrazione sul file di lavoro, verificarla su una copia con contenuti personalizzati negli
+slot annidati (Page → Grid → Row → Col). Controllare testi, ordine, dimensioni e contenuti
+dopo due esecuzioni. Un test locale riuscito non certifica questa verifica nel runtime.
 
 ### Requisiti e API
 

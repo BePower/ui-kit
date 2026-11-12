@@ -116,6 +116,14 @@ async function renderComponents({
   async function slot(parent, role, w, h) {
     const body = frame(parent, role);
     fixed(body, w, h);
+    // Do not recreate placeholder text inside slots that are already in use.
+    if (body.type === 'SLOT')
+      return {
+        body,
+        label: body.children.find(
+          (node) => node.type === 'TEXT' && node.getPluginData('bepower-role') === 'Content',
+        ),
+      };
     const label = await text(
       body,
       'Content',
@@ -350,13 +358,23 @@ async function renderComponents({
         const id =
           top === 'none' && bottom === 'none' ? `row/${gap}` : `row/${gap}/${top}/${bottom}`;
         const node = master(id, `gap=${gap}, top=${top}, bottom=${bottom}`);
-        node.layoutMode = 'HORIZONTAL';
-        node.itemSpacing = n[`spacing-${gap}`];
+        // Keep the same axes and width contract across variants. The Columns slot
+        // owns the horizontal layout; row padding only contributes to its height.
+        node.layoutMode = 'VERTICAL';
+        node.primaryAxisSizingMode = 'AUTO';
+        node.counterAxisSizingMode = 'FIXED';
+        node.layoutAlign = 'STRETCH';
+        node.layoutGrow = 0;
+        node.minWidth = 0;
+        node.resize(width, node.height);
+        node.itemSpacing = 0;
         node.paddingTop = n[`spacing-${top}`];
         node.paddingBottom = n[`spacing-${bottom}`];
-        const columnWidth = (width - node.itemSpacing) / 2;
-        await slot(node, 'Column 1', columnWidth, n['size-800']);
-        await slot(node, 'Column 2', columnWidth, n['size-800']);
+        const columnWidth = (width - n[`spacing-${gap}`]) / 2;
+        if (!node.children.some((child) => child.getPluginData('bepower-role') === 'Columns')) {
+          await slot(node, 'Column 1', columnWidth, n['size-800']);
+          await slot(node, 'Column 2', columnWidth, n['size-800']);
+        }
         rows.push(node);
       }
     }
@@ -420,8 +438,9 @@ async function renderComponents({
       }
       const body = await slot(node, 'Body slot', width, n['size-800'] * 2);
       body.body.layoutGrow = 1;
-      body.body.layoutAlign = body.label.layoutAlign = 'STRETCH';
-      expose(node, body.label, 'Content', 'Contenuto del consumer');
+      body.body.layoutAlign = 'STRETCH';
+      if (body.label) body.label.layoutAlign = 'STRETCH';
+      if (body.label) expose(node, body.label, 'Content', 'Contenuto del consumer');
       footer(node, 'bottom-sheet', 'ion-footer ion-toolbar', hasFooter, 'color-background-white');
       sheets.push(node);
     }
@@ -508,8 +527,9 @@ async function renderComponents({
         }
         const body = await slot(node, 'Body slot', width, n['size-800'] * 4);
         body.body.layoutGrow = 1;
-        body.body.layoutAlign = body.label.layoutAlign = 'STRETCH';
-        expose(node, body.label, 'Content', 'Contenuto del consumer');
+        body.body.layoutAlign = 'STRETCH';
+        if (body.label) body.label.layoutAlign = 'STRETCH';
+        if (body.label) expose(node, body.label, 'Content', 'Contenuto del consumer');
         footer(node, 'page', ':host ion-footer ion-toolbar', hasFooter, backgrounds[background]);
         pages.push(node);
       }
@@ -699,6 +719,10 @@ async function renderComponents({
       );
       fixed(node, 327, cardHeight);
       node.layoutMode = 'HORIZONTAL';
+      node.layoutAlign = 'STRETCH';
+      node.minWidth = 0;
+      node.counterAxisSizingMode = 'AUTO';
+      node.minHeight = cardHeight;
       node.primaryAxisAlignItems = 'MIN';
       node.counterAxisAlignItems = 'CENTER';
       node.paddingLeft = node.paddingRight = n['size-160'];
@@ -756,8 +780,10 @@ async function renderComponents({
       bindFill(dot, 'color-primary-e-mobility-green');
 
       const copy = frame(node, 'Copy');
-      copy.primaryAxisSizingMode = 'FIXED';
+      copy.primaryAxisSizingMode = 'AUTO';
       copy.counterAxisSizingMode = 'FIXED';
+      copy.layoutGrow = 1;
+      copy.minWidth = 0;
       copy.resize(255, copyHeight);
       copy.itemSpacing = n['size-40'];
       for (const [role, enabled, value, style] of [

@@ -161,9 +161,36 @@ async function run() {
     const owner = master.parent?.type === 'COMPONENT_SET' ? master.parent : master;
     const definitions = owner.componentPropertyDefinitions;
     const reference = node.componentPropertyReferences?.[field];
+    // A slot's identity is its existing binding, not its display name. Rebinding it
+    // can discard instance content, including when a designer renamed the property.
+    if (type === 'SLOT' && reference) {
+      if (definitions[reference]?.type !== 'SLOT') {
+        throw new Error(
+          `Slot ${node.name}: invalid existing binding ${reference}. Update stopped.`,
+        );
+      }
+      return reference;
+    }
     const matches = (key) => key && key.startsWith(`${name}#`) && definitions[key]?.type === type;
     // Keep each existing reference, even if the set contains several legacy Label IDs.
     let property = matches(reference) ? reference : Object.keys(definitions).find(matches);
+    if (type === 'SLOT' && !property && owner.type === 'COMPONENT_SET') {
+      const role = node.getPluginData('bepower-role');
+      // New variants must share the stable slot binding of existing variants,
+      // including when its display name no longer matches the generated name.
+      if (role) {
+        for (const variant of owner.children) {
+          const sibling = variant.children?.find(
+            (child) => child.getPluginData('bepower-role') === role,
+          );
+          const candidate = sibling?.componentPropertyReferences?.slotContentId;
+          if (definitions[candidate]?.type === 'SLOT') {
+            property = candidate;
+            break;
+          }
+        }
+      }
+    }
     if (!property) property = owner.addComponentProperty(name, type, value);
     if (reference !== property) {
       node.componentPropertyReferences = {
