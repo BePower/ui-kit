@@ -1,63 +1,80 @@
 ---
 inclusion: fileMatch
-fileMatchPattern: '{figma-plugin/**,scripts/*figma*}'
+fileMatchPattern: '{figma-plugin/**,scripts/*figma*,.github/workflows/build-figma-plugin.yml}'
 name: figma-plugin
-description: Rules for the Figma DS-generation plugin and its build/inventory scripts
+description: Native Figma generator preservation, layout, runtime and deployment invariants
 ---
 
-# Figma plugin — native library generation (bepower-ui-kit)
+# Figma generator invariants
 
-I load these rules only when I touch the plugin or its build scripts. The general mandate lives
-in `ds-orchestrator.md`.
+## Sources and identity
 
-## Principle: the sources are the single source of truth
+- `scripts/figma-inventory.mjs` extracts Angular types, Sass and SVG registries; explicit
+  `components.js`/`composition.js` adapters implement native behavior. Reuse Angular contracts and
+  foundation values (`UIRow.top/bottom`, for example), not parallel APIs/token lists.
+- Edit sources, not `figma-plugin/dist/`. ES2017 output: `code.js`, `ui.html`, `manifest.json`,
+  `build-info.json`, `tokens.json`. Source `status.html` needs `/* TOKENS */`; published HTML must
+  match embedded `STATUS_HTML`.
+- Preserve plugin id `1701629443273972387`; default name `Plenitude On The Road Design System`
+  includes the version from `projects/ui-kit/package.json`. `FIGMA_PLUGIN_ID`/`FIGMA_PLUGIN_NAME`
+  overrides require an explicitly different target, never an identity-changing repair.
+- Build id is truncated SHA-256 of compiled plugin body, not commit/version/archive. Manifest-only
+  metadata changes may leave it unchanged. Font family comes from `foundations/base.scss`:
+  missing configuration fails build; unavailable Regular/SemiBold fonts fail before document updates.
 
-`scripts/build-figma-plugin.mjs` + `scripts/figma-inventory.mjs` **derive** everything from the
-library sources, not from parallel lists:
+## Preserve existing libraries
 
-- **Color/numeric tokens**: evaluated by Sass via `meta.module-variables` on `foundations/colors`,
-  `foundations/sizes`, `foundations/spacing`. `rem` values are converted to px (`* 16`).
-- **Typography**: every `@mixin` of `foundations/typography.scss` is compiled to extract size,
-  line-height, weight, underline, uppercase.
-- **Button mapping**: read from `ui-button.scss`; `required()` **throws** if the pattern no longer
-  matches. If I touch the button SCSS and change those property names, I update the pattern.
-- **Component inputs**: extracted via the TypeScript type checker from the barrel
-  `components/index.ts` (only `input()` / `input.required`, with literal unions as `values`).
-- **Icons/pictograms**: from `icon-map.ts` + SVGs in `icons/` and from the `values` of
-  `pictogram.name` + SVGs in `pictograms/`. Guards: if the registry and the sources diverge the
-  build **fails** asking for `npm run icons:import` / `npm run pictograms:import`.
+Masters are already in use. Preserve master/set/slot/property identities:
 
-**Operational consequence**: I do not add data by hand into the bundle. To expose a new
-token/variant in Figma, I add it to the **source** (foundations, component input, registry) and
-regenerate.
+- Update variants **inside existing sets**. Extracting all children can invalidate the empty set
+  and cause `insertChild: node ... does not exist` (observed Radio Card failure). Insert only missing
+  variants. Move whole sets between pages; for new sets, `combineAsVariants` inserts fresh children
+  itself, once, on the destination page.
+- Preserve case-sensitive axes/source IDs and separate Radio Card hierarchy sets on `_RadioCard`.
+- Existing `slotContentId` bindings remain authoritative after property renames. New variants reuse
+  bindings by stable role; invalid existing bindings stop with diagnostics, never silent replacement.
+- Do not rewrite unchanged slots, reseed defaults, restore intentionally removed placeholders,
+  swap projected components or resize authored content. Update container layout. Slot removal or
+  reparenting requires an identity-preserving, idempotent migration and regression coverage.
+- `catalog.js` rebuilds tagged docs; personal pages outside them can still lose overrides through
+  master updates. Mock success does not prove preservation. Never detach/rebuild consumer instances
+  to fix appearance or assume a pilot library is disposable.
 
-## Build and artifacts
+## Layout regressions
 
-- Build from the workspace root: `node scripts/build-figma-plugin.mjs`. It writes
-  `figma-plugin/dist/` (`code.js`, `manifest.json`, `build-info.json`, `tokens.json`).
-- `figma-plugin/dist/` is **gitignored**: changing only the sources does not regenerate the bundle.
-- Transpile target **ES2017** (Figma sandbox): no optional chaining/object spread in the
-  distributed bundle. `status.html` is versioned and contains the marker `/* TOKENS */`.
-- Manifest: `id` from `FIGMA_PLUGIN_ID` (default placeholder `bepower-ui-kit-repository-pilot`),
-  `networkAccess.allowedDomains: ['none']`. For internal org publishing Figma assigns its own id;
-  the pilot masters are not in production use, so moving to the assigned id needs no in-place
-  migration. Once Figma assigns the real id, set it as the default. On an already-populated
-  **production** library the id still binds the node data — I would not change it there without
-  design-lead sign-off. See `figma-plugin/PUBLISHING.md`.
+- Unset `minWidth` with `null`; Figma rejects `0`. Enforce this in the test double.
+- Rows: vertical, fixed/fill width, hug height across `gap/top/bottom`. `Columns` owns horizontal
+  layout/wrapping. Vertical padding must not widen rows beyond Grid. Radio Card copy fills remaining
+  width and hugs wrapped text; exercise narrow grids, one column, long copy and bottom-padding switches.
+- Text-button masters hug labels; expanded footers fill width. Center labels, reset legacy
+  stretch/grow and prevent hidden custom slots from offsetting text. Test “Scopri di più”.
 
-## Non-negotiable rules
+## Evidence and incidents
 
-- I do not remove pages/masters/variables to "update": it would break the instance links.
-  The generator updates in place (expected: "651 updated, 0 created" with the catalog unchanged).
-- I do not edit `figma-plugin/dist` by hand: it is generated output. I edit the sources
-  (`components.js`, `composition.js`, `catalog.js`, `plugin.js`, `status.html`) and regenerate.
-- Declared font: family from `foundations/base.scss` (`--ion-font-family`); the plugin does not
-  use substitute fonts. If it is missing, the build throws.
-- `figma-plugin/plugin.test.mjs` covers the generator: I run it after changes to the plugin.
-- Library publishing in Figma: manual, designer-side. I indicate the procedure, I do not run it.
+- Mock regressions must model actual API restrictions, empty-set invalidation, stable slot bindings
+  and repeat updates. An unchanged rerun creates no masters; avoid hardcoded totals/build hashes.
+- Assert IDs/keys/counts/booleans, not cyclic nodes against `null`: formatting failures can OOM.
+  Investigate SIGKILL instead of weakening assertions or merely increasing memory.
+- Native structural acceptance uses a **copy of an existing file**, personal page with
+  Page → Grid → two Rows → Col → Radio Card and custom text/slots. Switch bottom padding/variants,
+  update twice, inspect content/order/IDs/sizing/clipping/wrapping. Empty-file tests cannot validate
+  migration. Without native access, explicitly leave preservation/rendering validation outstanding.
+- Record build, phase, operation and node ID; distinguish proven defects from hypotheses. Failed
+  runs may leave partial changes: no blind retries or asset deletion. Inspect a copy or recover
+  from a previous file version; code fixes cannot restore already-lost user content.
 
-## Direction of the flow
+## Deployment
 
-Repo -> Figma (the plugin generates Figma natives from the sources). The plugin does **not** read
-the Code Layer and does **not** modify the Angular components. The Figma -> component direction is
-orchestration, not a plugin task.
+The current `.github/workflows/build-figma-plugin.yml` overrides historical manual-only pilot
+claims in `figma-plugin/PUBLISHING.md`:
+
+- PRs build/test/upload; eligible internal PRs auto-publish. Forks/Dependabot skip comments/deploy;
+  manual deploy is opt-in on `main`.
+- Pinned `figcd@0.0.16` needs files for both `manifest.main` and `manifest.ui`, despite Figma allowing
+  embedded UI. Validate both; secret: `FIGMA_WEB_AUTHN_TOKEN`.
+- Within shared cross-branch publication concurrency, compare against the **latest successful**
+  deployment for that plugin, not any historical matching hash. First recordless run publishes;
+  record only success so failures remain retryable. Preserve skip summaries and `deployments: write`.
+  Records cannot track out-of-band publishing.
+- Plugin publication, execution in a file and design-library publication are separate operations.
+  Green deployment does not validate mockups; do not publish externally merely for local testing.

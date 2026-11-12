@@ -1,6 +1,8 @@
 /* global figma, DATA */
 // Visual adapters for exported Angular primitives. Runtime semantics stay in Angular/Ionic.
 async function renderComponents({
+  page,
+  getComponentSet,
   component,
   variants,
   bindFill,
@@ -93,10 +95,10 @@ async function renderComponents({
     }
     return parseFloat(value) * (value.endsWith('rem') ? 16 : 1);
   }
-  function register(id, title, nodes, note) {
+  function register(id, title, nodes, note, dataId = id) {
     const set = variants(nodes, `components/${id}`, title, 0);
-    set.description = `${DATA.components[id].source}\n${note}`;
-    library.push({ id, title, set, note });
+    set.description = `${DATA.components[dataId].source}\n${note}`;
+    library.push({ id, title, set, note, dataId });
     return set;
   }
   function icon(parent, role, name, fill, size) {
@@ -114,6 +116,14 @@ async function renderComponents({
   async function slot(parent, role, w, h) {
     const body = frame(parent, role);
     fixed(body, w, h);
+    // Do not recreate placeholder text inside slots that are already in use.
+    if (body.type === 'SLOT')
+      return {
+        body,
+        label: body.children.find(
+          (node) => node.type === 'TEXT' && node.getPluginData('bepower-role') === 'Content',
+        ),
+      };
     const label = await text(
       body,
       'Content',
@@ -134,6 +144,9 @@ async function renderComponents({
     }
     // The CTA demonstrates `expand`; resize the instance, never its shared master.
     instance.primaryAxisSizingMode = 'FIXED';
+    instance.counterAxisSizingMode = 'FIXED';
+    instance.primaryAxisAlignItems = 'CENTER';
+    instance.counterAxisAlignItems = 'CENTER';
     instance.resize(width - parent.paddingLeft - parent.paddingRight, DATA.button.height);
     instance.layoutAlign = 'STRETCH';
     instance.layoutGrow = 0;
@@ -181,6 +194,7 @@ async function renderComponents({
           node.strokeWeight = 1;
         }
         if (size === 'inline') {
+          node.paddingLeft = node.paddingRight = node.paddingTop = node.paddingBottom = 0;
           const label = await text(node, 'Label', 'Scopri di più', 'button-text-link');
           expose(node, label, 'Label', 'Scopri di più');
         } else {
@@ -338,19 +352,38 @@ async function renderComponents({
   );
   const rows = [];
   for (const gap of values('row', 'gap')) {
-    const node = master(`row/${gap}`, `gap=${gap}`);
-    node.layoutMode = 'HORIZONTAL';
-    node.itemSpacing = n[`spacing-${gap}`];
-    const columnWidth = (width - node.itemSpacing) / 2;
-    await slot(node, 'Column 1', columnWidth, n['size-800']);
-    await slot(node, 'Column 2', columnWidth, n['size-800']);
-    rows.push(node);
+    for (const top of values('row', 'top')) {
+      for (const bottom of values('row', 'bottom')) {
+        // Preserve existing masters and their instances for the original gap-only variants.
+        const id =
+          top === 'none' && bottom === 'none' ? `row/${gap}` : `row/${gap}/${top}/${bottom}`;
+        const node = master(id, `gap=${gap}, top=${top}, bottom=${bottom}`);
+        // Keep the same axes and width contract across variants. The Columns slot
+        // owns the horizontal layout; row padding only contributes to its height.
+        node.layoutMode = 'VERTICAL';
+        node.primaryAxisSizingMode = 'AUTO';
+        node.counterAxisSizingMode = 'FIXED';
+        node.layoutAlign = 'STRETCH';
+        node.layoutGrow = 0;
+        node.minWidth = null;
+        node.resize(width, node.height);
+        node.itemSpacing = 0;
+        node.paddingTop = n[`spacing-${top}`];
+        node.paddingBottom = n[`spacing-${bottom}`];
+        const columnWidth = (width - n[`spacing-${gap}`]) / 2;
+        if (!node.children.some((child) => child.getPluginData('bepower-role') === 'Columns')) {
+          await slot(node, 'Column 1', columnWidth, n['size-800']);
+          await slot(node, 'Column 2', columnWidth, n['size-800']);
+        }
+        rows.push(node);
+      }
+    }
   }
   register(
     'row',
     'UIRow',
     rows,
-    'Tutti i gap, top/bottom=none. Figma usa auto layout come approssimazione visiva; Angular applica mezzi gutter e margini negativi, non CSS gap. Top/bottom modificabili come padding, non varianti cartesiane.',
+    'Tutte le combinazioni gap/top/bottom dagli input Angular. Top e bottom applicano i token spacing come padding verticale. Figma usa auto layout come approssimazione visiva; Angular applica mezzi gutter e margini negativi, non CSS gap.',
   );
   const cols = [];
   for (const size of ['equal', 'auto', ...Array.from({ length: 12 }, (_, i) => String(i + 1))]) {
@@ -405,8 +438,9 @@ async function renderComponents({
       }
       const body = await slot(node, 'Body slot', width, n['size-800'] * 2);
       body.body.layoutGrow = 1;
-      body.body.layoutAlign = body.label.layoutAlign = 'STRETCH';
-      expose(node, body.label, 'Content', 'Contenuto del consumer');
+      body.body.layoutAlign = 'STRETCH';
+      if (body.label) body.label.layoutAlign = 'STRETCH';
+      if (body.label) expose(node, body.label, 'Content', 'Contenuto del consumer');
       footer(node, 'bottom-sheet', 'ion-footer ion-toolbar', hasFooter, 'color-background-white');
       sheets.push(node);
     }
@@ -493,8 +527,9 @@ async function renderComponents({
         }
         const body = await slot(node, 'Body slot', width, n['size-800'] * 4);
         body.body.layoutGrow = 1;
-        body.body.layoutAlign = body.label.layoutAlign = 'STRETCH';
-        expose(node, body.label, 'Content', 'Contenuto del consumer');
+        body.body.layoutAlign = 'STRETCH';
+        if (body.label) body.label.layoutAlign = 'STRETCH';
+        if (body.label) expose(node, body.label, 'Content', 'Contenuto del consumer');
         footer(node, 'page', ':host ion-footer ion-toolbar', hasFooter, backgrounds[background]);
         pages.push(node);
       }
@@ -506,6 +541,334 @@ async function renderComponents({
     pages,
     'Tutti i background × header none/white/green/tab/step × hasFooter. Viewport campione 360×640. header=none corrisponde a hasHeader=false; gli altri a hasHeader=true + headerType. Content e CTA sono slot consumer dimostrativi. Non simula condensedHeader, translucent, safe area, navigazione, azioni header o elevazione da scroll. Titolo accessibile richiesto nel codice.',
   );
+
+  const radioButtonStates = [
+    { id: 'simple-default', name: 'Simple / Default', presentation: 'simple' },
+    { id: 'simple-selected', name: 'Simple / Selected', presentation: 'simple' },
+    { id: 'simple-error', name: 'Simple / Error', presentation: 'simple' },
+    { id: 'simple-disabled', name: 'Simple / Disabled', presentation: 'simple' },
+    { id: 'simple-focus', name: 'Simple / Focus', presentation: 'simple' },
+    { id: 'description-default', name: 'With description / Default', presentation: 'description' },
+    {
+      id: 'description-selected',
+      name: 'With description / Selected',
+      presentation: 'description',
+    },
+    { id: 'description-error', name: 'With description / Error', presentation: 'description' },
+    {
+      id: 'description-disabled',
+      name: 'With description / Disabled',
+      presentation: 'description',
+    },
+    { id: 'description-focus', name: 'With description / Focus', presentation: 'description' },
+  ];
+  const radioButtons = [];
+  for (const state of radioButtonStates) {
+    const hasDescription = state.presentation === 'description';
+    const isError = state.id.endsWith('-error');
+    const isDisabled = state.id.endsWith('-disabled');
+    const isSelected = state.id.endsWith('-selected');
+    const isFocus = state.id.endsWith('-focus');
+    const node = master(`radio-button/${state.id}`, `Property 1=${state.name}`);
+    const radioWidth = hasDescription ? 232 : 210;
+    const radioHeight = hasDescription ? 60 : 24;
+    fixed(node, radioWidth, radioHeight);
+    node.layoutMode = 'HORIZONTAL';
+    node.primaryAxisAlignItems = 'MIN';
+    node.counterAxisAlignItems = hasDescription ? 'MIN' : 'CENTER';
+    node.itemSpacing = n['size-80'];
+    node.fills = [];
+    node.strokes = [];
+
+    const radioArea = frame(node, 'Radio', 'HORIZONTAL');
+    fixed(radioArea, n['size-240'], n['size-240']);
+    radioArea.primaryAxisAlignItems = 'CENTER';
+    radioArea.counterAxisAlignItems = 'CENTER';
+
+    const circle = frame(radioArea, 'Radio circle');
+    fixed(circle, n['size-180'], n['size-180']);
+    circle.layoutMode = 'NONE';
+    circle.cornerRadius = n['size-180'] / 2;
+    circle.strokeAlign = 'INSIDE';
+    circle.strokeWeight = n['size-15'];
+    circle.fills = [];
+    bindFill(
+      circle,
+      isError
+        ? 'color-error-lavender-blush'
+        : isDisabled
+          ? 'color-background-grey'
+          : 'color-background-white',
+    );
+    bindStroke(
+      circle,
+      isSelected
+        ? 'color-primary-e-mobility-green'
+        : isError
+          ? 'color-error-allert-red'
+          : isDisabled
+            ? 'color-grey-default-grey-72'
+            : 'color-grey-default-grey',
+    );
+
+    const dot = frame(circle, 'Selected dot');
+    fixed(dot, n['size-120'], n['size-120']);
+    dot.layoutMode = 'NONE';
+    dot.x = dot.y = (n['size-180'] - n['size-120']) / 2;
+    dot.cornerRadius = n['size-120'] / 2;
+    dot.visible = isSelected;
+    bindFill(dot, 'color-primary-e-mobility-green');
+
+    const copy = frame(node, 'Copy');
+    const copyWidth = hasDescription ? 200 : 178;
+    copy.primaryAxisSizingMode = 'FIXED';
+    copy.counterAxisSizingMode = 'FIXED';
+    copy.resize(copyWidth, radioHeight);
+    copy.itemSpacing = 0;
+    const label = await text(
+      copy,
+      hasDescription ? 'Title' : 'Label',
+      hasDescription ? 'Titolo dell’opzione' : 'Etichetta dell’opzione',
+      hasDescription ? 'label-l' : 'p-m',
+      copyWidth,
+    );
+    label.layoutAlign = 'STRETCH';
+    bindFill(
+      label,
+      isError
+        ? 'color-error-ruby-red'
+        : isDisabled
+          ? 'color-grey-default-grey-72'
+          : 'color-grey-default-grey',
+    );
+    let description;
+    if (hasDescription) {
+      description = await text(
+        copy,
+        'Description',
+        'Una breve descrizione dell’opzione',
+        'p-s',
+        copyWidth,
+      );
+      description.layoutAlign = 'STRETCH';
+      bindFill(description, 'color-grey-default-grey-72');
+    }
+
+    const focusRing = frame(node, 'Focus ring');
+    fixed(focusRing, radioWidth + 8, radioHeight + 8);
+    focusRing.layoutMode = 'NONE';
+    focusRing.layoutPositioning = 'ABSOLUTE';
+    focusRing.x = focusRing.y = -n['size-40'];
+    focusRing.cornerRadius = n['size-40'];
+    focusRing.strokeAlign = 'INSIDE';
+    focusRing.strokeWeight = n['size-20'];
+    focusRing.fills = [];
+    focusRing.visible = isFocus;
+    bindStroke(focusRing, 'color-grey-default-grey');
+    radioButtons.push(node);
+  }
+  const radioButtonSet = register(
+    'radio-button',
+    'UIRadioButton',
+    radioButtons,
+    'Varianti Simple e With description, ciascuna con stati Default/Selected/Error/Disabled/Focus. Il radio button non è una radio card: nessuna superficie, bordo, padding o radius. Focus ring con radius 4px e offset 4px. In Angular ion-radio-group gestisce selezione singola, frecce, Space e roving tabindex.',
+  );
+  for (const node of radioButtons) {
+    const copy = child(node, 'Copy', 'FRAME');
+    const title = copy.children.find((item) => item.getPluginData('bepower-role') === 'Title');
+    const label = copy.children.find((item) => item.getPluginData('bepower-role') === 'Label');
+    const description = copy.children.find(
+      (item) => item.getPluginData('bepower-role') === 'Description',
+    );
+    expose(
+      radioButtonSet,
+      label || title,
+      label ? 'Label' : 'Title',
+      label ? 'Etichetta dell’opzione' : 'Titolo dell’opzione',
+    );
+    if (description)
+      expose(radioButtonSet, description, 'Description', 'Una breve descrizione dell’opzione');
+  }
+
+  const radioCardContents = [
+    { id: 'full', name: 'Title + Description', title: true, description: true },
+    { id: 'title-only', name: 'Title only', title: true, description: false },
+    { id: 'description-only', name: 'Description only', title: false, description: true },
+  ];
+  const radioCardStates = [
+    { id: 'default', name: 'Default' },
+    { id: 'selected', name: 'Selected' },
+    { id: 'error', name: 'Error' },
+    { id: 'disabled', name: 'Disabled' },
+    { id: 'focus', name: 'Focus' },
+  ];
+  const radioCards = [];
+  const radioCardTitleOnly = [];
+  const radioCardDescriptionOnly = [];
+  for (const content of radioCardContents) {
+    for (const state of radioCardStates) {
+      const fullContent = content.id === 'full';
+      const cardHeight = fullContent ? 98 : content.title ? 58 : 68;
+      const copyHeight = fullContent ? 66 : content.title ? 26 : 36;
+      const sourceId = fullContent
+        ? `radio-card/${state.id}`
+        : `radio-card/${content.id}/${state.id}`;
+      const node = master(
+        sourceId,
+        fullContent ? `State=${state.name}` : `Content=${content.name}, State=${state.name}`,
+      );
+      fixed(node, 327, cardHeight);
+      node.layoutMode = 'HORIZONTAL';
+      node.layoutAlign = 'STRETCH';
+      node.minWidth = null;
+      node.counterAxisSizingMode = 'AUTO';
+      node.minHeight = cardHeight;
+      node.primaryAxisAlignItems = 'MIN';
+      node.counterAxisAlignItems = 'CENTER';
+      node.paddingLeft = node.paddingRight = n['size-160'];
+      node.paddingTop = node.paddingBottom = n['size-160'];
+      node.itemSpacing = n['size-160'];
+      node.cornerRadius = n['size-160'];
+      node.strokeAlign = 'INSIDE';
+      node.strokeWeight = ['selected', 'error'].includes(state.id) ? n['size-20'] : n['size-10'];
+      bindFill(node, state.id === 'disabled' ? 'color-background-grey' : 'color-background-white');
+      bindStroke(
+        node,
+        state.id === 'selected'
+          ? 'color-primary-e-mobility-green'
+          : state.id === 'error'
+            ? 'color-error-allert-red'
+            : 'color-grey-default-grey',
+      );
+
+      const radioArea = frame(node, 'Radio', 'HORIZONTAL');
+      fixed(radioArea, n['size-240'], n['size-240']);
+      radioArea.primaryAxisAlignItems = 'CENTER';
+      radioArea.counterAxisAlignItems = 'CENTER';
+
+      const circle = frame(radioArea, 'Radio circle');
+      fixed(circle, n['size-180'], n['size-180']);
+      circle.layoutMode = 'NONE';
+      circle.cornerRadius = n['size-180'] / 2;
+      circle.strokeAlign = 'INSIDE';
+      circle.strokeWeight = n['size-15'];
+      bindFill(
+        circle,
+        state.id === 'error'
+          ? 'color-error-lavender-blush'
+          : state.id === 'disabled'
+            ? 'color-background-grey'
+            : 'color-background-white',
+      );
+      bindStroke(
+        circle,
+        state.id === 'selected'
+          ? 'color-primary-e-mobility-green'
+          : state.id === 'error'
+            ? 'color-error-allert-red'
+            : state.id === 'disabled'
+              ? 'color-grey-default-grey-72'
+              : 'color-grey-default-grey',
+      );
+
+      const dot = frame(circle, 'Selected dot');
+      fixed(dot, n['size-120'], n['size-120']);
+      dot.layoutMode = 'NONE';
+      dot.x = dot.y = (n['size-180'] - n['size-120']) / 2;
+      dot.cornerRadius = n['size-120'] / 2;
+      dot.visible = state.id === 'selected';
+      bindFill(dot, 'color-primary-e-mobility-green');
+
+      const copy = frame(node, 'Copy');
+      copy.primaryAxisSizingMode = 'AUTO';
+      copy.counterAxisSizingMode = 'FIXED';
+      copy.layoutGrow = 1;
+      copy.minWidth = null;
+      copy.resize(255, copyHeight);
+      copy.itemSpacing = n['size-40'];
+      for (const [role, enabled, value, style] of [
+        ['Title', content.title, "Titolo dell'opzione", 'title-s'],
+        [
+          'Description',
+          content.description,
+          'Una breve descrizione che spiega cosa comporta questa scelta',
+          'p-s',
+        ],
+      ]) {
+        if (!enabled) {
+          // Remove hidden text left by older bundles of the single-content cards.
+          copy.children.find((item) => item.getPluginData('bepower-role') === role)?.remove();
+          continue;
+        }
+        const label = await text(copy, role, value, style, 255);
+        label.visible = true;
+        label.layoutAlign = 'STRETCH';
+        bindFill(
+          label,
+          state.id === 'error'
+            ? 'color-error-ruby-red'
+            : role === 'Description' || state.id === 'disabled'
+              ? 'color-grey-default-grey-72'
+              : 'color-grey-default-grey',
+        );
+      }
+
+      const focusRing = frame(node, 'Focus ring');
+      fixed(focusRing, 335, cardHeight + 8);
+      focusRing.layoutMode = 'NONE';
+      focusRing.layoutPositioning = 'ABSOLUTE';
+      focusRing.x = focusRing.y = -n['size-40'];
+      focusRing.cornerRadius = n['size-200'];
+      focusRing.strokeAlign = 'INSIDE';
+      focusRing.strokeWeight = n['size-20'];
+      focusRing.fills = [];
+      focusRing.visible = state.id === 'focus';
+      bindStroke(focusRing, 'color-grey-default-grey');
+
+      if (fullContent) radioCards.push(node);
+      else if (content.title) radioCardTitleOnly.push(node);
+      else radioCardDescriptionOnly.push(node);
+    }
+  }
+  // Update existing variants in place. Extracting all children would empty and
+  // invalidate their component sets, losing the owner of their property bindings.
+  // The catalog moves each complete set to its destination page afterwards.
+  const radioCardNote =
+    'Varianti Title + Description, Title only e Description only con stati Default/Selected/Error/Disabled/Focus. In Angular focus, selezione ed errore sono dimensioni indipendenti; ion-radio-group gestisce selezione singola, frecce, Space e roving tabindex.';
+  const radioCardSet = register('radio-card', 'UIRadioCard', radioCards, radioCardNote);
+  const radioCardTitleOnlySet = register(
+    'radio-card/title-only',
+    'UIRadioCard / Title only',
+    radioCardTitleOnly,
+    'Varianti Title only della Radio Card. Il titolo è il nome accessibile; la superficie e gli stati restano quelli della Radio Card.',
+    'radio-card',
+  );
+  const radioCardDescriptionOnlySet = register(
+    'radio-card/description-only',
+    'UIRadioCard / Description only',
+    radioCardDescriptionOnly,
+    'Varianti Description only della Radio Card. La descrizione diventa il nome accessibile; la superficie e gli stati restano quelli della Radio Card.',
+    'radio-card',
+  );
+  function exposeRadioCardText(set, nodes) {
+    for (const node of nodes) {
+      const copy = child(node, 'Copy', 'FRAME');
+      const title = copy.children.find((item) => item.name === 'Title');
+      const description = copy.children.find((item) => item.name === 'Description');
+      if (title) expose(set, title, 'Title', "Titolo dell'opzione");
+      if (description)
+        expose(
+          set,
+          description,
+          'Description',
+          'Una breve descrizione che spiega cosa comporta questa scelta',
+        );
+    }
+  }
+  exposeRadioCardText(radioCardSet, radioCards);
+  exposeRadioCardText(radioCardTitleOnlySet, radioCardTitleOnly);
+  exposeRadioCardText(radioCardDescriptionOnlySet, radioCardDescriptionOnly);
+
   const inputStates = [
     { id: 'default', name: 'Default', value: 'Placeholder text' },
     { id: 'typing', name: 'Typing', value: '|' },

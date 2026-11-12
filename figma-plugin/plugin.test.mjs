@@ -18,7 +18,7 @@ const { buildId } = JSON.parse(
 function environment({ nativeSlots = true } = {}) {
   let pluginRunning = false;
   let sequence = 0;
-  const stats = { findOneCalls: 0, yields: 0 };
+  const stats = { findOneCalls: 0, yields: 0, slotDefinitionEdits: 0 };
   const makeId = () => `test:${++sequence}`;
   class Node {
     constructor(type) {
@@ -35,6 +35,16 @@ function environment({ nativeSlots = true } = {}) {
       this._componentPropertyReferences = null;
       if (!nativeSlots && type === 'COMPONENT') this.createSlot = undefined;
       this.fills = type === 'VECTOR' ? [{ type: 'SOLID', color: { r: 1, g: 0, b: 0 } }] : [];
+    }
+    get minWidth() {
+      return this._minWidth ?? null;
+    }
+    set minWidth(value) {
+      assert.ok(
+        value === null || (typeof value === 'number' && Number.isFinite(value) && value > 0),
+        'minWidth must be positive or null to unset',
+      );
+      this._minWidth = value;
     }
     get children() {
       return [...this._children];
@@ -89,18 +99,34 @@ function environment({ nativeSlots = true } = {}) {
       }
     }
     appendChild(child) {
+      assert.ok(!this.removed && !child.removed, 'cannot append a removed node');
       assert.ok(!(this.type === 'INSTANCE' && this.locked), 'cannot insert outside a native slot');
-      child.remove();
+      child.detachForMove(this);
       this._children.push(child);
       child.parent = this;
       this.promoteProperties(child);
     }
     insertChild(index, child) {
+      assert.ok(!this.removed && !child.removed, 'cannot insert into a removed node');
       assert.ok(!(this.type === 'INSTANCE' && this.locked), 'cannot insert outside a native slot');
-      child.remove();
+      child.detachForMove(this);
       this._children.splice(index, 0, child);
       child.parent = this;
       this.promoteProperties(child);
+    }
+    detachForMove(destination) {
+      const previous = this.parent;
+      this.remove();
+      // Figma does not support an empty component set. Moving its last variant
+      // out invalidates the old set; reordering within the same set does not.
+      if (
+        previous?.type === 'COMPONENT_SET' &&
+        previous !== destination &&
+        !previous.children.length
+      ) {
+        previous.removed = true;
+        previous.remove();
+      }
     }
     remove() {
       if (this.parent) {
@@ -151,7 +177,10 @@ function environment({ nativeSlots = true } = {}) {
     editComponentProperty(key, patch) {
       const definition = this.componentPropertyDefinitions[key];
       assert.ok(definition);
-      if (definition.type === 'SLOT') assert.ok(!('defaultValue' in patch));
+      if (definition.type === 'SLOT') {
+        stats.slotDefinitionEdits++;
+        assert.ok(!('defaultValue' in patch));
+      }
       Object.assign(definition, patch);
       return key;
     }
@@ -384,7 +413,7 @@ test('generated data retains repository mappings', () => {
     [...data.components.pictogram.inputs.name.values].sort(),
   );
   assert.ok(Object.values(data.pictograms).every((svg) => /<svg/.test(svg)));
-  assert.equal(Object.keys(data.components).length, 13);
+  assert.equal(Object.keys(data.components).length, 15);
   assert.deepEqual(data.components.pictogram.inputs.size.values, ['s', 'm', 'l']);
   assert.equal(data.components.pictogram.inputs.size.default, "'m'");
   assert.equal(data.components.row.inputs.gap.default, "'none'");
@@ -438,7 +467,7 @@ test('catalog generation preserves master IDs, properties and external content o
   }
   for (const id of Object.keys(data.components).filter((id) => !['button', 'icon'].includes(id))) {
     assert.ok(tagged(`components/${id}`), `exports native master set for ${id}`);
-    assert.ok(tagged(`catalog/${id}`), `documents ${id}`);
+    if (id !== 'radio-card') assert.ok(tagged(`catalog/${id}`), `documents ${id}`);
   }
   assert.equal(tagged('buttons').children.length, 20);
   assert.equal(tagged('components/page').children.length, 50);
@@ -446,10 +475,155 @@ test('catalog generation preserves master IDs, properties and external content o
   assert.equal(tagged('components/text').children.length, 7);
   assert.equal(tagged('components/title').children.length, 4);
   assert.equal(tagged('components/grid').children.length, 12);
-  assert.equal(tagged('components/row').children.length, 10);
+  const rowInputs = data.components.row.inputs;
+  const rowCount =
+    rowInputs.gap.values.length * rowInputs.top.values.length * rowInputs.bottom.values.length;
+  assert.equal(tagged('components/row').children.length, rowCount);
+  for (const gap of rowInputs.gap.values) {
+    for (const top of rowInputs.top.values) {
+      for (const bottom of rowInputs.bottom.values) {
+        const id =
+          top === 'none' && bottom === 'none' ? `row/${gap}` : `row/${gap}/${top}/${bottom}`;
+        const row = tagged(id);
+        assert.ok(row, id);
+        assert.equal(row.name, `gap=${gap}, top=${top}, bottom=${bottom}`);
+        assert.equal(row.paddingTop, data.numbers[`spacing-${top}`]);
+        assert.equal(row.paddingBottom, data.numbers[`spacing-${bottom}`]);
+        assert.equal(row.layoutMode, 'VERTICAL');
+        assert.equal(row.primaryAxisSizingMode, 'AUTO', 'row height hugs content plus padding');
+        assert.equal(row.counterAxisSizingMode, 'FIXED');
+        assert.equal(row.layoutAlign, 'STRETCH', 'every variant fills the grid width');
+        assert.equal(row.layoutGrow, 0);
+        assert.equal(row.width, data.numbers['size-360'] * 10);
+        assert.equal(row.minWidth, null);
+        const columns = row.children.find((node) => node.name === 'Columns');
+        assert.equal(columns.type, 'SLOT');
+        assert.equal(columns.itemSpacing, data.numbers[`spacing-${gap}`]);
+        assert.equal(columns.layoutAlign, 'STRETCH');
+        assert.equal(columns.width, row.width);
+        assert.equal(columns.primaryAxisSizingMode, 'FIXED');
+        assert.equal(columns.counterAxisSizingMode, 'AUTO');
+        assert.equal(columns.layoutGrow, 0);
+      }
+    }
+  }
   assert.equal(tagged('components/col').children.length, 14);
   assert.equal(tagged('components/p').children.length, 3);
   assert.equal(tagged('components/progress-bar').children.length, 5);
+  const radioCardSet = tagged('components/radio-card');
+  assert.equal(radioCardSet.children.length, 5);
+  assert.deepEqual(
+    radioCardSet.children.map((node) => node.getPluginData('bepower-source')),
+    [
+      'radio-card/default',
+      'radio-card/selected',
+      'radio-card/error',
+      'radio-card/disabled',
+      'radio-card/focus',
+    ],
+  );
+  assert.equal(tagged('components/radio-card/title-only').children.length, 5);
+  assert.equal(tagged('components/radio-card/description-only').children.length, 5);
+  const radioDefault = tagged('radio-card/default');
+  const radioSelected = tagged('radio-card/selected');
+  const radioFocus = tagged('radio-card/focus');
+  assert.equal(radioDefault.width, 327);
+  assert.equal(radioDefault.height, 98);
+  assert.equal(radioDefault.layoutAlign, 'STRETCH');
+  assert.equal(radioDefault.counterAxisSizingMode, 'AUTO');
+  const radioCopy = radioDefault.children.find((node) => node.name === 'Copy');
+  assert.equal(radioCopy.layoutGrow, 1, 'copy shrinks to the available column width');
+  assert.equal(radioCopy.minWidth, null);
+  assert.equal(radioCopy.primaryAxisSizingMode, 'AUTO', 'wrapped text grows the card height');
+  assert.equal(radioDefault.cornerRadius, 16);
+  assert.equal(radioDefault.paddingLeft, 16);
+  assert.equal(radioDefault.itemSpacing, 16);
+  assert.equal(radioDefault.strokeWeight, 1);
+  assert.equal(radioSelected.strokeWeight, 2);
+  const radioCircle = radioDefault.findOne(
+    (node) => node.getPluginData('bepower-role') === 'Radio circle',
+  );
+  assert.equal(radioCircle.width, 18);
+  assert.equal(radioCircle.height, 18);
+  assert.equal(radioCircle.strokeWeight, 1.5);
+  const selectedDot = radioSelected.findOne(
+    (node) => node.getPluginData('bepower-role') === 'Selected dot',
+  );
+  assert.equal(selectedDot.visible, true);
+  assert.equal(selectedDot.width, 12);
+  const focusRing = radioFocus.findOne(
+    (node) => node.getPluginData('bepower-role') === 'Focus ring',
+  );
+  assert.equal(focusRing.visible, true);
+  assert.equal(focusRing.width, 335);
+  assert.equal(focusRing.height, 106);
+  assert.equal(focusRing.x, -4);
+  const radioTitleOnly = tagged('radio-card/title-only/default');
+  const radioDescriptionOnly = tagged('radio-card/description-only/default');
+  assert.equal(radioTitleOnly.height, 58);
+  assert.equal(radioDescriptionOnly.height, 68);
+  assert.ok(radioTitleOnly.findOne((node) => node.name === 'Title'));
+  assert.ok(
+    radioTitleOnly.findOne((node) => node.name === 'Description') === null,
+    'title-only card has no description',
+  );
+  assert.ok(
+    radioDescriptionOnly.findOne((node) => node.name === 'Title') === null,
+    'description-only card has no title',
+  );
+  assert.ok(radioDescriptionOnly.findOne((node) => node.name === 'Description'));
+  const radioButtonSet = tagged('components/radio-button');
+  assert.equal(radioButtonSet.children.length, 10);
+  const radioButtonSimple = tagged('radio-button/simple-default');
+  const radioButtonDescription = tagged('radio-button/description-default');
+  const radioButtonSelected = tagged('radio-button/simple-selected');
+  const radioButtonFocus = tagged('radio-button/description-focus');
+  assert.equal(radioButtonSimple.width, 210);
+  assert.equal(radioButtonSimple.height, 24);
+  assert.equal(radioButtonDescription.width, 232);
+  assert.equal(radioButtonDescription.height, 60);
+  assert.equal(radioButtonSimple.itemSpacing, 8);
+  assert.equal(
+    radioButtonSelected.findOne((node) => node.getPluginData('bepower-role') === 'Selected dot')
+      .visible,
+    true,
+  );
+  const radioButtonRing = radioButtonFocus.findOne(
+    (node) => node.getPluginData('bepower-role') === 'Focus ring',
+  );
+  assert.equal(radioButtonRing.width, 240);
+  assert.equal(radioButtonRing.height, 68);
+  assert.equal(radioButtonRing.x, -4);
+  assert.equal(radioButtonRing.cornerRadius, 4);
+  const radioButtonSimpleCopy = radioButtonSimple.findOne(
+    (node) => node.getPluginData('bepower-role') === 'Copy',
+  );
+  const radioButtonDescriptionCopy = radioButtonDescription.findOne(
+    (node) => node.getPluginData('bepower-role') === 'Copy',
+  );
+  assert.equal(radioButtonSimpleCopy.width, 178);
+  assert.equal(radioButtonSimpleCopy.height, 24);
+  assert.equal(radioButtonSimpleCopy.findAll((node) => node.type === 'TEXT').length, 1);
+  assert.equal(radioButtonDescriptionCopy.width, 200);
+  assert.equal(radioButtonDescriptionCopy.height, 60);
+  assert.equal(radioButtonDescriptionCopy.findAll((node) => node.type === 'TEXT').length, 2);
+  assert.ok(radioButtonSimple.findOne((node) => node.type === 'TEXT' && node.name === 'Label'));
+  assert.ok(
+    radioButtonDescription.findOne((node) => node.type === 'TEXT' && node.name === 'Title'),
+  );
+  assert.ok(
+    radioButtonDescription.findOne((node) => node.type === 'TEXT' && node.name === 'Description'),
+  );
+  assert.ok(
+    Object.keys(radioButtonSet.componentPropertyDefinitions).some((name) =>
+      name.startsWith('Label#'),
+    ),
+  );
+  assert.ok(
+    Object.keys(radioButtonSet.componentPropertyDefinitions).some((name) =>
+      name.startsWith('Description#'),
+    ),
+  );
   const pictogramSet = tagged('components/pictogram');
   assert.equal(pictogramSet.children.length, 66);
   assert.match(pictogramSet.description, /Contextual per il contesto/);
@@ -545,10 +719,17 @@ test('catalog generation preserves master IDs, properties and external content o
   ]) {
     assert.equal(tagged(setId).children[0].getPluginData('bepower-source'), defaultId);
   }
-  assert.equal(masters.length, iconCount + 201);
+  assert.equal(masters.length, iconCount + 206 + rowCount + radioButtonSet.children.length);
   const masterIds = masters.map((node) => node.id);
+  const radioSets = ['radio-card', 'radio-card/title-only', 'radio-card/description-only'].map(
+    (id) => tagged(`components/${id}`),
+  );
+  const radioSetIds = radioSets.map((set) => set.id);
+  const radioPropertyKeys = radioSets.map((set) =>
+    Object.keys(set.componentPropertyDefinitions).sort(),
+  );
   const button = tagged('button/primary/default');
-  assert.equal(button.primaryAxisSizingMode, 'FIXED');
+  assert.equal(button.primaryAxisSizingMode, 'AUTO');
   assert.equal(button.minWidth, button.children.find((node) => node.name === 'Label').width + 176);
   assert.ok(button.width >= button.minWidth);
   const label = button.findOne((node) => node.type === 'TEXT');
@@ -580,6 +761,8 @@ test('catalog generation preserves master IDs, properties and external content o
     '_Page',
     '_Pictogram',
     '_ProgressBar',
+    '_RadioButton',
+    '_RadioCard',
     '_Row',
     '_Text',
     '_Title',
@@ -616,7 +799,37 @@ test('catalog generation preserves master IDs, properties and external content o
   tagged('pilot-page').appendChild(tagged('icons'));
   tagged('pilot-page').name = 'BePower · Repository pilot';
   tagged('foundations-page').name = 'BePower · Foundations';
+  // Older bundles created both text layers, hiding the excluded one.
+  const legacyText = [
+    [radioTitleOnly, 'Description'],
+    [radioDescriptionOnly, 'Title'],
+  ].map(([card, role]) => {
+    const label = env.figma.createText();
+    label.name = role;
+    label.setPluginData('bepower-role', role);
+    label.visible = false;
+    card.findOne((node) => node.name === 'Copy').appendChild(label);
+    return label;
+  });
   await env.run();
+  assert.ok(
+    legacyText.every((node) => node.parent === null),
+    'removes legacy hidden text',
+  );
+  assert.ok(!radioTitleOnly.findOne((node) => node.name === 'Description'));
+  assert.ok(!radioDescriptionOnly.findOne((node) => node.name === 'Title'));
+  assert.deepEqual(
+    ['radio-card', 'radio-card/title-only', 'radio-card/description-only'].map(
+      (id) => tagged(`components/${id}`).id,
+    ),
+    radioSetIds,
+    'radio card sets retain their IDs across updates from their catalog page',
+  );
+  assert.ok(radioSets.every((set) => !set.removed));
+  assert.deepEqual(
+    radioSets.map((set) => Object.keys(set.componentPropertyDefinitions).sort()),
+    radioPropertyKeys,
+  );
   assert.deepEqual(
     env.document
       .findAll((node) => node.type === 'COMPONENT')
@@ -639,6 +852,9 @@ test('catalog generation preserves master IDs, properties and external content o
   assert.equal(tagged('component-catalog').findAll((node) => node.type === 'INSTANCE').length, 20);
   assert.equal(tagged('icons').parent.name, '_Icons');
   assert.equal(tagged('buttons').parent.name, '_Button');
+  for (const id of ['radio-card', 'radio-card/title-only', 'radio-card/description-only']) {
+    assert.equal(tagged(`components/${id}`).parent.name, '_RadioCard');
+  }
   assert.deepEqual(
     env.document.children.slice(0, expectedPages.length).map((node) => node.name),
     expectedPages,
@@ -726,7 +942,8 @@ test('run reports distinguish creation from updates and identify the executed bu
   const env = environment();
   const first = await env.run();
   assert.ok(first.includes(buildId));
-  assert.match(first, /0 master aggiornati · 651 creati/);
+  const masterCount = env.document.findAll((node) => node.type === 'COMPONENT').length;
+  assert.ok(first.includes(`0 master aggiornati · ${masterCount} creati`));
   assert.match(first, /nuovo bundle/);
   const ids = env.document
     .findAll((node) => node.type === 'COMPONENT')
@@ -734,13 +951,13 @@ test('run reports distinguish creation from updates and identify the executed bu
     .sort();
   const second = await env.run();
   assert.ok(second.includes(buildId));
-  assert.match(second, /651 master aggiornati · 0 creati/);
+  assert.ok(second.includes(`${masterCount} master aggiornati · 0 creati`));
   assert.match(second, /stesso bundle/);
   assert.equal(env.document.getPluginData('bepower-last-build'), buildId);
   assert.deepEqual(JSON.parse(env.document.getPluginData('bepower-last-report')), {
     buildId,
     created: 0,
-    updated: 651,
+    updated: masterCount,
   });
   assert.deepEqual(
     env.document
@@ -786,6 +1003,8 @@ test('shell toolbars fill the viewport and preserve title/footer IDs when upgrad
       assert.equal(footer.paddingBottom, isPage ? 0 : 16);
       assert.equal(cta.width, shell.width - 48);
       assert.equal(cta.primaryAxisSizingMode, 'FIXED');
+      assert.equal(cta.primaryAxisAlignItems, 'CENTER');
+      assert.equal(cta.counterAxisAlignItems, 'CENTER');
       assert.equal(cta.layoutAlign, 'STRETCH');
       assert.ok(footer.fills[0].boundVariables.color.id);
       const body = role(shell, 'Body slot');
@@ -848,6 +1067,8 @@ test('shell toolbars fill the viewport and preserve title/footer IDs when upgrad
   footer.counterAxisSizingMode = 'AUTO';
   footer.resize(292, footer.height);
   cta.primaryAxisSizingMode = 'AUTO';
+  cta.primaryAxisAlignItems = 'MIN';
+  cta.counterAxisAlignItems = 'MIN';
   cta.resize(244, cta.height);
   await env.run();
   checkShells();
@@ -863,6 +1084,48 @@ test('shell toolbars fill the viewport and preserve title/footer IDs when upgrad
     tagged('button/primary/default').width,
     buttonWidth,
     'CTA resizing never changes the shared master',
+  );
+});
+
+test('button labels stay centered and recover legacy stretching without replacing nodes', async () => {
+  const env = environment();
+  await env.run();
+  const buttons = env.document.findAll(
+    (node) =>
+      node.type === 'COMPONENT' && node.getPluginData('bepower-source').startsWith('button/'),
+  );
+  const labels = buttons.flatMap((button) =>
+    button.children.filter((node) => node.type === 'TEXT' && node.name === 'Label'),
+  );
+  assert.equal(labels.length, 8, 'default and inline text buttons');
+  const original = labels.map((label) => [label.id, label.componentPropertyReferences.characters]);
+  function check() {
+    for (const label of labels) {
+      assert.equal(label.parent.primaryAxisSizingMode, 'AUTO', 'text buttons hug longer labels');
+      assert.equal(label.textAlignHorizontal, 'CENTER');
+      assert.equal(label.textAlignVertical, 'CENTER');
+      assert.equal(label.textAutoResize, 'WIDTH_AND_HEIGHT');
+      assert.equal(label.layoutGrow, 0);
+      assert.equal(label.layoutAlign, 'INHERIT');
+      const content = label.parent.children.find((node) => node.name === 'Content');
+      assert.equal(content.visible, false, 'empty custom content does not offset the label');
+      assert.equal(content.layoutGrow, 0);
+      assert.equal(content.primaryAxisAlignItems, 'CENTER');
+    }
+  }
+  check();
+  for (const label of labels) {
+    label.textAlignHorizontal = 'LEFT';
+    label.textAlignVertical = 'TOP';
+    label.textAutoResize = 'HEIGHT';
+    label.layoutGrow = 1;
+    label.layoutAlign = 'STRETCH';
+  }
+  await env.run();
+  check();
+  assert.deepEqual(
+    labels.map((label) => [label.id, label.componentPropertyReferences.characters]),
+    original,
   );
 });
 
@@ -884,6 +1147,13 @@ test('compatible bundle and persistent panel safely render diagnostic messages',
     .filter(ts.isVariableStatement)
     .flatMap((node) => node.declarationList.declarations)
     .find((node) => node.name.getText(parsed) === 'STATUS_HTML').initializer.text;
+  // figcd reads both manifest paths unconditionally when uploading the bundle.
+  const bundleDirectory = new URL('dist/', import.meta.url);
+  const manifest = JSON.parse(readFileSync(new URL('manifest.json', bundleDirectory), 'utf8'));
+  assert.equal(typeof manifest.main, 'string', 'publisher requires a main file');
+  assert.equal(typeof manifest.ui, 'string', 'publisher requires a UI file');
+  assert.equal(readFileSync(new URL(manifest.main, bundleDirectory), 'utf8'), source);
+  assert.equal(readFileSync(new URL(manifest.ui, bundleDirectory), 'utf8'), html);
   const dom = new JSDOM(html, { runScripts: 'dangerously' });
   dom.window.dispatchEvent(
     new dom.window.MessageEvent('message', {
@@ -1154,6 +1424,58 @@ test('containers expose open native slots; only icon choices use instance swaps'
   await env.run();
   assert.equal(role(col, 'Content slot').id, originalId);
   assert.equal(custom.parent, userSlot);
+});
+
+test('row updates preserve renamed slot bindings, authored defaults and intentionally empty slots', async () => {
+  const env = environment();
+  await env.run();
+  const tagged = (id) =>
+    env.document.findOne((node) => node.getPluginData('bepower-source') === id);
+  const row = tagged('row/xxs');
+  const columns = row.children.find((node) => node.name === 'Columns');
+  const definitions = row.parent.componentPropertyDefinitions;
+  const oldKey = columns.componentPropertyReferences.slotContentId;
+  const newKey = oldKey.replace(/^Columns#/, 'My columns#');
+  definitions[newKey] = definitions[oldKey];
+  delete definitions[oldKey];
+  for (const master of row.parent.children) {
+    const slot = master.children.find((node) => node.name === 'Columns');
+    if (slot.componentPropertyReferences.slotContentId === oldKey) {
+      slot.componentPropertyReferences = { slotContentId: newKey };
+    }
+  }
+  const authored = columns.children[0];
+  authored.swapComponent(tagged('col/6'));
+  authored.resize(123, 91);
+  columns.children[1].remove();
+  const gridSlot = tagged('grid/true/xxs').children.find((node) => node.type === 'SLOT');
+  gridSlot.children.forEach((node) => node.remove());
+  const keys = Object.keys(definitions).sort();
+  const edits = env.stats.slotDefinitionEdits;
+  // Reproduce the old gap-only library before top/bottom variants were added.
+  for (const master of row.parent.children) {
+    const parts = master.getPluginData('bepower-source').split('/');
+    if (parts.length > 2) master.remove();
+    else master.name = `gap=${parts[1]}`;
+  }
+  const ids = [row.id, columns.id, authored.id];
+  await env.run();
+  assert.deepEqual([row.id, columns.id, authored.id], ids);
+  assert.equal(columns.componentPropertyReferences.slotContentId, newKey);
+  assert.deepEqual(Object.keys(definitions).sort(), keys);
+  assert.deepEqual(
+    columns.children.map((node) => node.id),
+    [authored.id],
+  );
+  assert.equal(authored.mainComponent.id, tagged('col/6').id);
+  assert.equal(authored.width, 123);
+  assert.equal(authored.height, 91);
+  assert.equal(gridSlot.children.length, 0, 'empty slot stays empty');
+  assert.equal(
+    env.stats.slotDefinitionEdits,
+    edits,
+    'unchanged slot definitions are not rewritten',
+  );
 });
 
 test('instances accept many rows, columns and page sections without detaching', async () => {

@@ -48,7 +48,7 @@ Inoltre `figma-plugin/dist` è ignorata da Git: aggiornare i soli sorgenti non r
 6. Si apre subito la finestra **BePower · Aggiornamento**, con ID del bundle e fase corrente.
    A fine esecuzione mostra master aggiornati e creati e **resta aperta** finché la chiudi
    con la X di Figma. Gli errori rimangono leggibili nella stessa finestra. Con il catalogo
-   attuale già completo, un secondo avvio deve indicare **651 aggiornati, 0 creati**.
+   attuale già completo, un secondo avvio deve indicare **676 aggiornati, 0 creati**.
    Nuovi componenti aggiunti ai sorgenti possono legittimamente aumentare il numero dei creati.
 
 Non rimuovere pagine, master o variabili per aggiornare. La rimozione rompe i collegamenti
@@ -151,6 +151,8 @@ _Grid
 _P
 _Page
 _ProgressBar
+_RadioButton
+_RadioCard
 _Row
 _Text
 _Title
@@ -215,26 +217,28 @@ di componenti in Dev Mode. Non occorre rigenerare il plugin per questo messaggio
 
 ## Copertura del pilota
 
-| Elemento                | Origine                                                | Output                                                                                        |
-| ----------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
-| Colori solidi           | `foundations/colors.scss`                              | Variabili COLOR, anche con alpha                                                              |
-| Dimensioni e spaziature | `foundations/sizes.scss`, `spacing.scss`               | Variabili FLOAT, rem convertiti con la base 16px del repository                               |
-| Tipografia              | mixin senza parametri in `foundations/typography.scss` | Stili testo, line-height e decorazioni                                                        |
-| UIIcon                  | `icon-map.ts`, `icons/*.svg`, input size               | 50 set, 75 SVG × 6 size = 450 componenti vettoriali                                           |
-| UIPictogram             | `pictogram-map.ts`, `pictograms/*.svg`, input size     | 1 set, 22 SVG × 3 size semantiche = 66 componenti; colori originali preservati                |
-| UIButton                | TypeScript, Sass e mixin tipografici                   | 20 varianti: 3 variant × default/icon/min-icon × 2 stati; inline solo secondary × 2 stati     |
-| UIBottomSheet           | TypeScript e Sass                                      | 4 combinazioni showCloseButton × hasFooter, proprietà Content                                 |
-| UIPage                  | TypeScript e Sass                                      | 50 combinazioni: 5 background × 5 header (incluso none) × 2 footer, proprietà Title e Content |
-| UIProgressBar           | TypeScript e Sass                                      | 5 campioni statici: 0, 0.25, 0.5, 0.75, 1                                                     |
-| UITitle                 | input size e mixin title                               | 4 size, proprietà Text                                                                        |
-| UIText                  | input variant e mixin tipografici                      | 7 variant, proprietà Text                                                                     |
-| UIP                     | Sass p-m e align                                       | 3 allineamenti, proprietà Text                                                                |
-| UIGrid                  | input horizontal, fixed e token spacing                | 12 combinazioni di inset e fixed                                                              |
-| UIRow                   | input gap e token spacing                              | 10 gap, top/bottom inizialmente none                                                          |
-| UICol                   | contratto Ionic size                                   | Span 1–12, equal e auto; 14 campioni                                                          |
+| Elemento                | Origine                                                | Output                                                                                             |
+| ----------------------- | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| Colori solidi           | `foundations/colors.scss`                              | Variabili COLOR, anche con alpha                                                                   |
+| Dimensioni e spaziature | `foundations/sizes.scss`, `spacing.scss`               | Variabili FLOAT, rem convertiti con la base 16px del repository                                    |
+| Tipografia              | mixin senza parametri in `foundations/typography.scss` | Stili testo, line-height e decorazioni                                                             |
+| UIIcon                  | `icon-map.ts`, `icons/*.svg`, input size               | 50 set, 75 SVG × 6 size = 450 componenti vettoriali                                                |
+| UIPictogram             | `pictogram-map.ts`, `pictograms/*.svg`, input size     | 1 set, 22 SVG × 3 size semantiche = 66 componenti; colori originali preservati                     |
+| UIButton                | TypeScript, Sass e mixin tipografici                   | 20 varianti: 3 variant × default/icon/min-icon × 2 stati; inline solo secondary × 2 stati          |
+| UIBottomSheet           | TypeScript e Sass                                      | 4 combinazioni showCloseButton × hasFooter, proprietà Content                                      |
+| UIPage                  | TypeScript e Sass                                      | 50 combinazioni: 5 background × 5 header (incluso none) × 2 footer, proprietà Title e Content      |
+| UIProgressBar           | TypeScript e Sass                                      | 5 campioni statici: 0, 0.25, 0.5, 0.75, 1                                                          |
+| UIRadioButton           | TypeScript, Sass e specifiche Figma                    | 10 stati: Simple/With description × Default, Selected, Error, Disabled, Focus; Label e Description |
+| UIRadioCard             | TypeScript, Sass e specifiche Figma                    | 15 combinazioni: Title+Description/Title only/Description only × 5 stati; Title e Description      |
+| UITitle                 | input size e mixin title                               | 4 size, proprietà Text                                                                             |
+| UIText                  | input variant e mixin tipografici                      | 7 variant, proprietà Text                                                                          |
+| UIP                     | Sass p-m e align                                       | 3 allineamenti, proprietà Text                                                                     |
+| UIGrid                  | input horizontal, fixed e token spacing                | 12 combinazioni di inset e fixed                                                                   |
+| UIRow                   | input gap/top/bottom e token spacing                              | 490 combinazioni: 10 gap × 7 top × 7 bottom                                                               |
+| UICol                   | contratto Ionic size                                   | Span 1–12, equal e auto; 14 campioni                                                               |
 
-Totale attuale: **650 master in 62 set**, corrispondenti ai **13 componenti** del barrel,
-più **un componente standalone di esempio** `Composition / Content` (**651 master totali**).
+Totale attuale: **675 master in 66 set**, corrispondenti ai **15 componenti** del barrel,
+più **un componente standalone di esempio** `Composition / Content` (**676 master totali**).
 Il numero dei componenti Angular non coincide con quello dei master Figma: ogni variante
 è un master nel proprio set.
 
@@ -373,11 +377,20 @@ per i figli degli slot: Figma vieta questi collegamenti. Per modificare o mostra
 dello slot agisci direttamente sui relativi livelli dell'istanza.
 Il flusso nuovo usa gli slot aperti, non i vecchi campi Content o gli swap di contenitore.
 Le vecchie definizioni swap, se già presenti, non vengono eliminate distruttivamente ma non
-controllano il nuovo contenuto. Le composizioni personali
-devono stare fuori dalle tavole generate; i loro override non vengono cancellati dal plugin.
+controllano il nuovo contenuto. Le composizioni personali devono stare fuori dalle tavole
+generate, che vengono ricostruite a ogni esecuzione.
 
-Al primo aggiornamento dal precedente catalogo sono previsti **579 aggiornati e 1 creato**:
-il nuovo master è Composition / Content. Ai successivi: **580 aggiornati e 0 creati**.
+Gli aggiornamenti riutilizzano il binding SLOT esistente anche se la proprietà è stata
+rinominata. Non riscrivono definizioni invariate, non ricreano placeholder negli slot
+esistenti e non ripristinano colonne o contenuti predefiniti rimossi. I contenuti già
+presenti non vengono sostituiti con il componente di esempio né ridimensionati dal seeding.
+Un binding SLOT esistente non valido interrompe l'aggiornamento invece di essere sostituito.
+
+I test locali verificano queste operazioni e la migrazione delle varianti UIRow, ma il
+simulatore non riproduce la propagazione degli override di Figma. Prima di usare una nuova
+migrazione sul file di lavoro, verificarla su una copia con contenuti personalizzati negli
+slot annidati (Page → Grid → Row → Col). Controllare testi, ordine, dimensioni e contenuti
+dopo due esecuzioni. Un test locale riuscito non certifica questa verifica nel runtime.
 
 ### Requisiti e API
 

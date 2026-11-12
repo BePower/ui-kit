@@ -1,115 +1,35 @@
 ---
 name: regenerate-figma-plugin
-description: Regenerate the bepower-ui-kit Figma plugin bundle from the library sources and indicate the designer-side import/publishing procedure. Load this skill when you must realign Figma after a change to the sources (new component/variant/token), when you modify the plugin or its scripts, or when the design-to-code flow calls for the "repo → Figma" step.
+description: Build, troubleshoot and validate the repository-to-Figma plugin, adapters, native updates and deployment workflow; not Figma-to-Angular implementation.
 ---
 
-# Figma plugin regeneration (repo → Figma)
+# Regenerate the Figma plugin
 
-Direction of the flow: **repo → Figma**. The plugin generates **native Figma elements from the
-sources** of the library; it does not read the Code Layer and does **not** modify the Angular
-components. The `figma-to-component` skill covers the reverse direction. The plugin's detailed
-rules live in the steering `figma-plugin.md` (activates on `{figma-plugin/**,scripts/*figma*}`)
-and in `figma-plugin/README.md`: this skill is the operational procedure.
+Read [plugin invariants](../../steering/figma-plugin.md) first: that file owns identity, slot
+preservation, layout, native acceptance and deployment rules. Paths below start at workspace root.
 
-## Principle: the sources are the single source of truth
+1. Inspect status, affected source/tests and reported evidence; preserve existing changes.
+   Distinguish Angular contract, adapter, build/publisher and native lifecycle failures. Read
+   [library rules](../../../projects/ui-kit/AGENTS.md) for Angular edits; inspect build scripts or
+   workflow when affected. Use connected Figma tools only with their required skills.
+2. Install dependencies only if needed, using `.nvmrc` and root lockfile. Changed SVG sources may
+   require `npm run icons:import` or `npm run pictograms:import`; inspect generated diffs.
+3. Run `node --test figma-plugin/plugin.test.mjs` from workspace root: it builds the bundle and
+   tests a simulated API. For build-only delivery, use `node scripts/build-figma-plugin.mjs`;
+   source changes after tests require revalidation. Inspect manifest, build-info and required
+   artifacts against the steering. Format touched files and run `git diff --check`.
+4. For workflow edits, validate YAML, shell/JS and mocked decisions: initial publish, equal/different
+   hashes, latest-success selection, pagination and failed-deploy retry. Exercise pinned publisher
+   compatibility with mocked network calls where possible; no real release for local verification.
+5. Perform the steering's native acceptance on a copy of an existing file when access exists.
+   For lost content, distinguish regenerated docs from propagated master changes. Local tests do
+   not simulate Figma override propagation/layout; report native checks outstanding if unavailable.
 
-`scripts/build-figma-plugin.mjs` + `scripts/figma-inventory.mjs` **derive** everything from the
-sources:
+For local delivery, import `figma-plugin/dist/manifest.json` in Figma Desktop Design mode with edit
+access and configured fonts (currently Source Sans 3 Regular/SemiBold). Match the plugin status
+build id to `build-info.json`. Executing the plugin and publishing its design library are separate.
+Internal PR pushes can publish before merge; respect authorized scope. Version bumps require
+release authorization and happen once per PR, not once per rebuild.
 
-- **Color/numeric tokens** evaluated by Sass (`meta.module-variables` on
-  `foundations/{colors,sizes,spacing}`); `rem` → px (`* 16`).
-- **Typography**: every `@mixin` of `foundations/typography.scss` compiled for size/line-height/
-  weight/underline/uppercase.
-- **Button mapping** read from `ui-button.scss` (the pattern **throws** if it no longer matches:
-  if you change those property names in the SCSS, update the pattern).
-- **Component inputs** extracted via the TypeScript type checker from the barrel
-  `components/index.ts` (only `input()` / `input.required`, literal unions as `values`).
-- **Icons/pictograms** from `icon-map.ts` + `icons/*.svg` and from `pictogram-map.ts` +
-  `pictograms/*.svg`.
-
-**Operational consequence**: do NOT add data by hand into the bundle. To expose a new
-token/variant in Figma, add it to the **source** (foundations, component input, registry) and
-regenerate.
-
-## 1. Pre-check
-
-- If you changed icons/pictograms, first align the registries: `npm run icons:import` /
-  `npm run pictograms:import` (from the root). The plugin build **fails** if the registry and the
-  SVGs diverge — it is a guard, not an error to work around.
-- Make sure `npm ci` has been run (the build uses `sass` and `typescript`).
-
-## 2. Build the bundle (from the workspace ROOT)
-
-```bash
-node scripts/build-figma-plugin.mjs
-```
-
-It writes `figma-plugin/dist/`: `code.js`, `manifest.json`, `build-info.json`, `tokens.json`. The
-terminal prints **BePower build `<id>`** (same id in `dist/build-info.json`). Notes:
-
-- `figma-plugin/dist/` is **gitignored**: changing only the sources does not regenerate the
-  bundle; the command must be re-run.
-- Transpile target **ES2017** (Figma sandbox): no optional chaining / object spread in the bundle.
-- `figma-plugin/status.html` is versioned (contains the marker `/* TOKENS */`); `dist/` is
-  regenerable and must not be edited by hand or versioned.
-
-## 3. Test the generator (after changes to the plugin)
-
-```bash
-node --test figma-plugin/plugin.test.mjs
-```
-
-It verifies inventory, coverage, variants, basic icon geometry, two consecutive runs, absence of
-duplicates, preservation of masters/Label property/content outside the boards. It does not replace
-the real visual verification in Figma Desktop.
-
-## 4. What NOT to do (non-negotiable rules)
-
-- **Do not edit `figma-plugin/dist` by hand**: it is generated output. Edit the sources
-  (`components.js`, `composition.js`, `catalog.js`, `plugin.js`, `status.html`) and regenerate.
-- **Do not change the manifest `id`** (`bepower-ui-kit-repository-pilot`): the private data that
-  identifies the nodes is bound to the plugin; changing it breaks master recognition.
-  `networkAccess.allowedDomains: ['none']` stays unchanged.
-- **Do not remove pages/masters/variables** to "update": it would break the instance links. The
-  generator updates in place.
-- Font: family from `foundations/base.scss` (`--ion-font-family`, Source Sans 3); the plugin does
-  not use substitute fonts — if it is missing, the build throws.
-
-## 5. Delivery model: Development vs org-published
-
-There are two ways the designer gets the plugin, and they use **different ids**:
-
-- **Development (local import)**: `node scripts/build-figma-plugin.mjs` emits the historical
-  id `bepower-ui-kit-repository-pilot`; the designer imports `figma-plugin/dist/manifest.json`
-  from the local filesystem. This is the default and is unchanged.
-- **Org-published**: the plugin is published internally to the Figma organization (opened from
-  the Plugins/Tools list, no filesystem import, no Figma review). Figma assigns its own id; the
-  build reads it from `FIGMA_PLUGIN_ID` (default = the historical id, so the Development flow is
-  untouched). An **org admin** publishes it. See `figma-plugin/PUBLISHING.md`.
-
-**On the id**: the org-published plugin uses the id Figma assigns (`FIGMA_PLUGIN_ID`). The pilot
-masters are not in production use, so moving to the assigned id needs no in-place migration — the
-catalog may be regenerated from scratch on the org library file. Once Figma assigns the real id,
-set it as the default in `scripts/build-figma-plugin.mjs`.
-
-## 6. Designer-side procedure (I INDICATE it, I do not run it)
-
-Import and publishing happen in Figma Desktop, designer-side (see `figma-plugin/README.md` for
-local import, `figma-plugin/PUBLISHING.md` for internal org publishing):
-
-1. Figma Desktop, library file, **Design** mode (not Dev Mode), edit permissions.
-2. Source Sans 3 Regular + SemiBold available in Figma.
-3. Plugins → Development → Import plugin from manifest → `figma-plugin/dist/manifest.json`.
-4. Run **BePower UI Kit · repository pilot**; the update window stays open and shows the counts.
-5. **Expected with the catalog unchanged: "651 updated, 0 created"**. A new component/variant in
-   the sources legitimately increases the "created".
-6. Verify samples, variable links and text styles, then **publish the library manually**. Publishing
-   depends on plan and permissions: I indicate the procedure, I do not run it.
-
-## Checklist
-
-- [ ] Icon/pictogram registries aligned (`icons:import` / `pictograms:import`) if touched.
-- [ ] `node scripts/build-figma-plugin.mjs` run from the root; build id noted.
-- [ ] `node --test figma-plugin/plugin.test.mjs` green (if I modified the plugin).
-- [ ] `dist/` not edited by hand; manifest id unchanged.
-- [ ] Import/publishing procedure indicated to the designer with the expected counts.
+Report behavior changed, actual build id, checks performed, deployment run/skipped/not attempted
+and native validation status. Do not claim local tests certify preservation of consumer mockups.

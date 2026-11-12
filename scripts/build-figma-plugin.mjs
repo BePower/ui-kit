@@ -152,6 +152,8 @@ if (errors.length) {
 const body = compiled.outputText;
 const buildId = createHash('sha256').update(body).digest('hex').slice(0, 12);
 await writeFile(`${output}/code.js`, `const BUILD_ID = ${JSON.stringify(buildId)};\n${body}`);
+// figcd 0.0.16 requires a UI file even though the runtime embeds STATUS_HTML.
+await writeFile(`${output}/ui.html`, statusHtml);
 await writeFile(
   `${output}/build-info.json`,
   JSON.stringify({ version, buildId, main: 'code.js' }, null, 2),
@@ -169,6 +171,7 @@ await writeFile(
       id: process.env.FIGMA_PLUGIN_ID || '1701629443273972387',
       api: '1.0.0',
       main: 'code.js',
+      ui: 'ui.html',
       capabilities: [],
       enableProposedApi: false,
       editorType: ['figma'],

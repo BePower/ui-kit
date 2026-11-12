@@ -63,7 +63,13 @@ async function configureComposition({
     };
     // Official API: attaching slotContentId converts an existing frame, preserving its ID.
     const property = exposeProperty(master, node, name, 'SLOT', '', 'slotContentId');
-    propertyOwner.editComponentProperty(property, { description, slotSettings: settings });
+    const definition = propertyOwner.componentPropertyDefinitions[property];
+    if (
+      definition.description !== description ||
+      Object.entries(settings).some(([key, value]) => definition.slotSettings?.[key] !== value)
+    ) {
+      propertyOwner.editComponentProperty(property, { description, slotSettings: settings });
+    }
     node.name = name;
     node.layoutAlign = 'STRETCH';
     if (direction === 'HORIZONTAL') {
@@ -104,6 +110,12 @@ async function configureComposition({
   }
   async function defaultInstance(parent, name, source, width) {
     let instance = role(parent, name);
+    // Existing slot contents are authored content. Do not swap or resize them on
+    // every update: nested overrides in consumer instances depend on their identity.
+    if (instance && parent.type === 'SLOT') {
+      clearLegacySwap(instance);
+      return instance;
+    }
     if (!instance) {
       instance = source.createInstance();
       parent.appendChild(instance);
@@ -118,12 +130,15 @@ async function configureComposition({
     return instance;
   }
   function hideLegacy(master, node) {
-    for (const text of node.children.filter((child) => child.type === 'TEXT')) {
+    for (const text of node.children.filter(
+      (child) => child.type === 'TEXT' && child.getPluginData(roleKey) === 'Content',
+    )) {
       text.visible = false;
       exposeProperty(master, text, 'Show legacy placeholder', 'BOOLEAN', false, 'visible');
     }
   }
   async function content(master, node, source, name, fixedHeight = false) {
+    const existingSlot = node.type === 'SLOT';
     hideLegacy(master, node);
     openSlot(
       master,
@@ -133,7 +148,9 @@ async function configureComposition({
       'Contenuto libero: aggiungi, duplica, riordina o rimuovi istanze senza Detach.',
     );
     if (fixedHeight) node.primaryAxisSizingMode = 'FIXED';
-    await defaultInstance(node, 'Projected component', source, node.width);
+    if (!existingSlot || role(node, 'Projected component')) {
+      await defaultInstance(node, 'Projected component', source, node.width);
+    }
   }
   for (const id of ['title', 'text', 'p', 'progress-bar']) {
     for (const master of sets.get(id).children) {
@@ -148,12 +165,13 @@ async function configureComposition({
     await content(master, role(master, 'Content slot'), paragraph, 'Content');
   }
   for (const master of sets.get('row').children) {
-    const gap = n[`spacing-${master.getPluginData(tag).slice('row/'.length)}`];
+    const gap = n[`spacing-${master.getPluginData(tag).split('/')[1]}`];
     const width = master.width;
     master.layoutMode = 'VERTICAL';
     master.primaryAxisSizingMode = 'AUTO';
     master.counterAxisSizingMode = 'FIXED';
     master.itemSpacing = 0;
+    const existingColumns = role(master, 'Columns')?.type === 'SLOT';
     const columns = openSlot(
       master,
       frame(master, 'Columns'),
@@ -162,10 +180,13 @@ async function configureComposition({
       'Colonne libere: due solo come esempio iniziale, nessun numero massimo.',
     );
     columns.resize(width, columns.height);
+    columns.minWidth = null;
+    columns.layoutGrow = 0;
     columns.itemSpacing = gap;
     columns.layoutWrap = 'WRAP';
     columns.counterAxisSpacing = 0;
     for (const index of [1, 2]) {
+      if (existingColumns) continue;
       const old = role(master, `Column ${index}`);
       const migrated = old && role(old, 'Projected component');
       if (migrated && !role(columns, `Default column ${index}`)) {
@@ -226,6 +247,12 @@ async function configureComposition({
         if (label.parent !== master) master.insertChild(0, label);
         exposeProperty(master, label, 'Label', 'TEXT', label.characters, 'characters');
         label.visible = true;
+        // Reset legacy fill-width labels: center the text itself and hug its content.
+        label.layoutGrow = 0;
+        label.layoutAlign = 'INHERIT';
+        label.textAutoResize = 'WIDTH_AND_HEIGHT';
+        label.textAlignHorizontal = 'CENTER';
+        label.textAlignVertical = 'CENTER';
         exposeProperty(master, label, 'Show label', 'BOOLEAN', true, 'visible');
       }
       openSlot(
@@ -238,6 +265,9 @@ async function configureComposition({
       body.layoutAlign = 'INHERIT';
       body.primaryAxisSizingMode = 'AUTO';
       body.counterAxisSizingMode = 'AUTO';
+      body.layoutGrow = 0;
+      body.primaryAxisAlignItems = 'CENTER';
+      body.counterAxisAlignItems = 'CENTER';
       body.itemSpacing = n['size-80'];
       body.visible = false;
       exposeProperty(master, body, 'Show custom content', 'BOOLEAN', false, 'visible');

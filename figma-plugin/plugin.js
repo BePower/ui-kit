@@ -161,9 +161,36 @@ async function run() {
     const owner = master.parent?.type === 'COMPONENT_SET' ? master.parent : master;
     const definitions = owner.componentPropertyDefinitions;
     const reference = node.componentPropertyReferences?.[field];
+    // A slot's identity is its existing binding, not its display name. Rebinding it
+    // can discard instance content, including when a designer renamed the property.
+    if (type === 'SLOT' && reference) {
+      if (definitions[reference]?.type !== 'SLOT') {
+        throw new Error(
+          `Slot ${node.name}: invalid existing binding ${reference}. Update stopped.`,
+        );
+      }
+      return reference;
+    }
     const matches = (key) => key && key.startsWith(`${name}#`) && definitions[key]?.type === type;
     // Keep each existing reference, even if the set contains several legacy Label IDs.
     let property = matches(reference) ? reference : Object.keys(definitions).find(matches);
+    if (type === 'SLOT' && !property && owner.type === 'COMPONENT_SET') {
+      const role = node.getPluginData('bepower-role');
+      // New variants must share the stable slot binding of existing variants,
+      // including when its display name no longer matches the generated name.
+      if (role) {
+        for (const variant of owner.children) {
+          const sibling = variant.children?.find(
+            (child) => child.getPluginData('bepower-role') === role,
+          );
+          const candidate = sibling?.componentPropertyReferences?.slotContentId;
+          if (definitions[candidate]?.type === 'SLOT') {
+            property = candidate;
+            break;
+          }
+        }
+      }
+    }
     if (!property) property = owner.addComponentProperty(name, type, value);
     if (reference !== property) {
       node.componentPropertyReferences = {
@@ -178,9 +205,14 @@ async function run() {
   }
   function variants(nodes, id, name, x) {
     let set = managed.get(`COMPONENT_SET:${id}`);
-    if (!set) set = figma.combineAsVariants(nodes, page);
+    const isNew = !set;
+    if (isNew) set = figma.combineAsVariants(nodes, page);
     managed.set(`COMPONENT_SET:${id}`, set);
-    nodes.forEach((node, index) => set.insertChild(index, node));
+    if (!isNew) {
+      nodes.forEach((node, index) => {
+        if (node.parent !== set) set.insertChild(index, node);
+      });
+    }
     set.setPluginData(key, id);
     set.name = name;
     set.x = x;
@@ -272,11 +304,17 @@ async function run() {
       label.textDecoration = type.underline ? 'UNDERLINE' : 'NONE';
       label.characters = 'Continua';
       label.textAutoResize = 'WIDTH_AND_HEIGHT';
+      label.textAlignHorizontal = 'CENTER';
+      label.textAlignVertical = 'CENTER';
+      label.layoutGrow = 0;
+      label.layoutAlign = 'INHERIT';
       bindFill(label, 'color-grey-default-grey');
       exposeText(node, label, 'Label', 'Continua');
       node.minWidth = label.width + node.paddingLeft + node.paddingRight;
       node.resize(Math.max(node.width, node.minWidth), DATA.button.height);
-      node.primaryAxisSizingMode = 'FIXED';
+      // Text overrides must grow the master/instance instead of wrapping in an old width.
+      // Expanded footer instances explicitly opt into fixed width.
+      node.primaryAxisSizingMode = 'AUTO';
       buttons.push(node);
       await checkpoint();
     }
@@ -285,6 +323,8 @@ async function run() {
   progress('Aggiornamento componenti e shell…');
   await checkpoint(true);
   const library = await renderComponents({
+    page,
+    getComponentSet: (id) => managed.get(`COMPONENT_SET:${id}`),
     component,
     variants,
     bindFill,

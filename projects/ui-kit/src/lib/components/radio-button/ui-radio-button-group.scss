@@ -1,0 +1,45 @@
+@use '@ionic/angular/css/core.css';
+
+@use 'foundations/colors' as colors;
+@use 'foundations/sizes' as sizes;
+@use 'foundations/typography' as typography;
+@use 'foundations/root' as root;
+
+:host {
+  @include root.shadow-root;
+  display: block;
+  inline-size: 100%;
+  max-inline-size: 100%;
+  min-inline-size: 0;
+}
+
+fieldset {
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.visually-hidden {
+  position: absolute;
+  inline-size: #{sizes.$size-10};
+  block-size: #{sizes.$size-10};
+  margin: calc(-1 * #{sizes.$size-10});
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+ion-radio-group {
+  display: grid;
+  min-inline-size: 0;
+  gap: #{sizes.$size-80};
+}
+
+.group-error {
+  @include typography.p-s;
+  margin: #{sizes.$size-80} 0 0;
+  color: #{colors.$color-error-ruby-red};
+}
