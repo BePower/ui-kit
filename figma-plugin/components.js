@@ -747,29 +747,32 @@ async function renderComponents({
       copy.counterAxisSizingMode = 'FIXED';
       copy.resize(255, copyHeight);
       copy.itemSpacing = n['size-40'];
-      const title = await text(copy, 'Title', "Titolo dell'opzione", 'title-s', 255);
-      const description = await text(
-        copy,
-        'Description',
-        'Una breve descrizione che spiega cosa comporta questa scelta',
-        'p-s',
-        255,
-      );
-      title.visible = content.title;
-      description.visible = content.description;
-      title.layoutAlign = description.layoutAlign = 'STRETCH';
-      bindFill(
-        title,
-        state.id === 'error'
-          ? 'color-error-ruby-red'
-          : state.id === 'disabled'
-            ? 'color-grey-default-grey-72'
-            : 'color-grey-default-grey',
-      );
-      bindFill(
-        description,
-        state.id === 'error' ? 'color-error-ruby-red' : 'color-grey-default-grey-72',
-      );
+      for (const [role, enabled, value, style] of [
+        ['Title', content.title, "Titolo dell'opzione", 'title-s'],
+        [
+          'Description',
+          content.description,
+          'Una breve descrizione che spiega cosa comporta questa scelta',
+          'p-s',
+        ],
+      ]) {
+        if (!enabled) {
+          // Remove hidden text left by older bundles of the single-content cards.
+          copy.children.find((item) => item.getPluginData('bepower-role') === role)?.remove();
+          continue;
+        }
+        const label = await text(copy, role, value, style, 255);
+        label.visible = true;
+        label.layoutAlign = 'STRETCH';
+        bindFill(
+          label,
+          state.id === 'error'
+            ? 'color-error-ruby-red'
+            : role === 'Description' || state.id === 'disabled'
+              ? 'color-grey-default-grey-72'
+              : 'color-grey-default-grey',
+        );
+      }
 
       const focusRing = frame(node, 'Focus ring');
       fixed(focusRing, 335, cardHeight + 8);

@@ -497,13 +497,13 @@ test('catalog generation preserves master IDs, properties and external content o
   assert.equal(radioTitleOnly.height, 58);
   assert.equal(radioDescriptionOnly.height, 68);
   assert.ok(radioTitleOnly.findOne((node) => node.name === 'Title'));
-  assert.equal(
-    radioTitleOnly.findOne((node) => node.name === 'Description'),
-    null,
+  assert.ok(
+    radioTitleOnly.findOne((node) => node.name === 'Description') === null,
+    'title-only card has no description',
   );
-  assert.equal(
-    radioDescriptionOnly.findOne((node) => node.name === 'Title'),
-    null,
+  assert.ok(
+    radioDescriptionOnly.findOne((node) => node.name === 'Title') === null,
+    'description-only card has no title',
   );
   assert.ok(radioDescriptionOnly.findOne((node) => node.name === 'Description'));
   const radioButtonSet = tagged('components/radio-button');
@@ -653,7 +653,7 @@ test('catalog generation preserves master IDs, properties and external content o
   ]) {
     assert.equal(tagged(setId).children[0].getPluginData('bepower-source'), defaultId);
   }
-  assert.equal(masters.length, iconCount + 216);
+  assert.equal(masters.length, iconCount + 216 + radioButtonSet.children.length);
   const masterIds = masters.map((node) => node.id);
   const button = tagged('button/primary/default');
   assert.equal(button.primaryAxisSizingMode, 'FIXED');
@@ -690,8 +690,6 @@ test('catalog generation preserves master IDs, properties and external content o
     '_ProgressBar',
     '_RadioButton',
     '_RadioCard',
-    '_RadioCard / Description only',
-    '_RadioCard / Title only',
     '_Row',
     '_Text',
     '_Title',
@@ -728,7 +726,25 @@ test('catalog generation preserves master IDs, properties and external content o
   tagged('pilot-page').appendChild(tagged('icons'));
   tagged('pilot-page').name = 'BePower · Repository pilot';
   tagged('foundations-page').name = 'BePower · Foundations';
+  // Older bundles created both text layers, hiding the excluded one.
+  const legacyText = [
+    [radioTitleOnly, 'Description'],
+    [radioDescriptionOnly, 'Title'],
+  ].map(([card, role]) => {
+    const label = env.figma.createText();
+    label.name = role;
+    label.setPluginData('bepower-role', role);
+    label.visible = false;
+    card.findOne((node) => node.name === 'Copy').appendChild(label);
+    return label;
+  });
   await env.run();
+  assert.ok(
+    legacyText.every((node) => node.parent === null),
+    'removes legacy hidden text',
+  );
+  assert.ok(!radioTitleOnly.findOne((node) => node.name === 'Description'));
+  assert.ok(!radioDescriptionOnly.findOne((node) => node.name === 'Title'));
   assert.deepEqual(
     env.document
       .findAll((node) => node.type === 'COMPONENT')
@@ -751,6 +767,9 @@ test('catalog generation preserves master IDs, properties and external content o
   assert.equal(tagged('component-catalog').findAll((node) => node.type === 'INSTANCE').length, 20);
   assert.equal(tagged('icons').parent.name, '_Icons');
   assert.equal(tagged('buttons').parent.name, '_Button');
+  for (const id of ['radio-card', 'radio-card/title-only', 'radio-card/description-only']) {
+    assert.equal(tagged(`components/${id}`).parent.name, '_RadioCard');
+  }
   assert.deepEqual(
     env.document.children.slice(0, expectedPages.length).map((node) => node.name),
     expectedPages,
