@@ -148,7 +148,7 @@ async function configureComposition({
     await content(master, role(master, 'Content slot'), paragraph, 'Content');
   }
   for (const master of sets.get('row').children) {
-    const gap = n[`spacing-${master.getPluginData(tag).slice('row/'.length)}`];
+    const gap = n[`spacing-${master.getPluginData(tag).split('/')[1]}`];
     const width = master.width;
     master.layoutMode = 'VERTICAL';
     master.primaryAxisSizingMode = 'AUTO';
@@ -226,6 +226,12 @@ async function configureComposition({
         if (label.parent !== master) master.insertChild(0, label);
         exposeProperty(master, label, 'Label', 'TEXT', label.characters, 'characters');
         label.visible = true;
+        // Reset legacy fill-width labels: center the text itself and hug its content.
+        label.layoutGrow = 0;
+        label.layoutAlign = 'INHERIT';
+        label.textAutoResize = 'WIDTH_AND_HEIGHT';
+        label.textAlignHorizontal = 'CENTER';
+        label.textAlignVertical = 'CENTER';
         exposeProperty(master, label, 'Show label', 'BOOLEAN', true, 'visible');
       }
       openSlot(
@@ -238,6 +244,9 @@ async function configureComposition({
       body.layoutAlign = 'INHERIT';
       body.primaryAxisSizingMode = 'AUTO';
       body.counterAxisSizingMode = 'AUTO';
+      body.layoutGrow = 0;
+      body.primaryAxisAlignItems = 'CENTER';
+      body.counterAxisAlignItems = 'CENTER';
       body.itemSpacing = n['size-80'];
       body.visible = false;
       exposeProperty(master, body, 'Show custom content', 'BOOLEAN', false, 'visible');

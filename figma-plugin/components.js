@@ -136,6 +136,9 @@ async function renderComponents({
     }
     // The CTA demonstrates `expand`; resize the instance, never its shared master.
     instance.primaryAxisSizingMode = 'FIXED';
+    instance.counterAxisSizingMode = 'FIXED';
+    instance.primaryAxisAlignItems = 'CENTER';
+    instance.counterAxisAlignItems = 'CENTER';
     instance.resize(width - parent.paddingLeft - parent.paddingRight, DATA.button.height);
     instance.layoutAlign = 'STRETCH';
     instance.layoutGrow = 0;
@@ -183,6 +186,7 @@ async function renderComponents({
           node.strokeWeight = 1;
         }
         if (size === 'inline') {
+          node.paddingLeft = node.paddingRight = node.paddingTop = node.paddingBottom = 0;
           const label = await text(node, 'Label', 'Scopri di più', 'button-text-link');
           expose(node, label, 'Label', 'Scopri di più');
         } else {
@@ -340,19 +344,28 @@ async function renderComponents({
   );
   const rows = [];
   for (const gap of values('row', 'gap')) {
-    const node = master(`row/${gap}`, `gap=${gap}`);
-    node.layoutMode = 'HORIZONTAL';
-    node.itemSpacing = n[`spacing-${gap}`];
-    const columnWidth = (width - node.itemSpacing) / 2;
-    await slot(node, 'Column 1', columnWidth, n['size-800']);
-    await slot(node, 'Column 2', columnWidth, n['size-800']);
-    rows.push(node);
+    for (const top of values('row', 'top')) {
+      for (const bottom of values('row', 'bottom')) {
+        // Preserve existing masters and their instances for the original gap-only variants.
+        const id =
+          top === 'none' && bottom === 'none' ? `row/${gap}` : `row/${gap}/${top}/${bottom}`;
+        const node = master(id, `gap=${gap}, top=${top}, bottom=${bottom}`);
+        node.layoutMode = 'HORIZONTAL';
+        node.itemSpacing = n[`spacing-${gap}`];
+        node.paddingTop = n[`spacing-${top}`];
+        node.paddingBottom = n[`spacing-${bottom}`];
+        const columnWidth = (width - node.itemSpacing) / 2;
+        await slot(node, 'Column 1', columnWidth, n['size-800']);
+        await slot(node, 'Column 2', columnWidth, n['size-800']);
+        rows.push(node);
+      }
+    }
   }
   register(
     'row',
     'UIRow',
     rows,
-    'Tutti i gap, top/bottom=none. Figma usa auto layout come approssimazione visiva; Angular applica mezzi gutter e margini negativi, non CSS gap. Top/bottom modificabili come padding, non varianti cartesiane.',
+    'Tutte le combinazioni gap/top/bottom dagli input Angular. Top e bottom applicano i token spacing come padding verticale. Figma usa auto layout come approssimazione visiva; Angular applica mezzi gutter e margini negativi, non CSS gap.',
   );
   const cols = [];
   for (const size of ['equal', 'auto', ...Array.from({ length: 12 }, (_, i) => String(i + 1))]) {

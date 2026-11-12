@@ -234,7 +234,7 @@ di componenti in Dev Mode. Non occorre rigenerare il plugin per questo messaggio
 | UIText                  | input variant e mixin tipografici                      | 7 variant, proprietà Text                                                                          |
 | UIP                     | Sass p-m e align                                       | 3 allineamenti, proprietà Text                                                                     |
 | UIGrid                  | input horizontal, fixed e token spacing                | 12 combinazioni di inset e fixed                                                                   |
-| UIRow                   | input gap e token spacing                              | 10 gap, top/bottom inizialmente none                                                               |
+| UIRow                   | input gap/top/bottom e token spacing                              | 490 combinazioni: 10 gap × 7 top × 7 bottom                                                               |
 | UICol                   | contratto Ionic size                                   | Span 1–12, equal e auto; 14 campioni                                                               |
 
 Totale attuale: **675 master in 66 set**, corrispondenti ai **15 componenti** del barrel,

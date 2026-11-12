@@ -277,11 +277,17 @@ async function run() {
       label.textDecoration = type.underline ? 'UNDERLINE' : 'NONE';
       label.characters = 'Continua';
       label.textAutoResize = 'WIDTH_AND_HEIGHT';
+      label.textAlignHorizontal = 'CENTER';
+      label.textAlignVertical = 'CENTER';
+      label.layoutGrow = 0;
+      label.layoutAlign = 'INHERIT';
       bindFill(label, 'color-grey-default-grey');
       exposeText(node, label, 'Label', 'Continua');
       node.minWidth = label.width + node.paddingLeft + node.paddingRight;
       node.resize(Math.max(node.width, node.minWidth), DATA.button.height);
-      node.primaryAxisSizingMode = 'FIXED';
+      // Text overrides must grow the master/instance instead of wrapping in an old width.
+      // Expanded footer instances explicitly opt into fixed width.
+      node.primaryAxisSizingMode = 'AUTO';
       buttons.push(node);
       await checkpoint();
     }

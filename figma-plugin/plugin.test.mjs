@@ -446,7 +446,26 @@ test('catalog generation preserves master IDs, properties and external content o
   assert.equal(tagged('components/text').children.length, 7);
   assert.equal(tagged('components/title').children.length, 4);
   assert.equal(tagged('components/grid').children.length, 12);
-  assert.equal(tagged('components/row').children.length, 10);
+  const rowInputs = data.components.row.inputs;
+  const rowCount =
+    rowInputs.gap.values.length * rowInputs.top.values.length * rowInputs.bottom.values.length;
+  assert.equal(tagged('components/row').children.length, rowCount);
+  for (const gap of rowInputs.gap.values) {
+    for (const top of rowInputs.top.values) {
+      for (const bottom of rowInputs.bottom.values) {
+        const id =
+          top === 'none' && bottom === 'none' ? `row/${gap}` : `row/${gap}/${top}/${bottom}`;
+        const row = tagged(id);
+        assert.ok(row, id);
+        assert.equal(row.name, `gap=${gap}, top=${top}, bottom=${bottom}`);
+        assert.equal(row.paddingTop, data.numbers[`spacing-${top}`]);
+        assert.equal(row.paddingBottom, data.numbers[`spacing-${bottom}`]);
+        const columns = row.children.find((node) => node.name === 'Columns');
+        assert.equal(columns.type, 'SLOT');
+        assert.equal(columns.itemSpacing, data.numbers[`spacing-${gap}`]);
+      }
+    }
+  }
   assert.equal(tagged('components/col').children.length, 14);
   assert.equal(tagged('components/p').children.length, 3);
   assert.equal(tagged('components/progress-bar').children.length, 5);
@@ -653,10 +672,10 @@ test('catalog generation preserves master IDs, properties and external content o
   ]) {
     assert.equal(tagged(setId).children[0].getPluginData('bepower-source'), defaultId);
   }
-  assert.equal(masters.length, iconCount + 216 + radioButtonSet.children.length);
+  assert.equal(masters.length, iconCount + 206 + rowCount + radioButtonSet.children.length);
   const masterIds = masters.map((node) => node.id);
   const button = tagged('button/primary/default');
-  assert.equal(button.primaryAxisSizingMode, 'FIXED');
+  assert.equal(button.primaryAxisSizingMode, 'AUTO');
   assert.equal(button.minWidth, button.children.find((node) => node.name === 'Label').width + 176);
   assert.ok(button.width >= button.minWidth);
   const label = button.findOne((node) => node.type === 'TEXT');
@@ -857,7 +876,8 @@ test('run reports distinguish creation from updates and identify the executed bu
   const env = environment();
   const first = await env.run();
   assert.ok(first.includes(buildId));
-  assert.match(first, /0 master aggiornati · 676 creati/);
+  const masterCount = env.document.findAll((node) => node.type === 'COMPONENT').length;
+  assert.ok(first.includes(`0 master aggiornati · ${masterCount} creati`));
   assert.match(first, /nuovo bundle/);
   const ids = env.document
     .findAll((node) => node.type === 'COMPONENT')
@@ -865,13 +885,13 @@ test('run reports distinguish creation from updates and identify the executed bu
     .sort();
   const second = await env.run();
   assert.ok(second.includes(buildId));
-  assert.match(second, /676 master aggiornati · 0 creati/);
+  assert.ok(second.includes(`${masterCount} master aggiornati · 0 creati`));
   assert.match(second, /stesso bundle/);
   assert.equal(env.document.getPluginData('bepower-last-build'), buildId);
   assert.deepEqual(JSON.parse(env.document.getPluginData('bepower-last-report')), {
     buildId,
     created: 0,
-    updated: 676,
+    updated: masterCount,
   });
   assert.deepEqual(
     env.document
@@ -917,6 +937,8 @@ test('shell toolbars fill the viewport and preserve title/footer IDs when upgrad
       assert.equal(footer.paddingBottom, isPage ? 0 : 16);
       assert.equal(cta.width, shell.width - 48);
       assert.equal(cta.primaryAxisSizingMode, 'FIXED');
+      assert.equal(cta.primaryAxisAlignItems, 'CENTER');
+      assert.equal(cta.counterAxisAlignItems, 'CENTER');
       assert.equal(cta.layoutAlign, 'STRETCH');
       assert.ok(footer.fills[0].boundVariables.color.id);
       const body = role(shell, 'Body slot');
@@ -979,6 +1001,8 @@ test('shell toolbars fill the viewport and preserve title/footer IDs when upgrad
   footer.counterAxisSizingMode = 'AUTO';
   footer.resize(292, footer.height);
   cta.primaryAxisSizingMode = 'AUTO';
+  cta.primaryAxisAlignItems = 'MIN';
+  cta.counterAxisAlignItems = 'MIN';
   cta.resize(244, cta.height);
   await env.run();
   checkShells();
@@ -994,6 +1018,48 @@ test('shell toolbars fill the viewport and preserve title/footer IDs when upgrad
     tagged('button/primary/default').width,
     buttonWidth,
     'CTA resizing never changes the shared master',
+  );
+});
+
+test('button labels stay centered and recover legacy stretching without replacing nodes', async () => {
+  const env = environment();
+  await env.run();
+  const buttons = env.document.findAll(
+    (node) =>
+      node.type === 'COMPONENT' && node.getPluginData('bepower-source').startsWith('button/'),
+  );
+  const labels = buttons.flatMap((button) =>
+    button.children.filter((node) => node.type === 'TEXT' && node.name === 'Label'),
+  );
+  assert.equal(labels.length, 8, 'default and inline text buttons');
+  const original = labels.map((label) => [label.id, label.componentPropertyReferences.characters]);
+  function check() {
+    for (const label of labels) {
+      assert.equal(label.parent.primaryAxisSizingMode, 'AUTO', 'text buttons hug longer labels');
+      assert.equal(label.textAlignHorizontal, 'CENTER');
+      assert.equal(label.textAlignVertical, 'CENTER');
+      assert.equal(label.textAutoResize, 'WIDTH_AND_HEIGHT');
+      assert.equal(label.layoutGrow, 0);
+      assert.equal(label.layoutAlign, 'INHERIT');
+      const content = label.parent.children.find((node) => node.name === 'Content');
+      assert.equal(content.visible, false, 'empty custom content does not offset the label');
+      assert.equal(content.layoutGrow, 0);
+      assert.equal(content.primaryAxisAlignItems, 'CENTER');
+    }
+  }
+  check();
+  for (const label of labels) {
+    label.textAlignHorizontal = 'LEFT';
+    label.textAlignVertical = 'TOP';
+    label.textAutoResize = 'HEIGHT';
+    label.layoutGrow = 1;
+    label.layoutAlign = 'STRETCH';
+  }
+  await env.run();
+  check();
+  assert.deepEqual(
+    labels.map((label) => [label.id, label.componentPropertyReferences.characters]),
+    original,
   );
 });
 
