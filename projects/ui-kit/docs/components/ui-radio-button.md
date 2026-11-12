@@ -109,6 +109,13 @@ Group-level states. They propagate to projected radio buttons and merge with loc
 </ui-radio-button-group>
 ```
 
+### Programmatic value normalization
+
+The selected model remains `string | null`. Form writes and Ionic change events preserve strings,
+normalize `null`/`undefined` to `null`, and convert numeric, boolean and bigint primitives to strings.
+Objects, arrays, symbols and functions are rejected with `TypeError` without changing the current
+selection or notifying the form. Do not pass option objects: pass their string identifier.
+
 ## Accessibility and interaction
 
 - The group uses native Ionic radio semantics and one roving tab stop.

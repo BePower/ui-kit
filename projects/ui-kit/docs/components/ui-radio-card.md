@@ -142,6 +142,13 @@ template-driven forms:
 
 The form's disabled state is propagated to all cards; blur marks the form control as touched.
 
+### Programmatic value normalization
+
+The selected model remains `string | null`. Form writes and Ionic change events preserve strings,
+normalize `null`/`undefined` to `null`, and convert numeric, boolean and bigint primitives to strings.
+Objects, arrays, symbols and functions are rejected with `TypeError` without changing the current
+selection or notifying the form. Do not pass option objects: pass their string identifier.
+
 ## Layout and responsiveness
 
 Both the group and every card fill the available inline size. The `327×98px` Figma frame is a
